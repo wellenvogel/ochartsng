@@ -1,0 +1,88 @@
+<head>
+    <link href="testUpload.css" rel="stylesheet"/>
+    <script type="text/javascript" src="util.js"></script>
+    <script type="text/javascript" src="testUpload.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+</head>
+<body>
+<p class="section">Installer</p>    
+<div class="row"><span class="label">CanInstall:</span> <span class="rpar" id="canInstall">----</span></div>
+<div class="row"><span class="label">Dongle</span><span class="rpar" id="dongleName">not present</span></div>    
+<p class="section">Test Upload</p> 
+<form class="" method="post" ref="form">
+    <input id="fileInput" type="file"  name="file"/>
+</form>
+<p><button id="cancelUpload">Cancel Upload</button></p>
+<p><span class="label">UploadStatus:</span> <span class="rpar" id="uploadStatus">----</span></p>
+<p class="section">Shop Download</p>
+<div class="shopLogin">
+    <div class="row notLoggedIn"><label><span class="label">Login</span><input id="shopUser" type="email"></label></div>
+    <div class="row notLoggedIn"><label><span class="label">Password</span><input id="shopPassword" type="password"></label></div>
+    <div class="row buttons">
+        <button id="shopLogin" class="notLoggedIn">Login</button>
+        <button id="shopLogout" class="loggedIn">Logout</button>
+        <button id="shopRefresh"class="loggedIn">Refresh</button>
+        <button id="shopSite">Website</button>
+    </div>
+    <div class="row">
+        <span class="label">Status</span>
+        <span class="loginStatus rpar"></span>
+    </div>
+    <div class="row onlyLoggedIn">
+        <span class="label">System</span>
+        <span class="systemStatus rpar"></span>
+    </div>
+    <div class="registerSystem onlyLoggedIn">
+        <div class="noDongle row">
+            <label><span class="label">SystemName</span>
+                <input id="shopSystemName" type="text"></label>
+            <button id="shopAssignSystemName" disabled>Register</button>
+        </div>
+        <div class="dongle row">
+            <label><span class="label">Dongle</span>
+                <input id="shopSystemNameDongle" type="text" disabled></label>
+            <button id="shopAssignSystemNameDongle" disabled>Register</button>
+        </div>
+    </div>
+    <div class="shopChartList onlyLoggedIn">
+        <div class="row section">Available Charts</div>
+        <div class="noDongle">
+            <div class="row">
+                <span class="label">SystemName</span><span class="value shopSystemName"></span>
+            </div>
+            <div class="shopChartListContent"></div>
+        </div>
+        <div class="dongle">
+            <div class="row">
+                <span class="label">DongleName</span><span class="value shopSystemName"></span>
+            </div>
+            <div class="shopChartListContent"></div>
+        </div>
+    </div>
+
+</div>
+<p class="section">RequestStatus</p>
+<div class="requestStatus">
+    <div class="row"><label><span class="label">url</span><span id="shopUrl" type="text"></label></div>
+    <div class="row"><label><span class="label">keyurl</span><span id="keyUrl" type="text"></label></div>
+    <div class="row"><span class="label">Status:</span> <span class="rpar" id="requestStatus">----</span></div>
+    <div class="row"><span class="label">Progress:</span> <span class="rpar" id="requestProgress">----</span></div>
+    <div class="row"><span class="label">Error:</span><span class="rpar" id="requestError">---</span></div>
+    <div class="row"><span class="label">Id:</span><span class="rpar" id="requestId">---</span></div>
+    <button id="cancelRequest">Cancel Request</button>
+</div>
+<p class="section">Installed Charts</p>
+<div id="chartList"></div>
+<div class="overlay hidden">
+    <div class="overlayContent">
+        <img src="spinner.gif">
+        <div id="overlayText"></div>
+    </div>
+</div>
+<form class="hidden" id="shopForm" target="shop" method="post" action=" https://o-charts.org/shop/en/autenticacion">
+    <input type="hidden" name="passwd"/>
+    <input type="hidden" name="email"/>
+    <input type="hiden" name="back" value="my-account"/>
+    <input type="hidden" name="SubmitLogin"/>
+</form>
+</body>

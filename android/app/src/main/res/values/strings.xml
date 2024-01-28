@@ -1,0 +1,42 @@
+<resources>
+    <string name="app_name">AvNav ocharts provider</string>
+    <string name="title_activity_log">LogActivity</string>
+    <string name="action_settings">Settings</string>
+    <string name="channel_name">charts</string>
+    <string name="channel_description">provides charts</string>
+    <string name="notifyTitle">AvOcharts</string>
+    <string name="notifyText">running</string>
+    <string name="intro">
+        <![CDATA[
+        <p><b>AvNav Ocharts provider.</b></p>"
+        <p>The provider is running as a background service.<br/>
+        Just change settings as you need and start it once.<br/>
+        In the future it should auto start with AvNav</p>]]>
+    </string>
+    <string name="needNotifications">Notification</string>
+    <string name="title_activity_permission_request">Permissions Needed</string>
+    <string name="notGranted">not granted</string>
+    <string name="grantQuestion">Grant permission at application settings now?</string>
+    <string name="ok">Ok</string>
+    <string name="cancel">Cancel</string>
+    <string name="title_activity_settings">avochart settings</string>
+
+    <!-- Preference Titles -->
+    <string name="messages_header">Messages</string>
+    <string name="sync_header">Sync</string>
+
+    <!-- Messages Preferences -->
+    <string name="signature_title">Your signature</string>
+    <string name="reply_title">Default reply action</string>
+
+    <!-- Sync Preferences -->
+    <string name="sync_title">Sync email periodically</string>
+    <string name="attachment_title">Download incoming attachments</string>
+    <string name="attachment_summary_on">Automatically download attachments for incoming emails
+    </string>
+    <string name="attachment_summary_off">Only download attachments when manually requested</string>
+    <string name="settings">Settings\n</string>
+    <string name="altkeyMsg">Whenever you switch to/from an alternate key all charts being installed with the other key will become unusable.</string>
+    <string name="altKeyTitle">Alert</string>
+    <string name="btimport">Import OCPN</string>
+</resources>

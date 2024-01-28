@@ -1,0 +1,166 @@
+<html>
+<head>
+    <script id="ochartsProvider" type="text/javascript" src="?request=script"></script>
+</head>
+<body>
+<script type="text/javascript">
+    const addEl = (type, clazz, parent, text, attributes) => {
+            let el = document.createElement(type);
+            if (clazz) {
+                if (!(clazz instanceof Array)) {
+                    clazz = clazz.split(/  */);
+                }
+                clazz.forEach(function (ce) {
+                    el.classList.add(ce);
+                });
+            }
+            if (text !== undefined) el.textContent = text;
+            if (attributes !== undefined) {
+                for (let k in attributes) {
+                    el.setAttribute(k, attributes[k]);
+                }
+            }
+            if (parent) parent.appendChild(el);
+            return el;
+        }
+    const fillSelect = (el, values) => {
+            if (typeof (el) !== 'object') el = document.getElementById(el);
+            if (!el) return;
+            el.textContent = '';
+            let kf = (values instanceof Array) ? (k) => values[k] : (k) => k;
+            for (let k in values) {
+                let o = addEl('option', '', el);
+                o.setAttribute('value', kf(k));
+                o.textContent = values[k];
+            }
+        }
+    var timer=-1;
+    var testRunning=false;
+
+    const getBase=()=>{
+        let cl=document.getElementById("chartsets");
+        let scl=cl.value;
+        return "/charts/"+scl;
+    }
+    function test(){
+        window.avnav.ochartsProvider.heartBeat().then(function(status){
+            console.log("status: "+status);
+            let url=document.getElementById("val").value;
+            let encryptedValue=window.avnav.ochartsProvider.encryptUrl(url);
+            document.getElementById("encrypted").textContent=encryptedValue;           
+			var testImg=url;
+			var src=getBase()+"/"+window.avnav.ochartsProvider.encryptUrl(testImg);
+			document.getElementById("testimg").setAttribute("src",src);
+            console.log("enc="+encryptedValue);
+        }).catch(function(error){
+            console.log("error: "+error);
+        })
+    }
+    function runTests(z,xmin,xmax,ymin,ymax){
+        var currentX=xmin;
+        var currentY=ymin;
+        testRunning=true;
+        if (timer >= 0) window.clearInterval(timer);
+        timer=-1;
+        function nextLoad(){
+            currentX++;
+            if (currentX >xmax){
+                currentX=xmin;
+                currentY++;
+                if (currentY > ymax) currentY=ymin;
+            }
+            newImage(z,currentX,currentY);
+        }
+        timer=window.setInterval(function(){
+            if (! testRunning) {
+                window.clearInterval(timer);
+                timer=-1;
+                return;
+            }
+            window.avnav.ochartsProvider.heartBeat().then(function(ok){}).catch(function(error){console.log(error);});
+        },20000);
+        document.getElementById("testimg").onload=function(){
+            if (testRunning) nextLoad();  
+        }
+        document.getElementById("testimg").onerror=function(){
+            if (testRunning) nextLoad();  
+        }
+        window.avnav.ochartsProvider.heartBeat()
+            .then(function(ok){
+                nextLoad();
+            })
+            .catch(function(error){
+                console.log(error);
+                testRunning=false;
+                });
+
+    }
+    function newImage(z,x,y){
+        var url=z+"/"+x+"/"+y+".png";
+        document.getElementById("val").value=url;
+        var src=getBase()+"/"+window.avnav.ochartsProvider.encryptUrl(url);
+        document.getElementById("testimg").setAttribute("src",src);
+    }
+    function startCont(){
+        var names=["z","xmin","xmax","ymin","ymax"];
+        var values={}
+        for (var i in names){
+            var n=names[i];
+            values[n]=parseInt(document.getElementById(n).value);
+        }
+        runTests(values.z,values.xmin,values.xmax,values.ymin,values.ymax);
+    }
+    function stopCont(){
+        testRunning=false;
+        if (timer >=0){
+            window.clearInterval(timer);
+            timer=-1;
+        }
+    }
+    document.addEventListener("DOMContentLoaded",()=>{
+        fetch("/list")
+        .then((res)=>res.json())
+        .then((json)=>{
+            let options={};
+            json.data.forEach((chart)=>{
+                options[chart.chartKey]=chart.name;
+            })
+            fillSelect("chartsets",options);
+        })
+        .catch((e)=>alert("unable to fetch chartsets"+e));
+    })
+</script>
+<h1>Test encrypt</h1>
+<div>
+    <label for="chartsets">ChartSet</label>
+    <select name="chartsets" id="chartsets">
+
+    </select>
+</div>
+<div>
+    <input id="val" value="8/140/75.png"/>
+    <button id="test">Test</button>
+</div>
+<div>
+    <p><span id="encrypted"></span></p>
+</div>
+<div>
+    <label>z<input type="text" id="z" value="8"/></label>
+    <label>xmin<input type="text" id="xmin" value="134"/></label>
+    <label>xmax<input type="text" id="xmax" value="149"/></label>
+    <label>ymin<input type="text" id="ymin" value="64"/></label>
+    <label>ymax<input type="text" id="ymax" value="84"/></label>
+    <button id="startTest">Start</button>
+    <button id="stopTest">Stop</button>
+</div>
+<script type="text/javascript">
+    var bt=document.getElementById("test");
+    bt.onclick=test;
+    var bt2=document.getElementById("startTest");
+    bt2.onclick=startCont;
+    bt2=document.getElementById("stopTest");
+    bt2.onclick=stopCont;
+</script>
+<img id="testimg" style="width:256px;height:256px;display:block"/>
+</body>
+</html>

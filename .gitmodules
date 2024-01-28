@@ -1,0 +1,6 @@
+[submodule "provider/o-charts_pi"]
+	path = provider/o-charts_pi
+	url = https://github.com/bdbcat/o-charts_pi.git
+[submodule "provider/agg"]
+	path = provider/agg
+	url = https://github.com/ghaerr/agg-2.6.git

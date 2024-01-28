@@ -1,0 +1,64 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory>
+
+        <EditTextPreference
+            app:defaultValue="@string/s_port_default"
+            app:key="@string/s_port"
+            app:title="Port"
+            app:useSimpleSummaryProvider="true" />
+        <ListPreference
+            app:defaultValue="@string/s_debug_default"
+            app:key="@string/s_debug"
+            app:title="LogLevel"
+            app:entries="@array/debugEntries"
+            app:entryValues="@array/debugValues"
+            app:useSimpleSummaryProvider="true"/>
+        <SeekBarPreference
+            app:key="@string/s_shutdown"
+            app:title="Shutdown(s)"
+            app:defaultValue="@integer/s_shutdown_default"
+            app:adjustable="true"
+            app:min="@integer/s_shutdown_min"
+            android:max="@integer/s_shutdown_max"
+            app:seekBarIncrement="10"
+            app:showSeekBarValue="true"
+            app:useSimpleSummaryProvider="true"
+            />
+        <SeekBarPreference
+            app:key="@string/s_memory"
+            app:title="Memory(%)"
+            app:defaultValue="@integer/s_memory_default"
+            app:min="@integer/s_memory_min"
+            android:max="@integer/s_memory_max"
+            app:seekBarIncrement="2"
+            app:showSeekBarValue="true"
+            app:adjustable="true"
+            app:useSimpleSummaryProvider="true"/>
+        <CheckBoxPreference
+            app:key="@string/s_testmode"
+            app:defaultValue="@bool/s_testmode_default"
+            app:title="Testmode"/>
+        <CheckBoxPreference
+            app:key="@string/s_altkey"
+            app:defaultValue="@bool/s_altkey_default"
+            app:title="Use alt key"
+            />
+        <EditTextPreference
+            app:key="@string/s_extkey"
+            app:defaultValue=""
+            app:title="Alternate key"
+            app:dependency="@string/s_altkey"
+            app:useSimpleSummaryProvider="true"
+            />
+
+        <Preference
+            app:key="@string/s_reset"
+            app:title="Reset to Defaults"
+            />
+
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

@@ -1,0 +1,74 @@
+agg rendering OC-49-090614.oesenc
+2022/11/25-18:00:29.956-140737110845184-DEBUG-http render: draw=108400,all=112200, sz=44397
+2022/11/25-18:00:29.964-140737127630592-DEBUG-http render: draw=110100,all=113200, sz=34916
+2022/11/25-18:00:29.983-140737144416000-DEBUG-http render: draw=125700,all=128900, sz=24154
+2022/11/25-18:00:29.995-140737136023296-DEBUG-http render: draw=151300,all=155500, sz=73412
+2022/11/25-18:00:30.004-140737136023296-DEBUG-http render: draw=3900,all=6200, sz=4227
+2022/11/25-18:00:30.013-140737119237888-DEBUG-http render: draw=161700,all=165200, sz=56376
+2022/11/25-18:00:30.017-140737144416000-DEBUG-http render: draw=23000,all=25300, sz=13194
+2022/11/25-18:00:30.025-140737127630592-DEBUG-http render: draw=43300,all=45700, sz=18461
+2022/11/25-18:00:30.040-140737110845184-DEBUG-http render: draw=56700,all=59400, sz=20486
+
+internal render, 32 bit pointer
+2022/11/26-18:42:11.374-140737119237888-DEBUG-http render: tile z=11,x=1104,y=658 settings=7,find=49,open[0]=108096,draw[0]=10036,render=4,png=2256,#=120451, sz=2699
+2022/11/26-18:42:11.382-140737110845184-DEBUG-http render: tile z=11,x=1103,y=659 settings=10,find=63,open[0]=129097,draw[0]=17757,render=2,png=3294,#=150225, sz=3324
+2022/11/26-18:42:11.391-140737110845184-DEBUG-http render: tile z=11,x=1104,y=659 settings=8,find=89,open[0]=556,draw[0]=699,render=2,png=2407,#=3763, sz=2460
+2022/11/26-18:42:11.401-140737136023296-DEBUG-http render: tile z=11,x=1102,y=658 settings=8,find=54,open[0]=121489,draw[0]=37422,render=2,png=2249,#=161226, sz=3131
+2022/11/26-18:42:11.406-140737127630592-DEBUG-http render: tile z=11,x=1103,y=658 settings=8,find=49,open[0]=122552,draw[0]=46929,render=6,png=2484,#=172030, sz=3831
+2022/11/26-18:42:11.409-140737144416000-DEBUG-http render: tile z=11,x=1102,y=659 settings=7,find=55,open[0]=107444,draw[0]=34265,render=4,png=11170,#=152947, sz=2842
+
+2022/11/26-18:45:31.522-140737144416000-DEBUG-http render: tile z=12,x=2207,y=1317 settings=9,find=41,open[0]=388,draw[0]=4759,render=3,png=2200,#=7402, sz=2726
+2022/11/26-18:45:31.523-140737119237888-DEBUG-http render: tile z=12,x=2206,y=1317 settings=6,find=40,open[0]=373,draw[0]=4419,render=2,png=2195,#=7038, sz=3013
+2022/11/26-18:45:31.734-140737110845184-DEBUG-http render: tile z=12,x=2206,y=1318 settings=8,find=47,open[0]=390,draw[0]=20555,render=6,png=2524,#=23534, sz=3240
+2022/11/26-18:45:31.747-140737127630592-DEBUG-http render: tile z=12,x=2205,y=1317 settings=24,find=64,open[0]=610,draw[0]=38245,render=11,png=2419,#=41376, sz=3644
+2022/11/26-18:45:31.756-140737119237888-DEBUG-http render: tile z=12,x=2207,y=1318 settings=13,find=65,open[0]=496,draw[0]=15559,render=4,png=2009,#=18149, sz=2410
+2022/11/26-18:45:31.782-140737127630592-DEBUG-http render: tile z=12,x=2208,y=1317 settings=9,find=114,open[0]=4825,draw[0]=2163,render=3,png=2790,#=9908, sz=2639
+2022/11/26-18:45:31.789-140737136023296-DEBUG-http render: tile z=12,x=2206,y=1316 settings=8,find=40,open[0]=359,draw[0]=67553,render=3,png=2241,#=70206, sz=3680
+2022/11/26-18:45:31.801-140737127630592-DEBUG-http render: tile z=12,x=2208,y=1318 settings=16,find=2291,open[0]=602,draw[0]=1119,render=3,png=2312,#=6346, sz=2284
+2022/11/26-18:45:31.811-140737136023296-DEBUG-http render: tile z=12,x=2208,y=1316 settings=9,find=108,open[0]=534,draw[0]=2047,render=5,png=2085,#=4790, sz=2255
+2022/11/26-18:45:31.818-140737144416000-DEBUG-http render: tile z=12,x=2207,y=1316 settings=13,find=82,open[0]=552,draw[0]=71681,render=2,png=9818,#=82150, sz=2864
+2022/11/26-18:45:31.832-140737110845184-DEBUG-http render: tile z=12,x=2205,y=1318 settings=8,find=56,open[0]=398,draw[0]=67215,render=4,png=2060,#=69743, sz=3431
+2022/11/26-18:45:31.841-140737119237888-DEBUG-http render: tile z=12,x=2205,y=1316 settings=7,find=94,open[0]=394,draw[0]=62420,render=4,png=2068,#=64990, sz=2599
+2022/11/26-18:45:32.622-140737136023296-DEBUG-http render: tile z=13,x=4413,y=2635 settings=19,find=77,open[0]=536,draw[0]=1977,render=3,png=2050,#=4665, sz=2672
+2022/11/26-18:45:32.639-140737144416000-DEBUG-http render: tile z=13,x=4413,y=2634 settings=8,find=54,open[0]=473,draw[0]=11265,render=3,png=3342,#=15147, sz=2284
+2022/11/26-18:45:32.673-140737136023296-DEBUG-http render: tile z=13,x=4412,y=2635 settings=8,find=44,open[0]=765,draw[0]=2063,render=3,png=2021,#=4908, sz=2742
+2022/11/26-18:45:32.678-140737119237888-DEBUG-http render: tile z=13,x=4414,y=2635 settings=9,find=52,open[0]=406,draw[0]=5009,render=2,png=30794,#=36274, sz=2657
+2022/11/26-18:45:32.687-140737110845184-DEBUG-http render: tile z=13,x=4414,y=2634 settings=8,find=43,open[0]=378,draw[0]=15910,render=7,png=23052,#=39401, sz=2253
+2022/11/26-18:45:32.696-140737127630592-DEBUG-http render: tile z=13,x=4413,y=2636 settings=13,find=50,open[0]=442,draw[0]=16111,render=5,png=2297,#=18921, sz=2895
+2022/11/26-18:45:32.735-140737119237888-DEBUG-http render: tile z=13,x=4414,y=2636 settings=9,find=46,open[0]=395,draw[0]=5818,render=2,png=3219,#=9491, sz=2499
+2022/11/26-18:45:32.757-140737144416000-DEBUG-http render: tile z=13,x=4412,y=2634 settings=15,find=62,open[0]=4090,draw[0]=2544,render=12,png=33587,#=40312, sz=2824
+2022/11/26-18:45:32.758-140737119237888-DEBUG-http render: tile z=13,x=4411,y=2635 settings=9,find=49,open[0]=393,draw[0]=1862,render=3,png=6363,#=8681, sz=2814
+2022/11/26-18:45:32.765-140737110845184-DEBUG-http render: tile z=13,x=4415,y=2635 settings=17,find=149,open[0]=5729,draw[0]=1405,render=2,png=2308,#=9612, sz=2725
+2022/11/26-18:45:32.774-140737136023296-DEBUG-http render: tile z=13,x=4412,y=2636 settings=8,find=49,open[0]=395,draw[0]=40379,render=3,png=2107,#=42943, sz=3020
+2022/11/26-18:45:32.781-140737144416000-DEBUG-http render: tile z=13,x=4411,y=2634 settings=10,find=90,open[0]=616,draw[0]=10942,render=8,png=2330,#=13998, sz=2794
+2022/11/26-18:45:32.791-140737127630592-DEBUG-http render: tile z=13,x=4415,y=2634 settings=8,find=100,open[0]=1006,draw[0]=18873,render=4,png=7154,#=27147, sz=2253
+2022/11/26-18:45:32.809-140737119237888-DEBUG-http render: tile z=13,x=4415,y=2636 settings=5,find=41,open[0]=376,draw[0]=3617,render=2,png=1984,#=6027, sz=2274
+2022/11/26-18:45:32.851-140737110845184-DEBUG-http render: tile z=13,x=4411,y=2636 settings=8,find=2660,open[0]=4358,draw[0]=47406,render=6,png=2247,#=56687, sz=3506
+
+
+2022/11/29-12:34:11.731-140737110845184-DEBUG-Stat: numTri=834 counts:22538,3010090(0)
+2022/11/29-12:34:11.731-140737110845184-DEBUG-http render: tile z=12,x=2206,y=1318 settings=13,find=74,open[0]=546,draw[0]=12508,render=13058,png=1601,#=14743, sz=3240
+
+agg release mode
+2022/12/04-16:54:05.343-140737110845184-DEBUG-http render: tile z=12,x=2206,y=1318 settings=2,find=31,open[0]=56638,draw[0]=3095,render=59734,png=434,#=60203, sz=3229
+
+
+
+optimized own simple loop, DEBUG
+2022/12/06-17:25:37.570-140737119237888-DEBUG-http render: tile z=12,x=2206,y=1318 settings=8,find=44,open[0]=362,draw[0]=2917,render=3284,png=1560,#=4894, sz=31
+79
+
+optimized simple, mul, DEBUG
+2022/12/06-18:45:42.050-140737119237888-DEBUG-http render: tile z=12,x=2206,y=1318 settings=7,find=49,open[0]=363,draw[0]=3031,render=3400,png=1765,#=5217, sz=32
+33
+optimized simple, mul, release
+2022/12/06-18:56:02.907-140737119237888-DEBUG-http render: tile z=12,x=2206,y=1318 settings=3,find=28,open[0]=130,draw[0]=1299,render=1430,png=487,#=1949, sz=314
+3
+
+
+s52 lib, DEBUG
+2022/12/06-17:29:10.021-140737144416000-DEBUG-http render: tile z=12,x=2206,y=1318 settings=12,find=57,open[0]=383,draw[0]=1067,render=1452,png=2046,#=3568, sz=3
+180
+
+s52 lib, release
+2022/12/06-18:56:23.469-140737119237888-DEBUG-http render: tile z=12,x=2206,y=1318 settings=2,find=27,open[0]=127,draw[0]=317,render=445,png=448,#=923, sz=3180

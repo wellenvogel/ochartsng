@@ -1,0 +1,10 @@
+repositories {
+    mavenCentral()
+}
+
+dependencies{
+    implementation 'commons-net:commons-net:3.3'
+    implementation 'com.github.mwiede:jsch:0.1.61'
+}
+
+apply plugin: "groovy"

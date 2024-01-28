@@ -1,0 +1,8 @@
+#! /bin/sh
+PDIR=`dirname $0`
+PDIR=`readlink -f $PDIR/../..`
+image="opencpn-build:ubuntu-bionic"
+if [ "$1" != "" ] ; then
+  image="$1"
+fi
+docker run --cap-add=SYS_PTRACE  --security-opt seccomp=unconfined -ti -v $PDIR:/src --name opencpn-build --privileged -p 8090:8082 "$image" /bin/bash

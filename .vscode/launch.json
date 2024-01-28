@@ -1,0 +1,108 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+    {
+        "name": "(gdb) Launch",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${workspaceFolder}/provider/build/debug/AvnavOchartsProvider",
+        "args": ["-x","1","-k","-d","2","-g","${workspaceFolder}/gui/build/debug","-t","${workspaceFolder}/s57data","${workspaceFolder}/provider/build/test","8080"],
+        "stopAtEntry": false,
+        "cwd": "${fileDirname}",
+        "environment": [
+            {"name": "AVNAV_TEST_KEY","value": "Decrypted"},
+            {"name":"PATH", "value":"${workspaceFolder}/provider/build/test:${env:PATH}"}
+        ],
+        "externalConsole": false,
+        "MIMode": "gdb",
+        "setupCommands": [
+            {
+                "description": "Enable pretty-printing for gdb",
+                "text": "-enable-pretty-printing",
+                "ignoreFailures": true
+            },
+            {
+                "description":  "Set Disassembly Flavor to Intel",
+                "text": "-gdb-set disassembly-flavor intel",
+                "ignoreFailures": true
+            }
+        ]
+    },
+    {
+        "name": "(gdb) test",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${workspaceFolder}/provider/build/debug/avtest",
+        "args": [],
+        "stopAtEntry": false,
+        "cwd": "${fileDirname}",
+        "environment": [
+            {"name":"AVTEST_TRIGGER_FILE","value":"${workspaceFolder}/provider/build/debug/wait.txt"},
+            {"name":"TESTDIR","value":"${workspaceFolder}/provider/build/debug/test"}
+        ],
+        "externalConsole": false,
+        "MIMode": "gdb",
+        "setupCommands": [
+            {
+                "description": "Enable pretty-printing for gdb",
+                "text": "-enable-pretty-printing",
+                "ignoreFailures": true
+            },
+            {
+                "description":  "Set Disassembly Flavor to Intel",
+                "text": "-gdb-set disassembly-flavor intel",
+                "ignoreFailures": true
+            }
+        ]
+    },
+    {
+        "name": "(gdb) test S52",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${workspaceFolder}/provider/build/debug/avtest",
+        "args": [ "--gtest_filter=S52Attr*"],
+        "stopAtEntry": false,
+        "cwd": "${fileDirname}",
+        "environment": [
+            {"name":"AVTEST_TRIGGER_FILE","value":"${workspaceFolder}/provider/build/debug/wait.txt"},
+            {"name":"TESTDIR","value":"${workspaceFolder}/provider/build/debug/test"}
+        ],
+        "externalConsole": false,
+        "MIMode": "gdb",
+        "setupCommands": [
+            {
+                "description": "Enable pretty-printing for gdb",
+                "text": "-enable-pretty-printing",
+                "ignoreFailures": true
+            },
+            {
+                "description":  "Set Disassembly Flavor to Intel",
+                "text": "-gdb-set disassembly-flavor intel",
+                "ignoreFailures": true
+            }
+        ]
+    },
+    {
+        "name": "(gdb) Attach",
+        "type": "cppdbg",
+        "request": "attach",
+        "program": "${workspaceFolder}/provider/build/debug/AvnavOchartsProvider",
+        "MIMode": "gdb",
+        "setupCommands": [
+            {
+                "description": "Enable pretty-printing for gdb",
+                "text": "-enable-pretty-printing",
+                "ignoreFailures": true
+            },
+            {
+                "description":  "Set Disassembly Flavor to Intel",
+                "text": "-gdb-set disassembly-flavor intel",
+                "ignoreFailures": true
+            }
+        ]
+    }
+    ]
+}

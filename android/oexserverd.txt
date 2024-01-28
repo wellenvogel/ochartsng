@@ -1,0 +1,22 @@
+oexserverd calls android:
+SDK < 21:
+    VERSION >= 82:
+        oexserverd -q dataDir -y WVID -u creds_SUPERLEGACY libdir
+    VERSION < 82:
+        oexserverd -q dataDir libDir
+SDK >= 21 && SDK <= 29:
+    VERSION >= 82
+        oexserverd -z UUID -y WVID -u creds_SUPERLEGACY libdir
+    VERSION < 82:
+        oexserverd -z UUID libDir
+SDK >= 29:
+    VERSION >= 82
+        oexserverd -z UUID -y WVID -u creds_SUPERLEGACY libdir
+    VERSION < 82:
+        oexserverd -g WVID libDir
+
+FPR:
+    oexserverd -q rootDir -g dataDir libDir
+    #rootDir == dataDir (private data)
+HWID:
+    oexserverd -q rootDir -w dataDir libDir    

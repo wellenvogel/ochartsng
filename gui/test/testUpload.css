@@ -1,0 +1,66 @@
+.label {
+    width: 7em;
+    display: inline-block;
+}
+.rpar{
+    display: inline-block;
+}
+.chart {
+    margin-bottom: 1em;
+    padding-bottom: 0.5em;
+    border-bottom: 1px solid grey;
+}
+.section{
+    font-size: 1.2em;
+    font-weight: bold;
+}
+body{
+    font-size: 1rem;
+    margin: 1em;
+}
+.hidden{
+    display: none;
+}
+.row {
+    line-height: 2em;
+}
+.requestStatus .row{
+    line-height: 1em;
+}
+.shopChartEntry {
+    margin-bottom: 0.5em;
+}
+button.downloadChart {
+    margin-right: 2.4em;
+    width: 6em;
+}
+.shopChartEntry .value {
+    display: inline-block;
+    margin-right: 0.5em;
+}
+.overlay {
+    z-index: 10;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: #00000080;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.overlay.hidden{
+    display: none;
+}
+.overlayContent {
+    background-color: white;
+    padding: 1em;
+    border-radius: 0.3em;
+}
+#overlayText{
+    font-size: 1.5em;
+    text-align: center;
+    width: 100%;  
+}

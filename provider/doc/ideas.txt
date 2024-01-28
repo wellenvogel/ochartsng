@@ -1,0 +1,143 @@
+2022/10/30
+
+(1) TileCache
+- central cache for tiles in rendering and with image data
+- stores CacheEntries with state:
+   ERROR, RENDERING, FILLED, WRITTEN (== toDisk)
+- entries with const/non const, always return copies (const)
+- TileData with shared ptr (const)   
+- global lock, all threads waiting there, trigger on any state change of an entry
+
+(2) Render Flow 
+- multiple threads, Renderer::RenderTile
+- Ask cache prepareForRender:
+      - if no entry there:
+        create a new one with state RENDERING and return
+      - if entry in state RENDERING:
+        wait in prepareForRender
+      - if entry in state FILLED or WRITTEN
+        return entry
+- if state FILLED||WRITTEN
+    - return TileData         
+- if state RENDERING:
+    - ask ChartSet for cache entry,
+        - load from disk (separate function)
+        - Cache::updateEntry(entry, TileData)
+        - return TileData 
+    - get WeightedChartList from ChartSet
+    - ask ChartCache for charts : will open missing and wait
+    - inform ChartSet about loading errors, ask for retry
+    - render
+    - Chache::updateEntry(entry, TileData)
+    - return TileData
+
+(3) ChartSet
+- separate Cache reader/writer from set (control by ChartManager)
+- lock for access functions
+- disk cache included
+- read function separated (either separate file open or dup,fdopen)
+- reader/writer:
+    - after initial read just polling TileCache for tiles to be written
+     TileCache::GetWritable(setid)
+    - atomic writeCacheEntry(offset,len) - checks existance
+    - only write if not existing
+    - shared_ptr to set
+    - stopped/destroyed by ChartManager when deleting/disabling set
+
+(4) ChartCache
+- contains open charts, key chartSet,chartFileName
+- chart state: INIT,LOADED,ERROR,HEAD
+- maintains accessTime
+- close charts on demand (memory)
+- ::CloseCharts(setId)
+- shared_ptr for charts   
+- GetChart(chartSet,fileName):
+   - if entry exists and state == LOADED or ERROR - return entry
+   - if entry exists and state == INIT - wait
+   - if entry not existing - create with state = INIT
+   - outside lock load chart
+   - insert entry with state LOADED or ERROR, trigger waiting
+
+(5) ChartManager
+- initial loading:
+    - no cache:
+        - create set on demand, fill ChartSetInfo
+        - create Chart,load chart headers - do not write to ChartCache, i.e. close
+        - create ChartInfo from chart
+    - cache:
+        - load cached chart info
+        - create set on demand, fill ChartSetInfo
+        - create ChartInfo from chart
+- create reader/writer for chart sets, wait until all reading done
+- onChange:
+    - stop reader/writer
+    - remove cache files if config change
+    - disable/enable sets
+    - restart reader/writer - skip read if already done
+- enable Set:
+    - start reader/writer, 
+    - enable after read finished
+- addSet:
+    - separate thread??
+    - no-cache loading of charts
+    - start reader/writer
+    - enable after read finished
+- removeSet:
+    - disable set
+    - stop reader/writer
+    - ChartCache::CloseCharts(setId)
+    - TileCache::cleanup(setId)
+
+(5) Rules
+The plugin renders:
+  1 - Areas (no boundaries, no text)
+  2 - Areas
+  3 - Lines
+  4 - Points
+The handling is based on the LUP name. 2-4 are repeated for each priority 
+
+(6) Soundings
+- RCID 31311/30534 CS(SOUNDG02)->translates to MP()
+- RenderMPS
+- call CS SOUNDG03 for every point
+- this calls SNDFRM02
+- creates symbol rules, prefix either SOUNDS (lower safety) or SOUNDG 
+  parameter TECSOU -> PRFX#B1
+  parameter QUASOU,STATUS,QUAPOS -> PRFX#C2
+  drying height -> PRFX#A1 (vector only for SOUNDSA1)
+  and digit symbols PRFX#nm - n position, m 0...9
+  finally instead of raster symbols text is rendered
+-> our solution: SOUNDG02->MP(), render MP directly  
+
+
+(7) identity on android
+The used mediaDrm returns an identity that depends on the application package
+So we need an export at the OpenCPN side and an import on our side.
+Approach:
+OpenCPN has a document provider with a call to "identity" that returns a bundle with an string "identity"
+-y:xxxx... or -z:xxxxxx
+Example in IdentityTest
+AvOcharts will lookup this provider (org.opencpn.opencpn.identityprovider) and will call the 
+"identity" method.
+To prevent abuse both sides will check the SHA256 fingerprints of the caller/the provider.
+The fingerprint can be retrieved from the apk with
+$ANDROID_HOME/build-tools/30.0.2/apksigner verify --print-certs app-release.apk.
+The SHA256 will go into the code - they are not secret.
+The package names of OpenCPN (in AvOcharts) and of AvOcharts (in OpenCPN) must be set in a query clause in the manifest to
+allow for querying the package manager to obtain the signatures (certificates).
+In AvOcharts this will be tried on the first start, afterwards the identity will be stored in the settings.
+To retry all data from AvOcharts must be deleted.
+Effort in OpenCPN:
+Provider class (standalone, already done in example), entries in manifest for query and provider
+
+(8) Line rendering
+eSENCChart::AssembleLineGeometries
+s52plib::RenderLS
+(1) if we have a first connected node:
+  first segment goes from connected node to first/last point of edge nodes list (if any)
+(2) now all edge nodes - dir don't care?
+    seems really strange as the direction is not considered when drawing the edge nodes
+(3) if we have an end node
+  add segment from last/first edge node to end node if we have edge nodes (but only if we have first node)
+  or segment from first node to last node
+

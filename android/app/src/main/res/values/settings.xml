@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="s_port"
+        >port</string>
+    <string name="s_port_default">8082</string>
+    <string name="s_reset">reset</string>
+    <string name="s_debug_default">1</string>
+    <string name="s_debug">debug</string>
+    <string name="s_shutdown">shutdown</string>
+    <integer name="s_shutdown_default">30</integer>
+    <integer name="s_shutdown_min">0</integer>
+    <integer name="s_shutdown_max">3600</integer>
+    <string name="s_memory">memory</string>
+    <integer name="s_memory_min">10</integer>
+    <integer name="s_memory_default">30</integer>
+    <integer name="s_memory_max">90</integer>
+    <string name="s_testmode">testmode</string>
+    <string name="s_altkey">altkey</string>
+    <string name="s_extkey">extkey</string>
+    <bool name="s_testmode_default">false</bool>
+    <bool name="s_altkey_default">false</bool>
+</resources>

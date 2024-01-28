@@ -1,0 +1,655 @@
+/******************************************************************************
+ *
+ * Project:  AvNav ocharts-provider
+ * Purpose:  gradle build script
+ * Author:   Andreas Vogel
+ *
+ ***************************************************************************
+ The MIT License (MIT)
+
+ Copyright (c) 2020,2022 Andreas Vogel (andreas@wellenvogel.net)
+
+ Permission is hereby granted, free of charge, to any person obtaining a copy
+ of this software and associated documentation files (the "Software"), to deal
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
+
+ The above copyright notice and this permission notice shall be included in all
+ copies or substantial portions of the Software.
+
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ SOFTWARE.
+
+ IMPORTANT: parts of the project are licensed under the GPLv2 license:
+            provider/...
+            s57data/...
+
+ ***************************************************************************
+ *
+ */
+import java.security.MessageDigest
+import java.text.SimpleDateFormat
+import java.io.File
+import org.apache.commons.net.ftp.*
+import org.eclipse.jgit.storage.file.FileRepositoryBuilder
+import org.eclipse.jgit.submodule.SubmoduleWalk
+import org.eclipse.jgit.lib.Repository
+import org.eclipse.jgit.lib.ObjectId
+import org.eclipse.jgit.api.Git
+import org.gradle.api.*
+import com.github.gradle.node.npm.task.*
+
+def AVNAV_GROUP="avnav"
+
+def OEXBASE="provider/external/o-charts_pi/libs/oeserverd"
+def INSTALL_BASE="/usr/lib/avnav/plugins/ochartsng"
+
+def DEFAULT_DEPS = [
+                ['libc6'],
+                ['libgcc1'],
+                ['libstdc++6'],
+                ['libssl1.1'],
+                ['libcurl4']
+        ]
+def IMAGE_VERSION = "A1"        
+def VARIANTS=[
+        [osline:'ubuntu',
+         osversion:'bionic', 
+         arch: 'amd64',
+         tag: IMAGE_VERSION,
+         dockerfile: 'Dockerfile.all',
+         oexdir: 'linux64',
+         dependencies: DEFAULT_DEPS
+        ],
+        [osline:'ubuntu',
+         osversion:'jammy',
+         arch: 'amd64',
+         tag: IMAGE_VERSION,
+         dockerfile:'Dockerfile.all',
+         oexdir: 'linux64',
+         dependencies: DEFAULT_DEPS
+        ],
+        [osline:'ubuntu',
+         osversion:'focal',
+         arch: 'amd64',
+         tag: IMAGE_VERSION,
+         dockerfile:'Dockerfile.all',
+         oexdir: 'linux64',
+         dependencies: DEFAULT_DEPS
+        ],
+        [osline:'debian',
+         osversion:'bullseye',
+         arch: 'amd64',
+         tag: IMAGE_VERSION,
+         dockerfile:'Dockerfile.all',
+         oexdir: 'linux64',
+         dependencies: DEFAULT_DEPS
+        ],
+        [osline:'debian',
+         osversion:'buster',
+         arch: 'i386',
+         tag: IMAGE_VERSION,
+         dockerbase:'i386/debian',
+         dockerfile:'Dockerfile.all',
+         dependencies: DEFAULT_DEPS
+         ],
+        [osline:'debian',
+         osversion:'buster',
+         arch: 'amd64',
+         tag: IMAGE_VERSION,
+         dockerbase:'debian',
+         dockerfile:'Dockerfile.all',
+         oexdir: 'linux64',
+         dependencies: DEFAULT_DEPS
+         ],
+        [osline:'raspbian',
+         osversion:'buster',
+         arch: 'armhf',
+         tag: IMAGE_VERSION,
+         dockerbase:'arm32v7/debian', 
+         dockerfile:'Dockerfile.all',
+         oexdir: 'linuxarm',
+         dependencies: DEFAULT_DEPS
+         ],
+        [osline:'raspbian',
+         osversion:'buster',
+         arch: 'arm64',
+         tag: IMAGE_VERSION,
+         dockerbase:'arm64v8/debian',
+         dockerfile:'Dockerfile.all',
+         oexdir: 'linuxarm',
+         dependencies: DEFAULT_DEPS
+         ],
+         [osline:'raspbian',
+         osversion:'bullseye',
+         arch: 'armhf',
+         tag: IMAGE_VERSION,
+         dockerbase:'arm32v7/debian',
+         dockerfile:'Dockerfile.all',
+         oexdir: 'linuxarm',
+         dependencies: DEFAULT_DEPS
+         ],
+        [osline:'raspbian',
+         osversion:'bullseye',
+         arch: 'arm64',
+         tag: IMAGE_VERSION,
+         dockerbase:'arm64v8/debian',
+         dockerfile:'Dockerfile.all',
+         oexdir: 'linuxarm64',
+         dependencies: DEFAULT_DEPS
+         ],
+         [osline:'raspbian',
+         osversion:'bookworm',
+         arch: 'armhf',
+         tag: IMAGE_VERSION,
+         dockerbase:'arm32v7/debian',
+         dockerfile:'Dockerfile.all',
+         dependencies:DEFAULT_DEPS
+         ],
+        [osline:'raspbian',
+         osversion:'bookworm',
+         arch: 'arm64',
+         tag: IMAGE_VERSION,
+         dockerbase:'arm64v8/debian',
+         dockerfile:'Dockerfile.all',
+         dependencies:DEFAULT_DEPS
+         ],
+        [osline:'debian',
+         osversion:'bookworm',
+         arch: 'amd64',
+         tag: IMAGE_VERSION,
+         dockerbase:'amd64/debian',
+         dockerfile:'Dockerfile.all',
+         dependencies:DEFAULT_DEPS
+         ]
+
+]
+
+
+
+buildscript{
+    repositories{
+        mavenCentral()
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+    dependencies{
+        classpath localGroovy()
+        classpath 'com.netflix.nebula:gradle-ospackage-plugin:11.1.0'
+        classpath 'commons-net:commons-net:3.3'
+        classpath 'org.eclipse.jgit:org.eclipse.jgit:4.6.0.201612231935-r'
+        classpath group: 'org.ccil.cowan.tagsoup', name: 'tagsoup', version: '1.2.1'
+        classpath "com.github.node-gradle:gradle-node-plugin:5.0.0"
+    }
+}
+
+repositories{
+    mavenCentral()
+}
+boolean buildAndroid=false
+if (System.getenv("ANDROID_HOME")){
+    buildAndroid=true
+}
+else{
+    logger.warn("ANDROID_HOME not set, cannot build android")
+}
+
+
+
+void checkGitVersion(String version){
+    logger.info("checking for git tag $version")
+    FileRepositoryBuilder builder=new FileRepositoryBuilder()
+    Repository repo=builder.readEnvironment().findGitDir(project.buildDir).setMustExist(true).build()
+    ObjectId head=repo.resolve("HEAD")
+    logger.info "current git commit=$head.name"
+    def tags=repo.getTags()
+    def tagCommit=tags.get(version)
+    assert tagCommit,"unable to find tag $version"
+    ObjectId tagResolved=repo.resolve(tagCommit.getName())
+    assert tagResolved.getName() == head.getName(),"found $version ($tagResolved.name) but this is not the current HEAD"
+    logger.info "version $version resolves to $tagCommit"
+}
+
+
+
+if (! project.hasProperty('packageVersion')){
+    SimpleDateFormat f=new SimpleDateFormat('YYYYMMdd')
+    project.ext.avnavVersion=f.format(new Date())
+}
+else{
+    project.ext.avnavVersion=project.packageVersion
+}
+
+logger.lifecycle "ProjectVersion=${project.avnavVersion}"
+
+
+description="AvNav chart provider for o-charts"
+apply plugin: 'java'
+
+apply plugin: 'com.netflix.nebula.ospackage-base'
+apply plugin: 'com.github.node-gradle.node'
+
+
+abstract class MyNpm extends NpmTask{
+    @Internal
+    def subDir
+    @InputFiles
+    def getInputFiles(){
+        logger.debug "getInputFiles called for $name"
+        return project.fileTree(project.projectDir,{
+            exclude "build/**"
+            exclude ".gradle/**"
+        })
+    }
+    @OutputFiles
+    def getOutputFiles(){
+        logger.debug "getOutputFiles called for $name"
+        return project.fileTree(project.projectDir,{
+            include "build/$subDir/**"
+        })
+    }
+    @OutputDirectory
+    def getOutDir(){
+        return project.file("build/$subDir")
+    }
+    public MyNpm(){
+        outputs.upToDateWhen{
+            def od=getOutDir()
+            logger.debug "checking $od"
+            if (! od.exists()) return false;
+            return true
+        }
+    }
+}
+
+project(":gui") {
+    apply plugin: 'com.github.node-gradle.node'
+    node{
+       download = true
+       version = "16.20.2"
+    }
+
+    task viewerRelease(type: MyNpm) {
+        group  AVNAV_GROUP
+        subDir = "release"
+        args = ["run", "release"]
+        environment=['AVNAV_VERSION': rootProject.avnavVersion]
+        dependsOn npmInstall,':cleanGui'
+    }
+    task viewerDebug(type: MyNpm) {
+        mustRunAfter(':cleanGui')
+        group AVNAV_GROUP
+        subDir = "debug"
+        args = ["run", "build"]
+        environment=['AVNAV_VERSION': rootProject.avnavVersion]
+        dependsOn npmInstall
+    }
+}
+
+
+['assembleRelease','assembleDebug','assembleBeta','clean'].each { tt ->
+    tasks.create(name:"${tt}Android",type: GradleBuild) {
+        group AVNAV_GROUP
+        setDir("android")
+        setTasks([tt])
+    }
+}
+clean.dependsOn cleanAndroid
+
+
+task testGit{
+    group AVNAV_GROUP
+    doLast() {
+        try {
+            checkGitVersion("release-"+ project.avnavVersion)
+        } catch (Error t) {
+            if (!project.hasProperty("avnavIgnoreGit")) throw t;
+            logger.lifecycle "### ignoring failed GIT check ###"
+        }
+    }
+}
+
+
+task pkgVersion{
+    doLast() {
+        ospackage.version = project.avnavVersion
+        println "package version $ospackage.version"
+    }
+}
+
+task packages{
+    group AVNAV_GROUP
+    doLast(){
+        println "created all packages"
+    }
+}
+if (buildAndroid) {
+    packages.dependsOn assembleReleaseAndroid
+}
+def GE=org.redline_rpm.header.Flags.GREATER|org.redline_rpm.header.Flags.EQUAL
+def emptyBase=new File(project.buildDir,"empty")
+ospackage {
+    //release='3'
+    os = LINUX // only applied to RPM
+    packageGroup='misc'
+    packageName='avnav-ochartsng'
+    requires('avnav','20210106',GE)
+    requires('openssl')
+    requires('libarchive13')
+    requires('python3-psutil')
+    user='root'
+    into (INSTALL_BASE) {
+        from('s57data'){
+            into "s57data"
+        }
+        from('gui/build/release'){
+            into "gui"
+        }
+        from('avnav-plugin') {
+            include "*.py"
+            include "*.sh"
+            include "*.css"
+            fileMode 0755
+        }        
+    }
+    into("/etc/udev/rules.d"){
+        from(projectDir){
+            include "98-sglock.rules"
+        }
+    }
+}
+def imageExists(name){
+    def id="docker images -q \"$name\"".execute().text.replaceAll("[\r\n]*","")
+}
+
+
+class DockerTask extends Exec{
+    static def dockerRepo="wellenvogel"
+    public static def getImageName(osline,osversion,arch,tag){
+       return "$dockerRepo/avnavocharts-build-$osline-$osversion-$arch:$tag"
+    }
+    @Internal
+    def dockerBase
+    @Internal
+    def osline
+    @Internal
+    def osversion
+    @Internal
+    def arch
+    @Internal
+    def dockerFile
+    @Internal
+    def tag=1
+    def getCommandArgs(dockerBase,osversion,uid,gid,uname,dockerFile,imageName){
+        return []
+    }
+
+    def imageExists(){
+        def iname=imageFromParam()
+        def iid="docker images -q $iname".execute().text.replaceAll("[\r\n]*","")
+        logger.lifecycle("check image $iname => #$iid#")
+        return "$iid" != ""
+    }
+    def imageFromParam(){
+        assert osline != null
+        assert osversion != null
+        assert dockerFile != null
+        assert arch != null
+        return getImageName(osline,osversion,arch,tag)
+    }
+    @TaskAction
+    void exec(){
+        def uid="id -u".execute().text.replaceAll("[\r\n]*","")
+        assert uid
+        def gid="id -g".execute().text.replaceAll("[\r\n]*","")
+        assert gid
+        def uname="id -u -n".execute().text.replaceAll("[\r\n]*","")
+        assert uname
+        logger.info("uid=$uid,gid=$gid,uname=$uname")
+        def imageName=imageFromParam()
+        if (dockerBase == null) dockerBase=osline
+        executable "docker"
+        workingDir project.file("docker")
+        args(getCommandArgs(dockerBase,osversion,uid,gid,uname,dockerFile,imageName))
+        super.exec()
+    }
+}
+
+class DockerBuild extends DockerTask{
+    DockerBuild(){
+        onlyIf{ !imageExists()}
+    }
+    def getCommandArgs(dockerBase,osversion,uid,gid,uname,dockerFile,imageName){
+       return ['build', '--build-arg',"OSLINE=$dockerBase",
+               '--build-arg',"OSVERSION=$osversion",
+               '-f', dockerFile,
+               '-t', imageName,'.']
+    }
+}
+class DockerPush extends DockerTask{
+    def getCommandArgs(dockerBase,osversion,uid,gid,uname,dockerFile,imageName){
+        return [
+                "push",
+                imageName
+        ]
+    }
+
+}
+class DockerPull extends DockerTask{
+    DockerPull(){
+        ignoreExitValue=true
+        onlyIf {!imageExists()}
+    }
+    def getCommandArgs(dockerBase,osversion,uid,gid,uname,dockerFile,imageName){
+        return [
+                "pull",
+                imageName
+        ]
+    }
+
+
+}
+task buildImages {
+    group "docker"
+    doLast{
+        logger.lifecycle("images created")
+    }
+}
+task pushAll{
+    group "docker"
+    doLast{
+        logger.lifecycle("images pushed")
+    }
+}
+task pullAll{
+    group "docker"
+    doLast{
+        logger.lifecycle("images pulled")
+    }
+}
+VARIANTS.each { variant ->
+    def imageName=DockerBuild.getImageName(variant.osline,variant.osversion,variant.arch,variant.tag)
+    def nameBase=imageName.replaceAll("[/:]*","")
+    def dp=tasks.create(name: "dockerpull-${nameBase}",type: DockerPull){ DockerPull e->
+        e.dockerFile=variant.dockerfile
+        e.dockerBase=variant.dockerbase
+        e.osline=variant.osline
+        e.osversion=variant.osversion
+        e.arch=variant.arch
+        e.tag=variant.tag
+        e.group="docker"
+    }
+    pullAll.dependsOn(dp)
+    logger.lifecycle("created docker pull task ${dp.name}")
+    def dt=tasks.create(name: "dockerbuild-${nameBase}",type: DockerBuild){ DockerBuild e->
+        e.dockerFile=variant.dockerfile
+        e.dockerBase=variant.dockerbase
+        e.osline=variant.osline
+        e.osversion=variant.osversion
+        e.arch=variant.arch
+        e.tag=variant.tag
+        e.dependsOn(dp)
+        e.group="docker"
+    }
+    logger.lifecycle("created docker build task ${dt.name}")
+    buildImages.dependsOn(dt)
+    def du=tasks.create(name: "dockerpush-${nameBase}",type: DockerPush){ DockerPush e->
+        e.dockerFile=variant.dockerfile
+        e.dockerBase=variant.dockerbase
+        e.osline=variant.osline
+        e.osversion=variant.osversion
+        e.arch=variant.arch
+        e.tag=variant.tag
+        e.dependsOn(dt)
+        e.group="docker"
+    }
+    logger.lifecycle("created docker push task ${du.name}")
+    pushAll.dependsOn(du)
+    def workName="${variant.osline}-${variant.osversion}-${variant.arch}"
+    def exeBuild=tasks.create(name:"build-${workName}",type: Exec){ Exec e->
+        e.workingDir(file("provider"))
+        e.executable(file("provider/build.sh"))
+        e.args("-a")
+        if (project.hasProperty("cleanBefore")) {
+            e.args("-c")
+        }
+        if (project.hasProperty("avnavVersion")){
+            e.args("-v")
+            e.args(project.avnavVersion)
+        }
+        e.args(workName)
+        e.args(imageName)
+        e.dependsOn(dt)
+        e.group=AVNAV_GROUP
+    }
+    tasks.build.dependsOn(exeBuild)
+    logger.lifecycle("created build task ${exeBuild.name}")
+    def buildOutput="provider/build/${workName}"
+    def exeName="AvnavOchartsProvider"
+    def tkHandler="tokenHandler.js"
+    def preload="libpreload.so"
+    def debBuild=tasks.create(name:"package-${workName}",type: Deb){  d ->
+        variant.dependencies.each { dep->
+            d.requires dep
+        }
+        d.packageName "avnav-ochartsng"
+        d.group=AVNAV_GROUP
+        d.version="${project.avnavVersion}-${variant.osline}-${variant.osversion}"
+        d.arch=variant.arch
+        d.into(INSTALL_BASE){
+            from(buildOutput) {
+                include exeName
+                fileMode 0755
+            }
+            from(buildOutput) {
+                include tkHandler
+            }
+            from(buildOutput) {
+                include preload
+            }
+
+        }
+        if (variant.oexdir != null){
+            def oexpath="${project.projectDir}/${OEXBASE}/${variant.oexdir}"
+            logger.lifecycle("using oexdir ${variant.oexdir}")
+            logger.lifecycle("path=${oexpath}")
+            d.into(INSTALL_BASE){
+              from("${oexpath}"){
+                  include("oexserverd")
+                  fileMode(0755)
+              }
+              from("${oexpath}"){
+                  include("*.so")
+              }
+            }
+        }
+        d.doFirst{
+            assert file("${buildOutput}/${exeName}").exists()
+        }
+    }
+    debBuild.dependsOn(exeBuild)
+    debBuild.dependsOn(':gui:viewerRelease')
+    tasks.packages.dependsOn debBuild
+    def cleanTask=tasks.create(name: "clean-${workName}",type: Delete){ c->
+        delete buildOutput
+    }
+    tasks.clean.dependsOn(cleanTask)
+}
+
+def uploadDailyDir="daily-ochartsplugin"
+def uploadReleaseDir="release-ochartsplugin"
+
+task cleanGui(type: Delete){
+    delete "gui/build"
+}
+
+task uploadAccessDaily(type: UploadHtAccess){
+    group "upload"
+    sourceName="daily.htaccess"
+    baseDir=uploadDailyDir
+    version=project.avnavVersion
+}
+task uploadAccessRelease(type: UploadHtAccess){
+    group "upload"
+    sourceName="release.htaccess"
+    baseDir=uploadReleaseDir
+    version=project.avnavVersion
+}
+
+def packageList=fileTree("build/distributions",{
+    include "*${project.avnavVersion}*.deb"
+})
+
+task uploadDaily(type: UploadTask){
+    group "upload"
+    dependsOn cleanGui,packages, uploadAccessDaily
+    inputFiles=packageList
+    baseDir="${uploadDailyDir}/${project.avnavVersion}"
+
+}
+
+def UPLOAD_BASE="avnav-ochartsng"
+task uploadRepoDaily(type: UploadSftp){
+    group "upload"
+    server='free-x.de'
+    base=''
+    baseDir="daily/${UPLOAD_BASE}/${project.avnavVersion}"
+    inputFiles=packageList
+    user="wellenvogel"
+    dependsOn cleanGui,packages
+}
+
+task uploadRepoRelease(type: UploadSftp){
+    group "upload"
+    server='free-x.de'
+    base=''
+    baseDir="release/${UPLOAD_BASE}/${project.avnavVersion}"
+    inputFiles=packageList
+    user="wellenvogel"
+    dependsOn cleanGui,packages
+}
+
+task uploadDailyTest(type: UploadSftp){
+    group "upload"
+    server='sftp.hidrive.strato.com'
+    base=''
+    baseDir="public/share/xxx"
+    inputFile=file("build.gradle")
+    user="andvogel"
+}
+
+
+task uploadRelease(type: UploadTask){
+    group "upload"
+    dependsOn testGit, cleanGui,packages, uploadAccessRelease
+    inputFiles=packageList
+    baseDir="$uploadReleaseDir/${project.avnavVersion}"
+}
