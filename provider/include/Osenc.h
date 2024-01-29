@@ -27,6 +27,8 @@
 #ifndef _INCLUDEOSENC_H
 #define _INCLUDEOSENC_H
 #include "Types.h"
+#include "Exception.h"
+#include "FileHelper.h"
 
 //  OSENC V2 record definitions
 #define HEADER_SENC_VERSION             1
