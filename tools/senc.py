@@ -30,6 +30,7 @@ import sys
 import getopt
 import os
 import csv
+import sqlite3
 class RecordTypes:
     HEADER_SENC_VERSION=             1
     HEADER_CELL_NAME=                2
@@ -85,7 +86,11 @@ class RecordBase:
         self.append(struct.pack("<H",val))
     def appenduint32(self,val:int):
         self.append(struct.pack("<I",val))
-    def appendstr(self,val:bytes):
+    def appendstr(self,val):
+        if type(val) is int:
+            val=str(val)
+        if type(val) is float:
+            val=str(val)
         if type(val) is str:
             val=val.encode(errors='ignore')
         l=len(val)
@@ -220,6 +225,53 @@ class S57Mappings:
         self.parseObjectClasses()
         self.parseAttributes()
 
+def warn(txt,*args):
+    print(("WARNING: "+txt)%args)
+
+def parsePointGeometry(gv,txt):
+    if len(gv) < 5:
+        raise Exception("invalid point geometry %s"%txt)
+    type=gv[0]
+    endian="<" if type == 1 else ">"
+    mode,=struct.unpack("%sxI%dx"%(endian,len(gv)-5),gv)
+    if mode != 1:
+        raise Exception("expected point geometry (1) got %d"%mode)
+    lon,lat=struct.unpack("%s5xdd"%endian,gv)
+    return Point(lon,lat)
+def pointObjectToSenc(s57mappings:S57Mappings,wh,name,dbrow,fid):
+    ftype=s57mappings.objectClasses.get(name.upper())
+    if ftype is None:
+        warn("Object %s not found",name)
+        return False
+    FeatureIdRecord(ftype.id(),fid).write(wh)
+    attrs=[]
+    for k,v in dict(dbrow).items():
+        if v is None:
+            continue
+        if k == 'GEOMETRY':
+            point=parsePointGeometry(v,name)
+            PointGeometryRecord(point).write(wh)
+        else:
+            attrd=s57mappings.attributes.get(k.upper()) # type: S57Att
+            if attrd is None:
+                continue
+            at=FeatureAttributeRecord.T_STR
+            if attrd.type == 'I':
+                at=FeatureAttributeRecord.T_INT
+            elif attrd.type == 'F':
+                at=FeatureAttributeRecord.T_DOUBLE
+            attrs.append(FAttr(attrd.Acronym,at,v))
+    writeAttributes(s57mappings,wh,attrs)
+    return True
+
+
+def writeTableToSenc(s57mappings,wh,cur,name,featureId):
+    res=cur.execute("select * from %s"%name)
+    for dbrow in res:
+        if pointObjectToSenc(s57mappings,wh,name,dbrow,featureId):
+            featureId+=1
+    return featureId
+
 
 
 if __name__ == '__main__':
@@ -228,24 +280,50 @@ if __name__ == '__main__':
     #TODO options
     s57mappings=S57Mappings(s57dir)
     s57mappings.parse()
+    if len(args) < 0:
+        print("usage: %s outname [sqlitedb]"%sys.argv[0])
+        sys.exit(1)
+    if len(args) < 2:
+        with open(args[0],'wb') as wh:
+            nw=Point(12.5,54.7)
+            se=Point(14.5,53.7)
+            VersionRecord().write(wh)
+            CellNameRecord("test").write(wh)
+            CellEditionRecord(99).write(wh)
+            NativeScaleRecord(30000).write(wh)
+            ExtendRecord(nw,se).write(wh)
+            featureId=1
+            #Ansteuerung GW
+            FeatureIdRecord(s57mappings.objectClasses["BOYSAW"].id(),featureId).write(wh)
+            atts=[
+                FAttr("BOYSHP",FeatureAttributeRecord.T_INT,4),
+                FAttr("COLOUR",FeatureAttributeRecord.T_STR,"3,1"),
+                FAttr("COLPAT",FeatureAttributeRecord.T_INT,2),
+                FAttr("OBJNAM",FeatureAttributeRecord.T_STR,"Greifswald")
+            ]
+            writeAttributes(s57mappings,wh,atts)
+            PointGeometryRecord(Point(13.5015,54.1631667)).write(wh)
+        print("created %s"%args[0])
+        sys.exit(0)
+    db=sqlite3.connect(args[1])
+    db.row_factory = sqlite3.Row
+
     with open(args[0],'wb') as wh:
-        nw=Point(12.5,54.7)
-        se=Point(14.5,53.7)
+        nw=Point(0,60)
+        se=Point(20,20)
         VersionRecord().write(wh)
         CellNameRecord("test").write(wh)
         CellEditionRecord(99).write(wh)
         NativeScaleRecord(30000).write(wh)
         ExtendRecord(nw,se).write(wh)
         featureId=1
-        #Ansteuerung GW
-        FeatureIdRecord(s57mappings.objectClasses["BOYSAW"].id(),featureId).write(wh)
-        atts=[
-            FAttr("BOYSHP",FeatureAttributeRecord.T_INT,4),
-            FAttr("COLOUR",FeatureAttributeRecord.T_STR,"3,1"),
-            FAttr("COLPAT",FeatureAttributeRecord.T_INT,2),
-            FAttr("OBJNAM",FeatureAttributeRecord.T_STR,"Greifswald")
-        ]
-        writeAttributes(s57mappings,wh,atts)
-        PointGeometryRecord(Point(13.5015,54.1631667)).write(wh)
-
-        
+        cur = db.cursor()
+        tables=cur.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        for tablerow in tables.fetchall():
+            table=tablerow[0]
+            objd=s57mappings.objectClasses.get(table.upper())
+            if objd is None:
+                print("ignoring unknown table %s"%table)
+                continue
+            featureId=writeTableToSenc(s57mappings,wh,cur,table,featureId)
+        print("wrote %d features to %s"%(featureId,args[0]))
