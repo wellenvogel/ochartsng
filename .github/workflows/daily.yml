@@ -80,7 +80,7 @@ jobs:
           ANDROID_KEYALIAS: "wellenvogel"
           ANDROID_KEYPASS: ${{ secrets.ANDROID_KEYPASS }}
 
-        run: ./gradlew uploadAndroidBeta #uploadDaily uploadRepoDaily
+        run: ./gradlew uploadBetaAndroid #uploadDaily uploadRepoDaily
 
 
         
