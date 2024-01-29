@@ -27,6 +27,9 @@
 '''
 import struct
 import sys
+import getopt
+import os
+import csv
 class RecordTypes:
     HEADER_SENC_VERSION=             1
     HEADER_CELL_NAME=                2
@@ -76,11 +79,15 @@ class RecordBase:
     def append(self,bytes):
         self.buffer+=bytes
         self.updateLength()
+    def appenduint8(self,val:int):
+        self.append(struct.pack("<B",val))
     def appenduint16(self,val:int):
         self.append(struct.pack("<H",val))
     def appenduint32(self,val:int):
         self.append(struct.pack("<I",val))
     def appendstr(self,val:bytes):
+        if type(val) is str:
+            val=val.encode(errors='ignore')
         l=len(val)
         self.append(struct.pack("@%ds"%l,val))
     def appenddouble(self,val:float):
@@ -103,8 +110,6 @@ class NativeScaleRecord(RecordBase):
 class StringRecord(RecordBase):
     def __init__(self, rtype: int, val: bytes) -> None:
         super().__init__(rtype)
-        if type(val) is str:
-            val=val.encode(errors='ignore')
         self.appendstr(val)
 class CellNameRecord(StringRecord):
     def __init__(self, val: bytes) -> None:
@@ -125,12 +130,105 @@ class ExtendRecord(RecordBase):
         self.appenddouble(se.lat)
         self.appenddouble(se.lon)
 
+class FeatureIdRecord(RecordBase):
+    def __init__(self,typeCode:int, id:int,primitive:int=0)->None:
+        super().__init__(RecordTypes.FEATURE_ID_RECORD)
+        self.appenduint16(typeCode)
+        self.appenduint16(id)
+        self.appenduint8(primitive)
 
+#always ensure correct order: 1. FeatureIdRecord, 2.Attr/Geom
+class PointGeometryRecord(RecordBase):
+    def __init__(self,point: Point)->None:
+        super().__init__(RecordTypes.FEATURE_GEOMETRY_RECORD_POINT)
+        self.appenddouble(point.lat)
+        self.appenddouble(point.lon)
+class FeatureAttributeRecord(RecordBase):
+    T_INT=0
+    T_DOUBLE=1
+    T_STR=4
+    def __init__(self,typeCode: int,valueType:int,value)->None:
+        super().__init__(RecordTypes.FEATURE_ATTRIBUTE_RECORD)
+        self.appenduint16(typeCode)
+        self.appenduint8(valueType)
+        if valueType == self.T_INT:
+            self.appenduint32(int(value))
+        elif valueType == self.T_DOUBLE:
+            self.appenddouble(float(value))
+        elif valueType == self.T_STR:
+            self.appendstr(value)
+        else:
+            raise Exception("unknown value type %d for feature %d"%(valueType,typeCode))
+
+class FAttr:
+    def __init__(self,name,vtype,val):
+        self.name=name
+        self.vtype=vtype
+        self.val=val
+
+def writeAttributes(s57mappings,wh,atts):
+    if type(atts) is not list:
+        atts=[atts]
+    for att in atts:
+        FeatureAttributeRecord(s57mappings.attributes[att.name].id(),att.vtype,att.val).write(wh)
+
+
+
+
+class S57OCL():
+    def __init__(self,row)->None:
+        self.Code=row["Code"]
+        self.Acronym=row["Acronym"]
+    def id(self):
+        return int(self.Code)
+class S57Att():
+    def __init__(self,row)->None:
+        self.Code=row["Code"]
+        self.Acronym=row["Acronym"]
+        self.type=row["Attributetype"]
+        self.clazz=row["Class"]
+    def id(self):
+        return int(self.Code)
+
+class S57Mappings:
+    OCL="s57objectclasses.csv"
+    ATT="s57attributes.csv"
+    def __init__(self,s57dir):
+        self.s57dir=s57dir
+        self.objectClassesId={}
+        self.attributesId={}
+        self.objectClasses={}
+        self.attributes={}
+    def parseObjectClasses(self):
+        ocl=os.path.join(self.s57dir,self.OCL)
+        with open(ocl,"r") as ih:
+            reader=csv.DictReader(ih)
+            for row in reader:
+                oclz=S57OCL(row)
+                self.objectClassesId[oclz.id()]=oclz
+                self.objectClasses[oclz.Acronym]=oclz
+    def parseAttributes(self):
+        attrf=os.path.join(self.s57dir,self.ATT)
+        with open(attrf,"r") as ih:
+            reader=csv.DictReader(ih)
+            for row in reader:
+                attr=S57Att(row)
+                self.attributesId[attr.id()]=attr
+                self.attributes[attr.Acronym]=attr
+
+    def parse(self):
+        self.parseObjectClasses()
+        self.parseAttributes()
 
 
 
 if __name__ == '__main__':
-    with open(sys.argv[1],'wb') as wh:
+    s57dir=os.path.join(os.path.dirname(__file__),"..","provider","s57static")
+    optlist,args=getopt.getopt(sys.argv[1:],"s:")
+    #TODO options
+    s57mappings=S57Mappings(s57dir)
+    s57mappings.parse()
+    with open(args[0],'wb') as wh:
         nw=Point(12.5,54.7)
         se=Point(14.5,53.7)
         VersionRecord().write(wh)
@@ -138,4 +236,16 @@ if __name__ == '__main__':
         CellEditionRecord(99).write(wh)
         NativeScaleRecord(30000).write(wh)
         ExtendRecord(nw,se).write(wh)
+        featureId=1
+        #Ansteuerung GW
+        FeatureIdRecord(s57mappings.objectClasses["BOYSAW"].id(),featureId).write(wh)
+        atts=[
+            FAttr("BOYSHP",FeatureAttributeRecord.T_INT,4),
+            FAttr("COLOUR",FeatureAttributeRecord.T_STR,"3,1"),
+            FAttr("COLPAT",FeatureAttributeRecord.T_INT,2),
+            FAttr("OBJNAM",FeatureAttributeRecord.T_STR,"Greifswald")
+        ]
+        writeAttributes(s57mappings,wh,atts)
+        PointGeometryRecord(Point(13.5015,54.1631667)).write(wh)
+
         
