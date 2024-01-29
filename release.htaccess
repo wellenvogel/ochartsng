@@ -4,4 +4,6 @@ indexignore ..
 RewriteOptions Inherit
 RewriteRule "latest/(avnav-ochartsng)_latest[-](.*)" "VERSION/$1_VERSION-$2" [PT]
 RewriteRule "latest/(avnav-ochartsng)_VERSION[-](.*)" "VERSION/$1_VERSION_$2" [PT]
+RewriteRule "latest/(avnavocharts-release)-latest(.*)" "VERSION/$1-VERSION$2" [PT]
+RewriteRule "latest/(avnavocharts-release)-VERSION(.*)" "VERSION/$1-VERSION$2" [PT]
 RewriteRule "latest/(.*)" "VERSION/$1" [PT]
