@@ -435,6 +435,17 @@ class DockerBuild extends DockerTask{
     }
 }
 class DockerPush extends DockerTask{
+    def checkRemote(){
+        def iname=imageFromParam()
+        logger.lifecycle("checking remote image $iname")
+        def res="docker manifest inspect $iname".execute().text;
+        def rt=res != ""
+        logger.lifecycle("check remote $iname returns $rt")
+        return rt
+    }
+    DockerPush(){
+        onlyIf{ !checkRemote()}
+    }
     def getCommandArgs(dockerBase,osversion,uid,gid,uname,dockerFile,imageName){
         return [
                 "push",
@@ -468,6 +479,7 @@ task pushAll{
     doLast{
         logger.lifecycle("images pushed")
     }
+    dependsOn buildImages
 }
 task pullAll{
     group "docker"
@@ -584,8 +596,8 @@ VARIANTS.each { variant ->
     tasks.clean.dependsOn(cleanTask)
 }
 
-def uploadDailyDir="daily-ochartsplugin"
-def uploadReleaseDir="release-ochartsplugin"
+def uploadDailyDir="daily-ochartsng"
+def uploadReleaseDir="release-ochartsng"
 
 task cleanGui(type: Delete){
     delete "gui/build"
@@ -608,12 +620,18 @@ def packageList=fileTree("build/distributions",{
     include "*${project.avnavVersion}*.deb"
 })
 
-task uploadDaily(type: UploadTask){
+task uploadDailyPackages(type: UploadTask){
     group "upload"
     dependsOn cleanGui,packages, uploadAccessDaily
     inputFiles=packageList
     baseDir="${uploadDailyDir}/${project.avnavVersion}"
 
+}
+task uploadReleasePackages(type: UploadTask){
+    group "upload"
+    dependsOn testGit, cleanGui,packages, uploadAccessRelease
+    inputFiles=packageList
+    baseDir="$uploadReleaseDir/${project.avnavVersion}"
 }
 
 def UPLOAD_BASE="avnav-ochartsng"
@@ -647,9 +665,33 @@ task uploadDailyTest(type: UploadSftp){
 }
 
 
-task uploadRelease(type: UploadTask){
+def ANDROID_BASE="android/app/build/outputs/apk"
+def ks=System.getenv("ANDROID_KEYSTORE")
+def sign="-unsigned"
+if (ks) sign=""
+task uploadReleaseAndroid(type: UploadTask){
     group "upload"
-    dependsOn testGit, cleanGui,packages, uploadAccessRelease
-    inputFiles=packageList
+    inputFile=file("$ANDROID_BASE/release/avocharts-release$sign-${avnavVersion}.apk")
+    dependsOn assembleReleaseAndroid
     baseDir="$uploadReleaseDir/${project.avnavVersion}"
+}
+task uploadBetaAndroid(type: UploadTask){
+    group "upload"
+    inputFile=file("$ANDROID_BASE/beta/avocharts-beta-${avnavVersion}.apk")
+    dependsOn assembleBetaAndroid
+    baseDir="${uploadDailyDir}/${project.avnavVersion}"
+}
+
+task uploadDaily{
+    doLast{
+        logger.lifecycle("uploads daily done...")
+    }
+    dependsOn uploadDailyPackages, uploadBetaAndroid
+}
+
+task uploadRelease{
+    doLast{
+        logger.lifecycle("uploads release done...")
+    }
+    dependsOn uploadReleasePackages, uploadReleaseAndroid
 }

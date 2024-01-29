@@ -64,6 +64,10 @@ jobs:
         with:
           image: tonistiigi/binfmt:latest
           platforms: all
+      - name: JKS
+        run: |
+           echo "${{ secrets.BETA_KEYSTORE }}" > beta.keystore.asc
+           gpg -d --passphrase "{{ secrets.BETA_KEYSTORE_PW1 }}" --batch beta.keystore.asc > keystore.jks
 
       - name: gradle build
         env:  
@@ -71,7 +75,11 @@ jobs:
           AVNAV_REPO_PASSWD: ${{ secrets.AVNAV_REPO_PASSWD }}
           AVNAV_REPO_KEY: ${{ secrets.AVNAV_REPO_KEY }}
           AVNAV_REPO_BASE: ""
-        run: ./gradlew uploadDaily uploadRepoDaily
+          ANDROID_KEYSTORE_BETA: ${{ github.workspace}}/keystore.jks
+          ANDROID_KEYALIAS: "wellenvogel"
+          ANDROID_KEYPASS: ${{ secrets.ANDROID_KEYPASS }}
+
+        run: ./gradlew uploadAndroidBeta #uploadDaily uploadRepoDaily
 
 
         

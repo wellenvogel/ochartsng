@@ -70,18 +70,31 @@ android {
     signingConfigs {
 
         def ks = System.getenv("ANDROID_KEYSTORE")
+        def ksbeta = System.getenv("ANDROID_KEYSTORE_BETA")
         def kspw = System.getenv("ANDROID_KEYPASS")
         def kalias = System.getenv("ANDROID_KEYALIAS")
-        def kpw = System.getenv("ANDROID_KEYPASS")
-        if (ks != null && ksp != null && kalias != null && kpwd != null) {
+        def kpwd = System.getenv("ANDROID_KEYPASS")
+        def hasCfg=false
+        if (ks != null && kspw != null && kalias != null && kpwd != null) {
+            hasCfg=true
             config {
                 storeFile file(ks)
                 storePassword kspw
                 keyAlias kalias
-                keyPassword kpw
+                keyPassword kpwd
             }
-        } else {
-            logger.warn("no signing config set...")
+        }
+        if(ksbeta != null && kspw != null && kalias != null && kpwd != null) {
+            hasCfg=true
+            create("beta") {
+                storeFile file(ksbeta)
+                storePassword kspw
+                keyAlias kalias
+                keyPassword kpwd
+            }
+        }
+        if (! hasCfg){
+                logger.warn("no signing config set...")
         }
     }
 
@@ -90,7 +103,9 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            if (System.getenv("ANDROID_KEYSTORE") != null) {
+            def ks = System.getenv("ANDROID_KEYSTORE")
+            if (ks != null) {
+                logger.lifecycle("using keystore $ks for release")
                 signingConfig signingConfigs.config
             }
             manifestPlaceholders.label='avocharts'
@@ -108,10 +123,18 @@ android {
         }
         beta {
             initWith release
-            if (System.getenv("ANDROID_KEYSTORE") != null) {
+            def jksbeta=System.getenv("ANDROID_KEYSTORE_BETA")
+            def jks=System.getenv("ANDROID_KEYSTORE")
+            if (jksbeta != null) {
+                logger.lifecycle("using keystore $jksbeta for beta")
+                signingConfig signingConfigs.beta
+            }
+            else if (jks != null) {
+                logger.lifecycle("using keystore $jks for beta")
                 signingConfig signingConfigs.config
             }
             else{
+                logger.lifecycle("using debug signing for beta")
                 signingConfig buildTypes.debug.signingConfig
             }
             applicationIdSuffix ".beta"
