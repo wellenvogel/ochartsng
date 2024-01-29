@@ -102,7 +102,6 @@ ChartSetInfo::Ptr ChartSetInfo::ParseChartInfo(String chartSetDirectory,String k
     ChartSetInfo::Ptr parsedInfo=std::make_shared<ChartSetInfo>();
     parsedInfo->dirname=chartSetDirectory;
     parsedInfo->name=key;
-    parsedInfo->title=parsedInfo->name;
     String shortDir=FileHelper::fileName(chartSetDirectory);
     static StringVector prefixes={
         "oeuSENC","oeuRNC"
