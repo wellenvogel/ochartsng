@@ -331,9 +331,7 @@ task packages{
         println "created all packages"
     }
 }
-if (buildAndroid) {
-    packages.dependsOn assembleReleaseAndroid
-}
+
 def GE=org.redline_rpm.header.Flags.GREATER|org.redline_rpm.header.Flags.EQUAL
 def emptyBase=new File(project.buildDir,"empty")
 ospackage {
