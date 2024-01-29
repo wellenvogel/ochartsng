@@ -68,7 +68,7 @@ jobs:
       - name: JKS
         run: |
            echo "${{ secrets.BETA_KEYSTORE }}" > beta.keystore.asc
-           gpg -d --passphrase "{{ secrets.BETA_KEYSTORE_PW1 }}" --batch beta.keystore.asc > keystore.jks
+           gpg -d --passphrase "${{ secrets.BETA_KEYSTORE_PW1 }}" --batch beta.keystore.asc > keystore.jks
 
       - name: gradle build
         env:  
