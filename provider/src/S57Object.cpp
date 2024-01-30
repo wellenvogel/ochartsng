@@ -432,7 +432,7 @@ void S57Object::RenderObject::Render(RenderContext &renderCtx, DrawingContext &c
     }
 }
 
-bool S57Object::RenderObject::Intersects(const Coord::PixelBox &pixelExtent,Coord::TileBox const &tile) const{
+bool S57Object::RenderObject::Intersects(const Coord::PixelBox &pixelBox,Coord::TileBox const &tile) const{
     switch (object->geoPrimitive){
         case s52::GEO_AREA:
         case s52::GEO_LINE:
@@ -444,11 +444,11 @@ bool S57Object::RenderObject::Intersects(const Coord::PixelBox &pixelExtent,Coor
         case s52::GEO_POINT:
             if (object->soundigs.size() > 0){
                 Coord::PixelBox etx=Coord::worldExtentToPixel(object->extent,tile);
-                return pixelExtent.intersects(etx);
+                return pixelBox.intersects(etx);
             }
             else{
                 Coord::PixelXy drawPoint=tile.worldToPixel(object->point);
-                return pixelExtent.intersects(pixelExtent.getShifted(drawPoint));
+                return pixelBox.intersects(pixelExtent.getShifted(drawPoint));
             }
             break;
     }
