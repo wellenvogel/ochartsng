@@ -26,6 +26,20 @@ using std::is_integral;
 using std::is_floating_point;
 
 namespace {
+    string hexEscape(const char c){
+        string rt;
+        rt.push_back('\\');
+        rt.push_back('u');
+        rt.push_back('0');
+        rt.push_back('0');
+        unsigned char n=((unsigned char)c)>>4;
+        if (n > 9) rt.push_back('a'+n-10);
+        else rt.push_back('0'+n);
+        n=c & 0xf;
+        if (n > 9) rt.push_back('a'+n-10);
+        else rt.push_back('0'+n);
+        return rt;
+    }
     string json_escape( const string &str ) {
         string output;
         for( unsigned i = 0; i < str.length(); ++i )
@@ -37,7 +51,10 @@ namespace {
                 case '\n': output += "\\n";  break;
                 case '\r': output += "\\r";  break;
                 case '\t': output += "\\t";  break;
-                default  : output += str[i]; break;
+                default  : 
+                    if(str[i] >= 0x20) output.push_back(str[i]);
+                    else output+=hexEscape(str[i]);
+                    break;
             }
         return std::move( output );
     }
