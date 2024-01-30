@@ -86,6 +86,24 @@ def writeTableToSenc(wh:senc.SencFile,cur,name):
     for dbrow in res:
         objectToSenc(wh,name,dbrow)
 
+def writeSoundings(wh:senc.SencFile,cur,name):
+    res=cur.execute("select * from %s"%name)
+    soundings=[]
+    for dbrow in res:
+        row=dict(dbrow)
+        geometry=parseGeometry(row["GEOMETRY"],"soundings")
+        if geometry.gtype != senc.GeometryBase.T_POINT:
+            raise Exception("invalid geometry %d for sounding"%geometry.gtype)
+        val=row["_sd"]
+        soundings.append(senc.SoundingPoint(
+            geometry.point.lon,
+            geometry.point.lat,
+            val.replace("[","").replace("]","")))
+        if len(soundings) >= 100:
+            wh.addSoundings(soundings)
+            soundings=[]
+    if len(soundings) > 0:
+        wh.addSoundings(soundings)
 
 
 if __name__ == '__main__':
@@ -131,6 +149,9 @@ if __name__ == '__main__':
     tables=cur.execute("SELECT name FROM sqlite_master WHERE type='table';")
     for tablerow in tables.fetchall():
         table=tablerow[0]
+        if table == "soundg":
+            writeSoundings(wh,cur,table)
+            continue
         objd=s57mappings.objectClasses.get(table.upper())
         if objd is None:
             print("ignoring unknown table %s"%table)

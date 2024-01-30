@@ -68,6 +68,11 @@ class Point:
     self.lon=lon
     self.lat=lat
 
+class SoundingPoint(Point):
+  def __init__(self,lon:float,lat:float,val:float) -> None:
+    super().__init__(lon,lat)
+    self.val=val
+
 class Extent:
   def __init__(self,nw:Point=None, se:Point=None) -> None:
     self.nw=nw
@@ -115,8 +120,10 @@ class RecordBase:
     l=len(val)
     self.append(struct.pack("@%ds"%l,val))
   def appenddouble(self,val:float):
+    val=float(val)
     self.append(struct.pack("<d",val))
   def appendfloat(self,val:float):
+    val=float(val)
     self.append(struct.pack("<f",val))
   def write(self,stream):
     stream.write(self.buffer)
@@ -193,6 +200,21 @@ class EdgeVectorRecord(RecordBase):
       self.appendfloat(en.east)
       self.appendfloat(en.north)
 
+class SoundingRecord(RecordBase):
+  def __init__(self,extent:Extent,soundings:list):
+    super().__init__(RecordTypes.FEATURE_GEOMETRY_RECORD_MULTIPOINT)
+    self.appenddouble(extent.se.lat)
+    self.appenddouble(extent.nw.lat)
+    self.appenddouble(extent.nw.lon)
+    self.appenddouble(extent.se.lon)
+    self.appenduint32(len(soundings))
+    for sndg in soundings:
+      self.appendfloat(sndg.east)
+      self.appendfloat(sndg.north)
+      self.appendfloat(sndg.val)
+
+
+
 
 class FeatureAttributeRecord(RecordBase):
   T_INT=0
@@ -267,7 +289,10 @@ class EastNorth:
   def __init__(self,e:float,n:float):
     self.east=e
     self.north=n
-
+class Sounding(EastNorth):
+  def __init__(self,e:float,n:float,val:float):
+    super().__init__(e,n)
+    self.val=val
 
 class SencFile():
   def __init__(self,s57mappings:s57.S57Mappings, name:str,header:SencHeader)->None:
@@ -326,7 +351,7 @@ class SencFile():
     north = y3 - y30
     return EastNorth(east,north)
 
-  def addFeature(self,name:str,attributes:list,geometry:GeometryBase):
+  def addFeature(self,name:str,attributes:list,geometry:GeometryBase=None):
     self._isOpen()
     od=self.s57mappings.objByName(name)
     if od is None:
@@ -334,21 +359,22 @@ class SencFile():
         raise Exception("unknown feature %s"%name)
       return False
     geometryRecords=[]
-    if geometry.gtype == GeometryBase.T_POINT:
-      geometryRecords.append(PointGeometryRecord(geometry.point))
-    elif geometry.gtype == GeometryBase.T_LINE:
-      #1 compute extent and store points
-      idx=self.nodeVectorIndex
-      self.nodeVectorIndex+=1
-      enPoints=[]
-      extent=Extent()
-      for point in geometry.points:
-        enPoints.append(self._toSM(point))
-        extent.add(point)
-      geometryRecords.append(LineGeometryRecord(extent,idx))
-      geometryRecords.append(EdgeVectorRecord(idx,enPoints))
-    else:
-      raise Exception("unknown geometry %d for %s"%(geometry.gtype,name))
+    if geometry is not None:
+      if geometry.gtype == GeometryBase.T_POINT:
+        geometryRecords.append(PointGeometryRecord(geometry.point))
+      elif geometry.gtype == GeometryBase.T_LINE:
+        #1 compute extent and store points
+        idx=self.nodeVectorIndex
+        self.nodeVectorIndex+=1
+        enPoints=[]
+        extent=Extent()
+        for point in geometry.points:
+          enPoints.append(self._toSM(point))
+          extent.add(point)
+        geometryRecords.append(LineGeometryRecord(extent,idx))
+        geometryRecords.append(EdgeVectorRecord(idx,enPoints))
+      else:
+        raise Exception("unknown geometry %d for %s"%(geometry.gtype,name))
     fid=self.featureId
     self.featureId+=1
     FeatureIdRecord(od.id(),fid,0).write(self.wh)
@@ -363,6 +389,18 @@ class SencFile():
       ft=FeatureAttributeRecord.s57TypeToType(att.name,ad.type)
       FeatureAttributeRecord(ad.id(),ft,att.val).write(self.wh)
     return True
+
+  def addSoundings(self,soundings:list):
+    self.addFeature("SOUNDG",[])
+    enlist=[]
+    extent=Extent()
+    for sndg in soundings:
+      ensndg=self._toSM(sndg)
+      extent.add(sndg)
+      ensndg.val=sndg.val
+      enlist.append(ensndg)
+    SoundingRecord(extent,enlist).write(self.wh)
+
 
   def close(self):
     if self.wh is None:
