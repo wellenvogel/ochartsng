@@ -42,37 +42,49 @@ from senc.s57 import S57Att, S57Mappings, S57OCL
 def warn(txt,*args):
     print(("WARNING: "+txt)%args)
 
-def parsePointGeometry(gv,txt):
+def readGeometryPoint(endian,gv):
+    lon,lat=struct.unpack("%sdd"%endian,gv)
+    return senc.Point(lon,lat)
+def parseGeometry(gv,txt) -> senc.GeometryBase:
     if len(gv) < 5:
-        raise Exception("invalid point geometry %s"%txt)
+        raise Exception("invalid geometry %s"%txt)
     type=gv[0]
     endian="<" if type == 1 else ">"
     mode,=struct.unpack("%sxI%dx"%(endian,len(gv)-5),gv)
-    if mode != 1:
-        raise Exception("expected point geometry (1) got %d"%mode)
-    lon,lat=struct.unpack("%s5xdd"%endian,gv)
-    return senc.Point(lon,lat)
-def pointObjectToSenc(wh: senc.SencFile,name,dbrow):
+    if mode == 1:
+        lon,lat=struct.unpack("%s5xdd"%endian,gv)
+        return senc.PointGeometry(senc.Point(lon,lat))
+    if mode == 2:
+        num,=struct.unpack("%sI"%endian,gv[5:9])
+        points=[]
+        start=9
+        for i in range(0,num):
+            points.append(readGeometryPoint(endian,gv[start:start+16]))
+            start+=16
+        return senc.LineGeometry(points)
+    raise Exception("unknwon geometry %d"%mode)
+
+def objectToSenc(wh: senc.SencFile,name,dbrow):
     attrs=[]
-    point=None
+    geometry=None
     for k,v in dict(dbrow).items():
         if v is None:
             continue
         if k == 'GEOMETRY':
-            point=parsePointGeometry(v,name)
+            geometry=parseGeometry(v,name)
         else:
             attrs.append(senc.FAttr(k,v))
-    if point is None:
+    if geometry is None:
         warn("no geometry found for %s",name)
         return False
-    wh.addFeature(name,attrs,senc.PointGeometry(point))
+    wh.addFeature(name,attrs,geometry)
     return True
 
 
 def writeTableToSenc(wh:senc.SencFile,cur,name):
     res=cur.execute("select * from %s"%name)
     for dbrow in res:
-        pointObjectToSenc(wh,name,dbrow)
+        objectToSenc(wh,name,dbrow)
 
 
 

@@ -24,7 +24,8 @@
  ***************************************************************************
  *
 '''
-
+import copy
+import math
 import struct
 import os
 from . import s57
@@ -67,6 +68,25 @@ class Point:
     self.lon=lon
     self.lat=lat
 
+class Extent:
+  def __init__(self,nw:Point=None, se:Point=None) -> None:
+    self.nw=nw
+    self.se=se
+
+  def add(self,point:Point):
+    if self.nw is None or self.se is None:
+      self.nw=copy.copy(point)
+      self.se=copy.copy(point)
+    else:
+      if self.nw.lat < point.lat:
+        self.nw.lat=point.lat
+      if self.nw.lon > point.lon:
+        self.nw.lon=point.lon
+      if self.se.lon < point.lon:
+        self.se.lon=point.lon
+      if self.se.lat > point.lat:
+        self.se.lat=point.lat
+
 class RecordBase:
   def __init__(self,rtype: int) -> None:
     self.buffer=bytearray(struct.pack("<HI",rtype,0))
@@ -83,6 +103,8 @@ class RecordBase:
     self.append(struct.pack("<H",val))
   def appenduint32(self,val:int):
     self.append(struct.pack("<I",val))
+  def appendint32(self,val:int):
+    self.append(struct.pack("<i",val))
   def appendstr(self,val):
     if type(val) is int:
       val=str(val)
@@ -94,6 +116,8 @@ class RecordBase:
     self.append(struct.pack("@%ds"%l,val))
   def appenddouble(self,val:float):
     self.append(struct.pack("<d",val))
+  def appendfloat(self,val:float):
+    self.append(struct.pack("<f",val))
   def write(self,stream):
     stream.write(self.buffer)
 
@@ -145,6 +169,31 @@ class PointGeometryRecord(RecordBase):
     super().__init__(RecordTypes.FEATURE_GEOMETRY_RECORD_POINT)
     self.appenddouble(point.lat)
     self.appenddouble(point.lon)
+
+class LineGeometryRecord(RecordBase):
+  def __init__(self,extent:Extent,nvid:int)->None:
+    super().__init__(RecordTypes.FEATURE_GEOMETRY_RECORD_LINE)
+    self.appenddouble(extent.se.lat)
+    self.appenddouble(extent.nw.lat)
+    self.appenddouble(extent.nw.lon)
+    self.appenddouble(extent.se.lon)
+    self.appenduint32(1) #for now only one edge vector
+    self.appendint32(-1) #first connected node
+    self.appendint32(nvid) #edge vector index
+    self.appendint32(-1) #end node
+    self.appendint32(0) #always forward
+
+class EdgeVectorRecord(RecordBase):
+  def __init__(self,idx:int,enlist:list):
+    super().__init__(RecordTypes.VECTOR_EDGE_NODE_TABLE_RECORD)
+    self.appenduint32(1) #only one entry included
+    self.appenduint32(idx) #table index
+    self.appenduint32(len(enlist)) #num entries
+    for en in enlist:
+      self.appendfloat(en.east)
+      self.appendfloat(en.north)
+
+
 class FeatureAttributeRecord(RecordBase):
   T_INT=0
   T_DOUBLE=1
@@ -200,6 +249,7 @@ class FAttr:
 
 class GeometryBase:
   T_POINT=1
+  T_LINE=2
   def __init__(self,gtype:int):
     self.gtype=gtype
 
@@ -207,6 +257,17 @@ class PointGeometry(GeometryBase):
   def __init__(self,point:Point):
     super().__init__(self.T_POINT)
     self.point=point
+
+class LineGeometry(GeometryBase):
+  def __init__(self,points:list):
+    super().__init__(self.T_LINE)
+    self.points=points
+
+class EastNorth:
+  def __init__(self,e:float,n:float):
+    self.east=e
+    self.north=n
+
 
 class SencFile():
   def __init__(self,s57mappings:s57.S57Mappings, name:str,header:SencHeader)->None:
@@ -221,6 +282,7 @@ class SencFile():
     self.featureId=1
     #should we throw an exception if feature/attribute not found
     self.errNotFound=False
+    self.nodeVectorIndex=1
     VersionRecord(self.header.version).write(self.wh)
     CellNameRecord(self.header.name).write(self.wh)
     CellEditionRecord(self.header.edition).write(self.wh)
@@ -230,6 +292,40 @@ class SencFile():
   def _isOpen(self):
     if self.wh is None:
       raise Exception("senc file %s not open"%self.name)
+
+  WGS84_semimajor_axis_meters       = 6378137.0 # WGS84 semimajor axis
+  mercator_k0                       = 0.9996
+  DEGREE=math.pi/180.0
+
+  def  _toSM(self, point:Point, ref:Point=None) -> EastNorth:
+    '''
+    compute easting and northing
+    see georef.cpp
+    :param ref: the chart ref point
+    :param point: the point to convert
+    :return: 
+    '''
+    if ref is None:
+      ref=self.refPoint
+
+    xlon = point.lon
+
+    #  Make sure lon and lon0 are same phase
+
+    if (point.lon * ref.lon < 0.) and (abs(point.lon - ref.lon) > 180.):
+      xlon+= 360.0 if point.lon < 0 else -360.0
+
+    z = self.WGS84_semimajor_axis_meters * self.mercator_k0
+    east = (xlon - ref.lon) * self.DEGREE * z
+
+    #// y =.5 ln( (1 + sin t) / (1 - sin t) )
+    s = math.sin(point.lat * self.DEGREE)
+    y3 = (.5 * math.log((1 + s) / (1 - s))) * z
+    s0 = math.sin(ref.lat * self.DEGREE)
+    y30 = (.5 * math.log((1 + s0) / (1 - s0))) * z
+    north = y3 - y30
+    return EastNorth(east,north)
+
   def addFeature(self,name:str,attributes:list,geometry:GeometryBase):
     self._isOpen()
     od=self.s57mappings.objByName(name)
@@ -237,15 +333,27 @@ class SencFile():
       if self.errNotFound:
         raise Exception("unknown feature %s"%name)
       return False
-    geometryRecord=None
+    geometryRecords=[]
     if geometry.gtype == GeometryBase.T_POINT:
-      geometryRecord=PointGeometryRecord(geometry.point)
+      geometryRecords.append(PointGeometryRecord(geometry.point))
+    elif geometry.gtype == GeometryBase.T_LINE:
+      #1 compute extent and store points
+      idx=self.nodeVectorIndex
+      self.nodeVectorIndex+=1
+      enPoints=[]
+      extent=Extent()
+      for point in geometry.points:
+        enPoints.append(self._toSM(point))
+        extent.add(point)
+      geometryRecords.append(LineGeometryRecord(extent,idx))
+      geometryRecords.append(EdgeVectorRecord(idx,enPoints))
     else:
       raise Exception("unknown geometry %d for %s"%(geometry.gtype,name))
     fid=self.featureId
     self.featureId+=1
     FeatureIdRecord(od.id(),fid,0).write(self.wh)
-    geometryRecord.write(self.wh)
+    for geometryRecord in geometryRecords:
+      geometryRecord.write(self.wh)
     for att in attributes:
       ad=self.s57mappings.attrByName(att.name)
       if ad is None:
