@@ -136,6 +136,7 @@ if __name__ == '__main__':
         wh.close()
         print("created %s"%args[0])
         sys.exit(0)
+    print("opening %s"%args[1])
     db=sqlite3.connect(args[1])
     db.row_factory = sqlite3.Row
     print("parsing geometries...")

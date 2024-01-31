@@ -247,11 +247,11 @@ class FeatureAttributeRecord(RecordBase):
   '''
   @classmethod
   def s57TypeToType(cls,name,s57t):
-    if name in cls.INT_ATTR:
+    if name.upper() in cls.INT_ATTR:
       return cls.T_INT
-    if type == 'I':
+    if s57t == 'I':
       return cls.T_INT
-    elif type == 'F':
+    elif s57t == 'F':
       return cls.T_DOUBLE
     return cls.T_STR
 
