@@ -565,7 +565,7 @@ class TileInfoBase
      * from easting/norting of a ref point
      * for x-ccordinates we allow overflow below min and above max to handle the 0/180 issue
     */
-    static inline WorldXy worldFromSM(double x, double y, const LLXy &ref)
+    static inline WorldXy oldWorldFromSM(double x, double y, const LLXy &ref)
     {
         static LatLon clipLonMax=worldxToLon(worldLimits.max()+worldLimits.worldShift()-1,false);
         static LatLon clipLonMin=worldxToLon(worldLimits.min()-worldLimits.worldShift()+1,false);
@@ -601,6 +601,20 @@ class TileInfoBase
         return rt;
     }
 
+    static inline WorldXy worldFromSM(double x, double y, const WorldXy &ref)
+    {
+        static LatLon clipLonMax=worldxToLon(worldLimits.max()+worldLimits.worldShift()-1,false);
+        static LatLon clipLonMin=worldxToLon(worldLimits.min()-worldLimits.worldShift()+1,false);
+        const constexpr double z = WGS84_semimajor_axis_meters * mercator_k0;
+        const constexpr double iwz=COORD_FACTOR/(2.0 *M_PI *z); //from mercator to world
+        //original
+        //World rt=worldLimits.shift(floor(((1.0 - asinh(tan(latrad)) / M_PI) / 2.0 * COORD_FACTOR)), worldLimits.halfshift());
+        //asinh(tan(latrad) = (y+yref)/z
+        
+        World yr=ref.y-round(y*iwz);
+        World xr=ref.x+round(x*iwz);
+        return WorldXy(xr,yr);
+    }
     
 };
 #endif

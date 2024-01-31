@@ -357,10 +357,11 @@ class SencFile():
 
     #// y =.5 ln( (1 + sin t) / (1 - sin t) )
     s = math.sin(point.lat * self.DEGREE)
-    y3 = (.5 * math.log((1 + s) / (1 - s))) * z
+    y3 = (.5 * math.log((1 + s) / (1 - s)))
+    #y3alt=math.asinh(math.tan(point.lat*self.DEGREE))
     s0 = math.sin(ref.lat * self.DEGREE)
-    y30 = (.5 * math.log((1 + s0) / (1 - s0))) * z
-    north = y3 - y30
+    y30 = (.5 * math.log((1 + s0) / (1 - s0)))
+    north = (y3 - y30)*z
     return EastNorth(east,north)
 
   def addFeature(self,name:str,attributes:list,geometry:GeometryBase=None):

@@ -121,7 +121,7 @@ template<class BT, bool hasScale>
 void parseAreaRecord(BT &reader,S57Object *currentObject,
     bool versionAbove200,
     ocalloc::PoolRef poolRef,
-    const Coord::LLXy &refPoint,
+    const Coord::WorldXy &refPoint,
     double scale=1
     ){
     typename BT::Type *p=reader.GetBuffer();
@@ -177,7 +177,7 @@ static void parseEdgeVectors(
     const String &fileName,
     BT &reader, OESUChart::VectorEdgeNodeTable &edgeNodeTable,
     ocalloc::PoolRef poolRef,
-    const Coord::LLXy &refPoint,
+    const Coord::WorldXy &refPoint,
     double scale=1)
 {
     auto p = reader.GetBuffer();
@@ -212,7 +212,7 @@ template <class BT, bool hasScale>
 static void parseNodeVectors(
     BT &reader, OESUChart::ConnectedNodeTable &connectedNodeTable,
     ocalloc::PoolRef poolRef,
-    const Coord::LLXy &refPoint,
+    const Coord::WorldXy &refPoint,
     double scale = 1)
 {
     auto p = reader.GetBuffer();
@@ -472,7 +472,7 @@ bool OESUChart::ReadChartStream(InputStream::Ptr input,s52::S52Data::ConstPtr s5
                 }
                 if (! referencePoint) throw InvalidChartException(fileName,"area record before extent record");
                 OSENC_RecordAreaGeometry reader(&buffer);
-                parseAreaRecord<OSENC_RecordAreaGeometry,false>(reader,currentObject.get(),aboveV200(),poolRef,referencePoint->llPoint);  
+                parseAreaRecord<OSENC_RecordAreaGeometry,false>(reader,currentObject.get(),aboveV200(),poolRef,referencePoint->worldPoint);  
             }
             break;
             case OSENC_RecordExtAreaGeometry::code():
@@ -485,7 +485,7 @@ bool OESUChart::ReadChartStream(InputStream::Ptr input,s52::S52Data::ConstPtr s5
                 auto record=reader.GetBuffer();
                 double scale=record->scaleFactor;
                 if (std::abs(scale) < 1e-5) scale=1;
-                parseAreaRecord<OSENC_RecordExtAreaGeometry,true>(reader,currentObject.get(),aboveV200(),poolRef,referencePoint->llPoint,scale);  
+                parseAreaRecord<OSENC_RecordExtAreaGeometry,true>(reader,currentObject.get(),aboveV200(),poolRef,referencePoint->worldPoint,scale);  
             }
             break;
             case OSENC_RecordMultiPointGeometry::code():
@@ -509,7 +509,7 @@ bool OESUChart::ReadChartStream(InputStream::Ptr input,s52::S52Data::ConstPtr s5
                 for (int i=0;i<numPoints;i++){
                     float temp[3];
                     reader.GetFromBuffer(&temp[0],3,"multi point geometry");
-                    S57Object::Sounding s=Coord::worldFromSM(temp[0],temp[1],referencePoint->llPoint);
+                    S57Object::Sounding s=Coord::worldFromSM(temp[0],temp[1],referencePoint->worldPoint);
                     s.depth=temp[2];
                     currentObject->soundigs.add(s);
                     currentObject->extent.extend(s);
@@ -562,7 +562,7 @@ bool OESUChart::ReadChartStream(InputStream::Ptr input,s52::S52Data::ConstPtr s5
             {
                 OSENC_RecordEdgeVectors reader(&buffer);
                 if (! referencePoint) throw InvalidChartException(fileName,"edge node record before extent record");
-                parseEdgeVectors<OSENC_RecordEdgeVectors,false>(fileName,reader,edgeNodeTable,poolRef,referencePoint->llPoint);
+                parseEdgeVectors<OSENC_RecordEdgeVectors,false>(fileName,reader,edgeNodeTable,poolRef,referencePoint->worldPoint);
             }
             break;
             case OSENC_RecordEdgeVectorsExt::code():
@@ -572,7 +572,7 @@ bool OESUChart::ReadChartStream(InputStream::Ptr input,s52::S52Data::ConstPtr s5
                 auto record=reader.GetBuffer();
                 double scale=record->scaleFactor;
                 if (std::abs(scale) < 1e-5) scale=1;
-                parseEdgeVectors<OSENC_RecordEdgeVectorsExt,true>(fileName,reader,edgeNodeTable,poolRef,referencePoint->llPoint);
+                parseEdgeVectors<OSENC_RecordEdgeVectorsExt,true>(fileName,reader,edgeNodeTable,poolRef,referencePoint->worldPoint);
             }
             break;
             case OSENC_RecordNodeVectors::code():
@@ -582,7 +582,7 @@ bool OESUChart::ReadChartStream(InputStream::Ptr input,s52::S52Data::ConstPtr s5
                 }
                 if (! referencePoint) throw InvalidChartException(fileName,"node vector record before extent record");
                 OSENC_RecordNodeVectors reader(&buffer);
-                parseNodeVectors<OSENC_RecordNodeVectors,false>(reader, connectedNodeTable,poolRef, referencePoint->llPoint);
+                parseNodeVectors<OSENC_RecordNodeVectors,false>(reader, connectedNodeTable,poolRef, referencePoint->worldPoint);
             }
             break;
             case OSENC_RecordNodeVectorsExt::code():
@@ -595,7 +595,7 @@ bool OESUChart::ReadChartStream(InputStream::Ptr input,s52::S52Data::ConstPtr s5
                 auto record=reader.GetBuffer();
                 double scale=record->scaleFactor;
                 if (std::abs(scale) < 1e-5) scale=1;
-                parseNodeVectors<OSENC_RecordNodeVectorsExt,true>(reader, connectedNodeTable,poolRef, referencePoint->llPoint,scale);
+                parseNodeVectors<OSENC_RecordNodeVectorsExt,true>(reader, connectedNodeTable,poolRef, referencePoint->worldPoint,scale);
             }
             break;
             case OSENC_RecordCellEdition::code():
