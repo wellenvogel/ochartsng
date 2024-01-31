@@ -78,7 +78,19 @@ class Extent:
     self.nw=nw
     self.se=se
 
-  def add(self,point:Point):
+  def __str__(self):
+    return "Extent: nwlon=%f,nwlat=%f,selon=%f,selat=%f"%\
+           (self.nw.lon,self.nw.lat,self.se.lon,self.se.lat)
+
+  def add(self,v):
+    if type(v) is PointGeometry:
+      self.add(v.point)
+      return
+    if type(v) is LineGeometry:
+      for point in v.points:
+        self.add(point)
+        return
+    point=v
     if self.nw is None or self.se is None:
       self.nw=copy.copy(point)
       self.se=copy.copy(point)

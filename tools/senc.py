@@ -64,13 +64,13 @@ def parseGeometry(gv,txt) -> senc.GeometryBase:
         return senc.LineGeometry(points)
     raise Exception("unknwon geometry %d"%mode)
 
-def objectToSenc(wh: senc.SencFile,name,dbrow):
+def objectToSenc(wh: senc.SencFile,name,dbrow,gcol):
     attrs=[]
     geometry=None
     for k,v in dict(dbrow).items():
         if v is None:
             continue
-        if k == 'GEOMETRY':
+        if k == gcol:
             geometry=parseGeometry(v,name)
         else:
             attrs.append(senc.FAttr(k,v))
@@ -81,17 +81,17 @@ def objectToSenc(wh: senc.SencFile,name,dbrow):
     return True
 
 
-def writeTableToSenc(wh:senc.SencFile,cur,name):
+def writeTableToSenc(wh:senc.SencFile,cur,name,gcol):
     res=cur.execute("select * from %s"%name)
     for dbrow in res:
-        objectToSenc(wh,name,dbrow)
+        objectToSenc(wh,name,dbrow,gcol)
 
-def writeSoundings(wh:senc.SencFile,cur,name):
+def writeSoundings(wh:senc.SencFile,cur,name,gcol):
     res=cur.execute("select * from %s"%name)
     soundings=[]
     for dbrow in res:
         row=dict(dbrow)
-        geometry=parseGeometry(row["GEOMETRY"],"soundings")
+        geometry=parseGeometry(row[gcol],"soundings")
         if geometry.gtype != senc.GeometryBase.T_POINT:
             raise Exception("invalid geometry %d for sounding"%geometry.gtype)
         val=row["_sd"]
@@ -138,23 +138,49 @@ if __name__ == '__main__':
         sys.exit(0)
     db=sqlite3.connect(args[1])
     db.row_factory = sqlite3.Row
+    print("parsing geometries...")
+    curtables = db.cursor()
+    cur = db.cursor()
+    descriptions=curtables.execute("select * from geometry_columns")
+    extent=senc.Extent()
+    for drow in descriptions:
+        row=dict(drow)
+        table=row["f_table_name"]
+        col=row['f_geometry_column']
+        gtype=row['geometry_type']
+        dim=row['coord_dimension']
+        if int(gtype) != 1 and int(gtype) != 2:
+            print("ignoring table %s with unknown geometry type %d"%(table,gtype))
+            continue
+        if int(dim) != 2:
+            raise Exception("invalid geometry dimension %d for %s"%(dim,table))
+        if row['geometry_format'] != 'WKB':
+            raise Exception("invalid geometry format %s in %s, expected WKB"%(row['geometry_format'],table))
+        print("parsing %s..."%table)
+        vrows=cur.execute("select %s from %s"%(col,table))
+        for vrow in vrows:
+            if vrow[0] is None:
+                continue
+            geometry=parseGeometry(vrow[0],table)
+            extent.add(geometry)
+    print("parsed extent: %s"%str(extent))
     header=senc.SencHeader(
-        nw=senc.Point(0,60),
-        se=senc.Point(20,20),
+        nw=extent.nw,
+        se=extent.se,
         name="sqltest",
         edition=100,
         scale=30000)
     wh=senc.SencFile(s57mappings,args[0],header)
     cur = db.cursor()
-    tables=cur.execute("SELECT name FROM sqlite_master WHERE type='table';")
+    tables=cur.execute("SELECT f_table_name,f_geometry_column FROM geometry_columns")
     for tablerow in tables.fetchall():
         table=tablerow[0]
         if table == "soundg":
-            writeSoundings(wh,cur,table)
+            writeSoundings(wh,cur,table,tablerow[1])
             continue
         objd=s57mappings.objectClasses.get(table.upper())
         if objd is None:
             print("ignoring unknown table %s"%table)
             continue
-        writeTableToSenc(wh,cur,table)
+        writeTableToSenc(wh,cur,table,tablerow[1])
     print("wrote %d features to %s"%(wh.featureId,args[0]))
