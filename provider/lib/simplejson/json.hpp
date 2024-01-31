@@ -52,8 +52,8 @@ namespace {
                 case '\r': output += "\\r";  break;
                 case '\t': output += "\\t";  break;
                 default  : 
-                    if(str[i] >= 0x20) output.push_back(str[i]);
-                    else output+=hexEscape(str[i]);
+                    if(str[i] < 0x20 && str[i] > 0 ) output+=hexEscape(str[i]);
+                    else  output.push_back(str[i]);
                     break;
             }
         return std::move( output );
