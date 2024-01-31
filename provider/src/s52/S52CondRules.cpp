@@ -545,13 +545,16 @@ namespace s52
             switch (catWrk){
                 case 1:
                     depthValue=20.0;
+                    hasDepth=true;
                     break;
                 case 2:
                     depthValue=0;
+                    hasDepth=true;
                     break;
                 case 4:
                 case 5:
                     depthValue=-15.0;
+                    hasDepth=true;
                     break;
                 default:
                     {
@@ -559,21 +562,27 @@ namespace s52
                             case 1:
                             case 2:
                                 depthValue=-15;
+                                hasDepth=true;
                                 break;
                             case 3:
                                 depthValue=0.01;
+                                hasDepth=true;
                                 break;
                             case 4:
                                 depthValue=-15;
+                                hasDepth=true;
                                 break;
                             case 5:
                                 depthValue=0;
+                                hasDepth=true;
                                 break;
                             case 6:
                                 depthValue=-15;
+                                hasDepth=true;
                                 break;
                             default:
-                                depthValue=-15;            
+                                depthValue=-15;
+                                hasDepth=true;            
                         }
                     }        
             }

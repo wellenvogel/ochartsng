@@ -1034,6 +1034,10 @@ ObjectDescription::Ptr S57Object::RenderObject::getObjectDescription(
         rt->point=nearest; //it will not be considered in the MD5
                            //but this is ok as we only check the 
                            //object itself
+                           //as the objects will be sorted by distance
+                           //and all soundings are the same
+                           //we end up with the nearest sounding to 
+                           //be displayed
     }
     if (object->attributes.hasAttr(S57AttrIds::TXTDSC)){
         rt->expandedText=translator(object->attributes.getString(S57AttrIds::TXTDSC,true));
