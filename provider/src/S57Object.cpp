@@ -436,9 +436,6 @@ bool S57Object::RenderObject::Intersects(const Coord::PixelBox &pixelBox,Coord::
     switch (object->geoPrimitive){
         case s52::GEO_AREA:
         case s52::GEO_LINE:
-            if (object->featureTypeCode==S57ObjectClasses::ACHARE){
-                int debug=1;
-            }
             return object->extent.intersects(tile);
             break;
         case s52::GEO_POINT:
@@ -448,7 +445,10 @@ bool S57Object::RenderObject::Intersects(const Coord::PixelBox &pixelBox,Coord::
             }
             else{
                 Coord::PixelXy drawPoint=tile.worldToPixel(object->point);
-                return pixelBox.intersects(pixelExtent.getShifted(drawPoint));
+                if (pixelExtent.Valid()){
+                    return pixelBox.intersects(pixelExtent.getShifted(drawPoint));
+                }
+                return pixelBox.intersects(drawPoint);
             }
             break;
     }
@@ -657,9 +657,10 @@ bool S57Object::RenderObject::shouldRenderScale(const RenderSettings *rs,int sca
 class S57ObjectDescription : public ObjectDescription
 {
     bool hasPoint=false;
+    NameValueMap addOns;
 public:
     String expandedText;
-    S57ObjectDescription(const S57BaseObject::ConstPtr &o);
+    S57ObjectDescription(const S57BaseObject::ConstPtr &o, const NameValueMap &addons=NameValueMap());
     virtual ~S57ObjectDescription(){}
     virtual bool isPoint() const{ return hasPoint;};
     virtual double computeDistance(const Coord::WorldXy &wp);
@@ -670,7 +671,7 @@ public:
 //we ignore a couple of attributes if when checking for equality
 //to avoid getting the same object twice from different charts
 std::unordered_set<uint16_t> IGNORED_ATTRIBUTES={S57AttrIds::SCAMIN,S57AttrIds::SORIND,S57AttrIds::SORDAT,S57AttrIds::SIGSEQ,S57AttrIds::catgeo};
-S57ObjectDescription::S57ObjectDescription(const S57BaseObject::ConstPtr &o):
+S57ObjectDescription::S57ObjectDescription(const S57BaseObject::ConstPtr &o, const NameValueMap &ad):
     cobject(o) {
         type=T_OBJECT;
         point=o->point;
@@ -683,10 +684,14 @@ S57ObjectDescription::S57ObjectDescription(const S57BaseObject::ConstPtr &o):
         else{
             score=1;
         }
+        for (auto a : ad){
+            addOns.insert(a);
+        }
         MD5 builder;
         builder.AddValue(cobject->featureTypeCode);
         builder.AddValue(cobject->geoPrimitive);
         builder.AddValue(hasPoint);
+        builder.AddValue(point);
         builder.AddValue((int)o->geoPrimitive);
         for (const auto & [id,attr] : cobject->attributes){
             if (IGNORED_ATTRIBUTES.count(id)>0){
@@ -695,12 +700,14 @@ S57ObjectDescription::S57ObjectDescription(const S57BaseObject::ConstPtr &o):
             builder.AddValue(id);
             attr.addToMd5(builder);
         }
+        //we do not add addOns to MD5 for equality checks
+        //so they will not be considered...
         md5.fromChar(builder.GetValue());
 }
 
 double S57ObjectDescription::computeDistance(const Coord::WorldXy &wpt){
-    double od=(wpt.x-cobject->point.x);
-    double ad=(wpt.y-cobject->point.y);
+    double od=(wpt.x-point.x);
+    double ad=(wpt.y-point.y);
     distance=std::sqrt(od*od+ad*ad);
     return distance;
 }
@@ -828,8 +835,8 @@ void S57ObjectDescription::jsonOverview(json::JSON &js) const{
     const AttributeEntry *converter=mappings.findEntry(cobject->featureTypeCode);
     if (converter == nullptr) return;
     js[converter->target]=converter->map(cobject);
-    Coord::LatLon lon=Coord::worldxToLon(cobject->point.x);
-    Coord::LatLon lat=Coord::worldyToLat(cobject->point.y);
+    Coord::LatLon lon=Coord::worldxToLon(point.x);
+    Coord::LatLon lat=Coord::worldyToLat(point.y);
     js["nextTarget"]=json::Array(lon,lat);
     if (cobject->attributes.hasAttr(S57AttrIds::OBJNAM)){
         js["name"]=cobject->attributes.getString(S57AttrIds::OBJNAM,true);
@@ -847,9 +854,9 @@ void S57ObjectDescription::toJson(json::JSON &js) const{
         js["s57featureName"]=clz->ObjectClass;
         js["s57featureAcronym"]=clz->Acronym;
     }
-    Coord::LatLon lat=Coord::worldyToLat(cobject->point.y);
+    Coord::LatLon lat=Coord::worldyToLat(point.y);
     js["lat"]=lat;
-    Coord::LatLon lon=Coord::worldxToLon(cobject->point.x);
+    Coord::LatLon lon=Coord::worldxToLon(point.x);
     js["lon"]=lon;
     if (isPoint()){
         js["nextTarget"]=json::Array(lon,lat);
@@ -903,6 +910,14 @@ void S57ObjectDescription::toJson(json::JSON &js) const{
         }
         attributes.append(values); 
     }
+    for (const auto &ao: addOns){
+        json::JSON values;
+        values["name"]=ao.first;
+        values["acronym"]=ao.first;
+        values["rawValue"]=ao.second;
+        values["value"]=ao.second;
+        attributes.append(values);
+    }
     js["attributes"]=attributes;
 }
 
@@ -917,6 +932,7 @@ ObjectDescription::Ptr S57Object::RenderObject::getObjectDescription(
     if (!shouldRenderScale(context.s52Data->getSettings().get(),context.scale)) return ObjectDescription::Ptr();
     //do we need some extended checks?
     bool checkDraw=false;
+    Coord::WorldXy ref=box.midPoint();
     if (object->geoPrimitive == s52::GEO_AREA){
         if (object->area.size() > 0){
             checkDraw=true;
@@ -948,7 +964,6 @@ ObjectDescription::Ptr S57Object::RenderObject::getObjectDescription(
         }
         if (! checkDraw){
             if (object->lines.size()>0){
-                Coord::WorldXy ref=box.midPoint();
                 //check if surrounded by lines
                 //return if not
                 bool included=false;
@@ -993,10 +1008,37 @@ ObjectDescription::Ptr S57Object::RenderObject::getObjectDescription(
             int debug = 1;
         }
     }
-    S57ObjectDescription *rt=new S57ObjectDescription(object);
+    NameValueMap addOns;
+    Sounding nearest;
+    bool hasSounding=false;
+    if (object->soundigs.size()>0){
+        //special handling for sounding - find the nearest sounding
+        double distance=std::numeric_limits<double>().max();
+        for (const auto &sounding:object->soundigs){
+            double ndis=((double)(ref.x-sounding.x))
+                * ((double)(ref.x-sounding.x)) 
+                + ((double)(ref.y-sounding.y))
+                *  ((double)(ref.y-sounding.y));
+            if (ndis < distance){
+                hasSounding=true;
+                nearest=sounding;
+                distance=ndis;
+            }
+        }
+        if (hasSounding){
+            addOns["DEPTH"]=std::to_string(nearest.depth);
+        }   
+    }
+    S57ObjectDescription *rt=new S57ObjectDescription(object,addOns);
+    if (hasSounding){
+        rt->point=nearest; //it will not be considered in the MD5
+                           //but this is ok as we only check the 
+                           //object itself
+    }
     if (object->attributes.hasAttr(S57AttrIds::TXTDSC)){
         rt->expandedText=translator(object->attributes.getString(S57AttrIds::TXTDSC,true));
     }
+    
     return ObjectDescription::Ptr(rt);
 }
 

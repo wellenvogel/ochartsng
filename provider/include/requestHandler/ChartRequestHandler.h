@@ -254,6 +254,7 @@ public:
         tileBox.ymin=center.y-wtolerance;
         tileBox.xmax=center.x+wtolerance;
         tileBox.ymax=center.y+wtolerance;
+        tileBox.valid=true;
         LOG_DEBUG("featureInfo, tile=%s,center=%.8f,%.8f, box=%s",tile.ToString(),llcenter.x,llcenter.y,tileBox.toString());
         ObjectList objects;
         try{

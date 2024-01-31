@@ -280,9 +280,14 @@ namespace Coord
         T ymax = 0; // lower right y
         Box() {}
         bool intersects(const Box<T> &other) const{
+            if (! other.valid) return false;
             if (xmax < other.xmin || ymax < other.ymin) return false;
             if (xmin > other.xmax || ymin > other.ymax) return false;
             return true;
+        }
+        bool intersects(const Point<T> &other) const{
+            if (other.x >= xmin && other.x <= xmax && other.y >= ymin && other.y <=ymax) return true;
+            return false;
         }
         //do we include other completely?
         bool includes(const Box<T> &other) const
