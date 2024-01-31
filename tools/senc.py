@@ -46,15 +46,29 @@ def readGeometryPoint(endian,gv):
     lon,lat=struct.unpack("%sdd"%endian,gv)
     return senc.Point(lon,lat)
 def parseGeometry(gv,txt) -> senc.GeometryBase:
+    '''
+    see https://github.com/locationtech/jts/blob/master/modules/core/src/main/java/org/locationtech/jts/io/WKBReader.java
+    :param gv:
+    :param txt:
+    :return:
+    '''
     if len(gv) < 5:
         raise Exception("invalid geometry %s"%txt)
     type=gv[0]
     endian="<" if type == 1 else ">"
     mode,=struct.unpack("%sxI%dx"%(endian,len(gv)-5),gv)
+    hasZ=(mode & 0x80000000) != 0
+    mode=mode & 0xffff
     if mode == 1:
-        lon,lat=struct.unpack("%s5xdd"%endian,gv)
-        return senc.PointGeometry(senc.Point(lon,lat))
+        if hasZ:
+            lon,lat,d=struct.unpack("%s5xddd"%endian,gv)
+            return senc.SoundingGeometry(senc.SoundingPoint(lon,lat,d))
+        else:
+            lon,lat=struct.unpack("%s5xdd"%endian,gv)
+            return senc.PointGeometry(senc.Point(lon,lat))
     if mode == 2:
+        if hasZ:
+            raise Exception("3rd coordinate not supported for line strings in %s"%txt)
         num,=struct.unpack("%sI"%endian,gv[5:9])
         points=[]
         start=9
@@ -62,7 +76,24 @@ def parseGeometry(gv,txt) -> senc.GeometryBase:
             points.append(readGeometryPoint(endian,gv[start:start+16]))
             start+=16
         return senc.LineGeometry(points)
-    raise Exception("unknwon geometry %d"%mode)
+    if mode == 3:
+        #polygons
+        idx=5
+        numRings,=struct.unpack("%sI"%endian,gv[idx:idx+4])
+        idx+=4
+        if numRings <= 0:
+            return senc.PolygonGeometry([])
+        if numRings > 1:
+            raise Exception("cannot currently handle polygons with holes in %s",txt)
+        numCoord,=struct.unpack("%sI"%endian,gv[idx:idx+4])
+        idx+=4
+        ring=[]
+        for i in range(0,numCoord):
+            lon,lat=struct.unpack("%sdd"%endian,gv[idx:idx+16])
+            idx+=16
+            ring.append(senc.Point(lon,lat))
+        return senc.PolygonGeometry(ring)
+    raise Exception("unknown geometry %d in %s"%(mode,txt))
 
 def objectToSenc(wh: senc.SencFile,name,dbrow,gcol):
     attrs=[]
@@ -92,13 +123,9 @@ def writeSoundings(wh:senc.SencFile,cur,name,gcol):
     for dbrow in res:
         row=dict(dbrow)
         geometry=parseGeometry(row[gcol],"soundings")
-        if geometry.gtype != senc.GeometryBase.T_POINT:
+        if geometry.gtype != senc.GeometryBase.T_SOUND:
             raise Exception("invalid geometry %d for sounding"%geometry.gtype)
-        val=row["_sd"]
-        soundings.append(senc.SoundingPoint(
-            geometry.point.lon,
-            geometry.point.lat,
-            val.replace("[","").replace("]","")))
+        soundings.append(geometry.point)
         if len(soundings) >= 100:
             wh.addSoundings(soundings)
             soundings=[]
@@ -153,7 +180,7 @@ if __name__ == '__main__':
         if int(gtype) != 1 and int(gtype) != 2:
             print("ignoring table %s with unknown geometry type %d"%(table,gtype))
             continue
-        if int(dim) != 2:
+        if int(dim) != 2 and int(dim) != 3:
             raise Exception("invalid geometry dimension %d for %s"%(dim,table))
         if row['geometry_format'] != 'WKB':
             raise Exception("invalid geometry format %s in %s, expected WKB"%(row['geometry_format'],table))

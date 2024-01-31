@@ -83,13 +83,17 @@ class Extent:
            (self.nw.lon,self.nw.lat,self.se.lon,self.se.lat)
 
   def add(self,v):
-    if type(v) is PointGeometry:
+    if type(v) is PointGeometry or type(v) is SoundingGeometry:
       self.add(v.point)
       return
     if type(v) is LineGeometry:
       for point in v.points:
         self.add(point)
-        return
+      return
+    if type(v) is PolygonGeometry:
+      for point in v.ring:
+        self.add(point)
+      return
     point=v
     if self.nw is None or self.se is None:
       self.nw=copy.copy(point)
@@ -284,6 +288,8 @@ class FAttr:
 class GeometryBase:
   T_POINT=1
   T_LINE=2
+  T_SOUND=3
+  T_POLY=4
   def __init__(self,gtype:int):
     self.gtype=gtype
 
@@ -291,6 +297,19 @@ class PointGeometry(GeometryBase):
   def __init__(self,point:Point):
     super().__init__(self.T_POINT)
     self.point=point
+
+class SoundingGeometry(GeometryBase):
+  def __init__(self,sounding:SoundingPoint):
+    super().__init__(self.T_SOUND)
+    self.point=sounding
+
+class PolygonGeometry(GeometryBase):
+  def __init__(self,ring,holes=None):
+    super().__init__(self.T_POLY)
+    self.ring=ring
+    self.holes=holes
+
+
 
 class LineGeometry(GeometryBase):
   def __init__(self,points:list):
@@ -387,7 +406,8 @@ class SencFile():
         geometryRecords.append(LineGeometryRecord(extent,idx))
         geometryRecords.append(EdgeVectorRecord(idx,enPoints))
       else:
-        raise Exception("unknown geometry %d for %s"%(geometry.gtype,name))
+        print("unknown geometry %d for %s, ignoring"%(geometry.gtype,name))
+        #raise Exception("unknown geometry %d for %s"%(geometry.gtype,name))
     fid=self.featureId
     self.featureId+=1
     FeatureIdRecord(od.id(),fid,0).write(self.wh)
