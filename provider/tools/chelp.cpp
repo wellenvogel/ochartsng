@@ -71,10 +71,13 @@ void printLimits(String prfx=""){
         << limits.max() << ", hshift=" << limits.halfshift()
         << ", tmin=" << limits.typeMin() << ", tmax=" << limits.typeMax() << std::endl;
 }
+void printll(const Coord::LatLon &lon, const Coord::LatLon &lat, const String prfx=""){
+    std::cout << prfx << "  [ll   ] lon=" << std::setprecision(11) << lon << ", lat=" << std::setprecision(11) << lat << std::endl;
+}
 void printCoord(Coord::World x, Coord::World y, String prfx="", bool withLimits=true){
     std::cout << prfx << "  [cz=" << std::setw(2) << Coord::COORD_ZOOM_LEVEL << "] x="<<x<<", y=" << y << std::endl;
     if (withLimits) printLimits<Coord::World>(prfx);
-    std::cout << prfx << "  [ll   ] lon=" << Coord::worldxToLon(x) << ", lat=" << Coord::worldyToLat(y) << std::endl;
+    printll(Coord::worldxToLon(x), Coord::worldyToLat(y),prfx);
 }
 void printCoord(Coord::WorldXy p,String prfx="",bool withLimits=true){
     printCoord(p.x,p.y,prfx,withLimits);
@@ -210,6 +213,19 @@ int tileIntersect(int argc, char **par){
     return 0;
 }
 
+int en(int argc, char **par){
+    double easting=pdouble(par[0]);
+    double norting=pdouble(par[1]);
+    double lon=pdouble(par[2]);
+    double lat=pdouble(par[3]);
+    std::cout << "easting=" << easting << ", northing=" << norting << std::endl;
+    Coord::LLXy ref(lon,lat);
+    printll(ref.x,ref.y,"Ref");
+    Coord::WorldXy wpoint=Coord::worldFromSM(easting,norting,ref);
+    printCoord(wpoint);
+    return 0;
+}
+
 std::vector<Action> actions({
     Action("ll",2,"lat lon [zoom=10]",ll),
     Action("wc",2,"x y [zoom=10]",wc),
@@ -218,7 +234,8 @@ std::vector<Action> actions({
     Action("tc",3,"tilex tiley zoom",tile1),
     Action("tcpix",5,"tilex tiley zoom xpix ypix",tilePix),
     Action("tis",6,"tile1x tile1y zoom1 tile2x tile2y zoom2  ",tileIntersect),
-    Action("wcpix",2,"x y [zoom=10]",wcToPix)
+    Action("wcpix",2,"x y [zoom=10]",wcToPix),
+    Action("en",4,"easting norting reflon reflat",en)
 
 });
 
