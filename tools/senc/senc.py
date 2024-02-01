@@ -27,9 +27,9 @@
 import copy
 import math
 import struct
-import os
 from . import s57
-from .earcut import earcut
+import mapbox_earcut as earcut
+import numpy
 class RecordTypes:
   HEADER_SENC_VERSION=             1
   HEADER_CELL_NAME=                2
@@ -252,7 +252,7 @@ class AreaGeometryRecord(RecordBase):
 
 class FeatureAttributeRecord(RecordBase):
   T_INT=0
-  T_DOUBLE=1
+  T_DOUBLE=2
   T_STR=4
   #some attrs that are expected to be int's in the code
   #even if they are "E" in the attribute type
@@ -359,6 +359,10 @@ class EastNorth:
       return self.north
   def __len__(self):
     return 2
+
+  def __array__(self):
+    return (self.east,self.north)
+
 class Sounding(EastNorth):
   def __init__(self,e:float,n:float,val:float):
     super().__init__(e,n)
@@ -450,15 +454,21 @@ class SencFile():
         if geometry.holes is not None:
           raise Exception("holes in polygons are currently not supported (%s)"%name)
         enpoints=[]
+        vertinput=[]
         extent=Extent()
         for p in geometry.ring:
-          enpoints.append(self._toSM(p,self.refPoint))
+          en=self._toSM(p,self.refPoint)
+          vertinput.append((en.east,en.north))
+          enpoints.append(en)
           extent.add(p)
         #earcut triangulation
         triangles=[]
         if geometry.holes is None:
-          ecData=earcut.flatten([enpoints])
-          triangles = earcut.earcut(ecData['vertices'], ecData['holes'], ecData['dimensions'])
+          if vertinput[0][0] != vertinput[-1][0] or vertinput[0][1] != vertinput[-1][1]:
+            raise Exception("polygon not closed")
+          verts = numpy.array(vertinput).reshape(-1,2)
+          rings=numpy.array([len(verts)])
+          triangles=earcut.triangulate_float64(verts,rings)
         if len(triangles)%3 != 0:
           raise Exception("invalid triangulation result, len must be multiple of 3, is %d"%len(triangles))
         vertexlist=[]

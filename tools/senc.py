@@ -108,6 +108,14 @@ def objectToSenc(wh: senc.SencFile,name,dbrow,gcol):
     if geometry is None:
         warn("no geometry found for %s",name)
         return False
+    if type(geometry) is senc.PolygonGeometry:
+        so=dict(dbrow).get('_so')
+        if so is not None:
+            so=so.replace("[","").replace("]","")
+            idc=so.split(",")
+            if len(idc) > 1:
+                stopval=int(idc[1])
+                #geometry.ring=geometry.ring[0:stopval]
     wh.addFeature(name,attrs,geometry)
     return True
 
