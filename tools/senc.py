@@ -32,7 +32,7 @@ import os
 import csv
 import sqlite3
 import senc.senc as senc
-from senc.s57 import S57Att, S57Mappings, S57OCL
+from senc.s57 import S57Mappings
 
 
 
@@ -123,8 +123,8 @@ def writeSoundings(wh:senc.SencFile,cur,name,gcol):
     for dbrow in res:
         row=dict(dbrow)
         geometry=parseGeometry(row[gcol],"soundings")
-        if geometry.gtype != senc.GeometryBase.T_SOUND:
-            raise Exception("invalid geometry %d for sounding"%geometry.gtype)
+        if type(geometry) is not senc.SoundingGeometry:
+            raise Exception("invalid geometry %s for sounding"%type(geometry))
         soundings.append(geometry.point)
         if len(soundings) >= 100:
             wh.addSoundings(soundings)
@@ -177,7 +177,8 @@ if __name__ == '__main__':
         col=row['f_geometry_column']
         gtype=row['geometry_type']
         dim=row['coord_dimension']
-        if int(gtype) != 1 and int(gtype) != 2:
+        KNOWN_G=[1,2,3]
+        if int(gtype) not in KNOWN_G:
             print("ignoring table %s with unknown geometry type %d"%(table,gtype))
             continue
         if int(dim) != 2 and int(dim) != 3:
@@ -190,7 +191,7 @@ if __name__ == '__main__':
             if vrow[0] is None:
                 continue
             geometry=parseGeometry(vrow[0],table)
-            extent.add(geometry)
+            geometry.extend(extent)
     print("parsed extent: %s"%str(extent))
     header=senc.SencHeader(
         nw=extent.nw,
@@ -203,6 +204,7 @@ if __name__ == '__main__':
     tables=cur.execute("SELECT f_table_name,f_geometry_column FROM geometry_columns")
     for tablerow in tables.fetchall():
         table=tablerow[0]
+        print("reading table %s"%table)
         if table == "soundg":
             writeSoundings(wh,cur,table,tablerow[1])
             continue

@@ -29,6 +29,7 @@ import math
 import struct
 import os
 from . import s57
+from .earcut import earcut
 class RecordTypes:
   HEADER_SENC_VERSION=             1
   HEADER_CELL_NAME=                2
@@ -67,11 +68,24 @@ class Point:
   def __init__(self,lon:float,lat:float) -> None:
     self.lon=lon
     self.lat=lat
+  def __getitem__(self, item):
+    if item == 0:
+      return self.lon
+    if item == 1:
+      return self.lat
+  def __len__(self):
+    return 2
 
 class SoundingPoint(Point):
   def __init__(self,lon:float,lat:float,val:float) -> None:
     super().__init__(lon,lat)
     self.val=val
+  def __getitem__(self, item):
+    if item == 2:
+      return self.val
+    return super().__getitem__(item)
+  def __len__(self):
+    return 3
 
 class Extent:
   def __init__(self,nw:Point=None, se:Point=None) -> None:
@@ -82,19 +96,7 @@ class Extent:
     return "Extent: nwlon=%f,nwlat=%f,selon=%f,selat=%f"%\
            (self.nw.lon,self.nw.lat,self.se.lon,self.se.lat)
 
-  def add(self,v):
-    if type(v) is PointGeometry or type(v) is SoundingGeometry:
-      self.add(v.point)
-      return
-    if type(v) is LineGeometry:
-      for point in v.points:
-        self.add(point)
-      return
-    if type(v) is PolygonGeometry:
-      for point in v.ring:
-        self.add(point)
-      return
-    point=v
+  def add(self,point:Point):
     if self.nw is None or self.se is None:
       self.nw=copy.copy(point)
       self.se=copy.copy(point)
@@ -117,7 +119,6 @@ class RecordBase:
     self.buffer[2:6]=l
   def append(self,bytes):
     self.buffer+=bytes
-    self.updateLength()
   def appenduint8(self,val:int):
     self.append(struct.pack("<B",val))
   def appenduint16(self,val:int):
@@ -141,7 +142,13 @@ class RecordBase:
   def appendfloat(self,val:float):
     val=float(val)
     self.append(struct.pack("<f",val))
+  def appendext(self,extent:Extent):
+    self.appenddouble(extent.se.lat)
+    self.appenddouble(extent.nw.lat)
+    self.appenddouble(extent.nw.lon)
+    self.appenddouble(extent.se.lon)
   def write(self,stream):
+    self.updateLength()
     stream.write(self.buffer)
 
 class VersionRecord(RecordBase):
@@ -194,15 +201,12 @@ class PointGeometryRecord(RecordBase):
     self.appenddouble(point.lon)
 
 class LineGeometryRecord(RecordBase):
-  def __init__(self,extent:Extent,nvid:int)->None:
+  def __init__(self,extent:Extent,evid:int)->None:
     super().__init__(RecordTypes.FEATURE_GEOMETRY_RECORD_LINE)
-    self.appenddouble(extent.se.lat)
-    self.appenddouble(extent.nw.lat)
-    self.appenddouble(extent.nw.lon)
-    self.appenddouble(extent.se.lon)
+    self.appendext(extent)
     self.appenduint32(1) #for now only one edge vector
     self.appendint32(-1) #first connected node
-    self.appendint32(nvid) #edge vector index
+    self.appendint32(evid) #edge vector index
     self.appendint32(-1) #end node
     self.appendint32(0) #always forward
 
@@ -219,18 +223,32 @@ class EdgeVectorRecord(RecordBase):
 class SoundingRecord(RecordBase):
   def __init__(self,extent:Extent,soundings:list):
     super().__init__(RecordTypes.FEATURE_GEOMETRY_RECORD_MULTIPOINT)
-    self.appenddouble(extent.se.lat)
-    self.appenddouble(extent.nw.lat)
-    self.appenddouble(extent.nw.lon)
-    self.appenddouble(extent.se.lon)
+    self.appendext(extent)
     self.appenduint32(len(soundings))
     for sndg in soundings:
       self.appendfloat(sndg.east)
       self.appendfloat(sndg.north)
       self.appendfloat(sndg.val)
 
-
-
+class AreaGeometryRecord(RecordBase):
+  def __init__(self,extent: Extent,vertices:list,evid:int):
+    if len(vertices)%3 != 0:
+      raise Exception("invalid vertex list, len %d ",len(vertices))
+    super().__init__(RecordTypes.FEATURE_GEOMETRY_RECORD_AREA)
+    self.appendext(extent)
+    self.appenduint32(0) #contour count that is skipped any way
+    self.appenduint32(1) #number of vertex lists
+    self.appenduint32(1) #number of edge vectors
+    self.appenduint8(4) #vertex type PTG - see S57Object::RenderObject::RenderSingleRule
+    self.appendint32(len(vertices))
+    self.appendext(extent) #is not read any way...
+    for vert in vertices:
+      self.appendfloat(vert.east)
+      self.appendfloat(vert.north)
+    self.appendint32(-1) #first connected node
+    self.appendint32(evid) #edge vector index
+    self.appendint32(-1) #end node
+    self.appendint32(0) #always forward
 
 class FeatureAttributeRecord(RecordBase):
   T_INT=0
@@ -286,40 +304,61 @@ class FAttr:
         self.val=val
 
 class GeometryBase:
-  T_POINT=1
-  T_LINE=2
-  T_SOUND=3
-  T_POLY=4
-  def __init__(self,gtype:int):
-    self.gtype=gtype
+  def __init__(self):
+    pass
+  def extend(self,ext:Extent):
+    pass
 
 class PointGeometry(GeometryBase):
   def __init__(self,point:Point):
-    super().__init__(self.T_POINT)
+    super().__init__()
     self.point=point
+
+  def extend(self, ext: Extent):
+    ext.add(self.point)
+
 
 class SoundingGeometry(GeometryBase):
   def __init__(self,sounding:SoundingPoint):
-    super().__init__(self.T_SOUND)
+    super().__init__()
     self.point=sounding
 
+  def extend(self, ext: Extent):
+    ext.add(self.point)
+
+
 class PolygonGeometry(GeometryBase):
-  def __init__(self,ring,holes=None):
-    super().__init__(self.T_POLY)
+  def __init__(self,ring:list,holes:list=None):
+    super().__init__()
     self.ring=ring
     self.holes=holes
 
+  def extend(self, ext: Extent):
+    for p in self.ring:
+      ext.add(p)
 
 
 class LineGeometry(GeometryBase):
   def __init__(self,points:list):
-    super().__init__(self.T_LINE)
+    super().__init__()
     self.points=points
+
+  def extend(self, ext: Extent):
+    for p in self.points:
+      ext.add(p)
+
 
 class EastNorth:
   def __init__(self,e:float,n:float):
     self.east=e
     self.north=n
+  def __getitem__(self, item):
+    if item == 0:
+      return self.east
+    if item == 1:
+      return self.north
+  def __len__(self):
+    return 2
 class Sounding(EastNorth):
   def __init__(self,e:float,n:float,val:float):
     super().__init__(e,n)
@@ -383,44 +422,71 @@ class SencFile():
     north = (y3 - y30)*z
     return EastNorth(east,north)
 
-  def addFeature(self,name:str,attributes:list,geometry:GeometryBase=None):
+  def addFeature(self,name:str,attributes:list,geometries:GeometryBase=None):
     self._isOpen()
     od=self.s57mappings.objByName(name)
     if od is None:
       if self.errNotFound:
         raise Exception("unknown feature %s"%name)
       return False
-    geometryRecords=[]
-    if geometry is not None:
-      if geometry.gtype == GeometryBase.T_POINT:
+    if type(geometries) is not list:
+      geometries=[geometries]
+    for geometry in geometries:
+      geometryRecords=[]
+      if type(geometry) is PointGeometry:
         geometryRecords.append(PointGeometryRecord(geometry.point))
-      elif geometry.gtype == GeometryBase.T_LINE:
+      elif type(geometry) is LineGeometry:
         #1 compute extent and store points
         idx=self.nodeVectorIndex
         self.nodeVectorIndex+=1
         enPoints=[]
         extent=Extent()
+        geometry.extend(extent)
         for point in geometry.points:
           enPoints.append(self._toSM(point))
-          extent.add(point)
         geometryRecords.append(LineGeometryRecord(extent,idx))
         geometryRecords.append(EdgeVectorRecord(idx,enPoints))
+      elif type(geometry) is PolygonGeometry:
+        if geometry.holes is not None:
+          raise Exception("holes in polygons are currently not supported (%s)"%name)
+        enpoints=[]
+        extent=Extent()
+        for p in geometry.ring:
+          enpoints.append(self._toSM(p,self.refPoint))
+          extent.add(p)
+        #earcut triangulation
+        triangles=[]
+        if geometry.holes is None:
+          ecData=earcut.flatten([enpoints])
+          triangles = earcut.earcut(ecData['vertices'], ecData['holes'], ecData['dimensions'])
+        if len(triangles)%3 != 0:
+          raise Exception("invalid triangulation result, len must be multiple of 3, is %d"%len(triangles))
+        vertexlist=[]
+        for i in range(0,len(triangles)):
+          vertexlist.append(enpoints[triangles[i]])
+        evid=self.nodeVectorIndex
+        self.nodeVectorIndex+=1
+        geometryRecords.append(AreaGeometryRecord(extent,vertexlist,evid))
+        geometryRecords.append(EdgeVectorRecord(evid,enpoints))
+      elif geometry is None:
+        pass
       else:
-        print("unknown geometry %d for %s, ignoring"%(geometry.gtype,name))
-        #raise Exception("unknown geometry %d for %s"%(geometry.gtype,name))
-    fid=self.featureId
-    self.featureId+=1
-    FeatureIdRecord(od.id(),fid,0).write(self.wh)
-    for geometryRecord in geometryRecords:
-      geometryRecord.write(self.wh)
-    for att in attributes:
-      ad=self.s57mappings.attrByName(att.name)
-      if ad is None:
-        if self.errNotFound:
-          raise Exception("unkown attribute %s for feature %s id=%d"%(att.name,name,fid))
+        print("unknown geometry %s for %s, ignoring"%(type(geometry),name))
         continue
-      ft=FeatureAttributeRecord.s57TypeToType(att.name,ad.type)
-      FeatureAttributeRecord(ad.id(),ft,att.val).write(self.wh)
+        #raise Exception("unknown geometry %d for %s"%(geometry.gtype,name))
+      fid=self.featureId
+      self.featureId+=1
+      FeatureIdRecord(od.id(),fid,0).write(self.wh)
+      for geometryRecord in geometryRecords:
+        geometryRecord.write(self.wh)
+      for att in attributes:
+        ad=self.s57mappings.attrByName(att.name)
+        if ad is None:
+          if self.errNotFound:
+            raise Exception("unkown attribute %s for feature %s id=%d"%(att.name,name,fid))
+          continue
+        ft=FeatureAttributeRecord.s57TypeToType(att.name,ad.type)
+        FeatureAttributeRecord(ad.id(),ft,att.val).write(self.wh)
     return True
 
   def addSoundings(self,soundings:list):
