@@ -461,7 +461,7 @@ bool OESUChart::ReadChartStream(InputStream::Ptr input,s52::S52Data::ConstPtr s5
                         }
                         break;
                     default:
-                        LOG_DEBUG("unknown attribute type %d for object type %d",tc,currentObject->featureTypeCode);
+                        LOG_DEBUG("unknown attribute type %d for object %d, attribute %d",p->attribute_value_type,currentObject->featureTypeCode,tc);
                 }
             }
             break;

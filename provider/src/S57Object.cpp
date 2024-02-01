@@ -849,6 +849,7 @@ void S57ObjectDescription::toJson(json::JSON &js) const{
     if (!chartName.empty()){
         js["chart"]=chartName;
     }
+    js["s57Id"]=cobject->featureId;
     const S57ObjectClass *clz=S57ObjectClassesBase::getObjectClass(tc);
     if (clz){
         js["s57featureName"]=clz->ObjectClass;
