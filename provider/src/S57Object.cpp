@@ -873,24 +873,7 @@ void S57ObjectDescription::toJson(json::JSON &js) const{
         if (it->first==S57AttrIds::catgeo){
             //instead of the real catgeo
             //we use the geo primitive of the object
-            values["acronym"]="CATGEO";
-            values["name"]="Geographic Category";
-            values["rawValue"]=(int)cobject->geoPrimitive;
-            switch (cobject->geoPrimitive)
-            {
-            case s52::GEO_AREA:
-                values["value"]="Area";
-                break;
-            case s52::GEO_LINE:
-                values["value"]="Line";
-                break;
-            case s52::GEO_POINT:
-                values["value"]="Point";
-                break;
-            default:
-                values["value"]="Other";
-                break;
-            }
+            ;
         }
         else
         {
@@ -910,6 +893,28 @@ void S57ObjectDescription::toJson(json::JSON &js) const{
             js["name"]=cobject->attributes.getString(it->first,true);
         }
         attributes.append(values); 
+    }
+    {
+        json::JSON values;
+        values["acronym"] = "CATGEO";
+        values["name"] = "Geographic Category";
+        values["rawValue"] = (int)cobject->geoPrimitive;
+        switch (cobject->geoPrimitive)
+        {
+        case s52::GEO_AREA:
+            values["value"] = "Area";
+            break;
+        case s52::GEO_LINE:
+            values["value"] = "Line";
+            break;
+        case s52::GEO_POINT:
+            values["value"] = "Point";
+            break;
+        default:
+            values["value"] = "Other";
+            break;
+        }
+        attributes.append(values);
     }
     for (const auto &ao: addOns){
         json::JSON values;
