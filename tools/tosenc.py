@@ -33,6 +33,7 @@ import sys
 import getopt
 import os
 import tempfile
+import zipfile
 
 import senc.sqlite2senc as sqlite2senc
 import senc.senc as senc
@@ -50,16 +51,19 @@ def convertGdal(ifile,ofile):
         raise Exception("converting %s to %s returned %d"%(ifile,ofile,proc.returncode))
 
 def usage():
-    print("usage: %s [-b basedir] [-d s57datadir] [-s scale] [-e none|ext|all] [-i] infileOrDir outfileOrDir",sys.argv[0])
+    print("usage: %s [-b basedir] [-d s57datadir] [-s scale] [-e none|ext|all] [-i] [-c setname] infileOrDir outfileOrDir",sys.argv[0])
 M_FILES=0
 M_DIR=1
+M_ZIPDIR=2
+M_ZIPFILE=3
 if __name__ == '__main__':
     s57dir=os.path.join(os.path.dirname(__file__),"..","provider","s57static")
     basedir=None
     scale=None
-    optlist,args=getopt.getopt(sys.argv[1:],"b:d:s:e:i")
+    optlist,args=getopt.getopt(sys.argv[1:],"b:d:s:e:ic:")
     options=sqlite2senc.Options()
     ignoreErrors=False
+    setname=None
     emodes={
         'none': senc.SencFile.EM_NONE,
         'ext': senc.SencFile.EM_EXT,
@@ -78,6 +82,8 @@ if __name__ == '__main__':
             options.em=emodes[a]
         elif o == '-i':
             ignoreErrors=True
+        elif o == '-c':
+            setname=a
         else:
             err("invalid option %s",o)
     if not os.path.isdir(s57dir):
@@ -94,6 +100,9 @@ if __name__ == '__main__':
     errors=[]
     if os.path.isdir(iname):
         mode=M_DIR
+    name,ext=os.path.splitext(oname)
+    if ext.upper()==".ZIP":
+        mode=M_ZIPDIR if mode == M_DIR else M_ZIPFILE
     if os.path.exists(oname):
         if mode == M_DIR and not os.path.isdir(oname):
             err("found existing outfile %s but expected a directory",oname)
@@ -101,33 +110,50 @@ if __name__ == '__main__':
             base,dummy=os.path.splitext(os.path.basename(iname))
             oname=os.path.join(oname,base+".senc")
             log("creating outfile %s",oname)
+        if mode == M_ZIPFILE or mode == M_ZIPDIR:
+            if os.path.isdir(oname):
+                err("zip outfile %s exists as an directory",oname)
     if mode == M_DIR and not os.path.exists(oname):
         log("creating directory %s",oname)
         os.makedirs(oname)
         if not os.path.isdir(oname):
             err("unable to create directory %s",oname)
     tmpDir=None
-    if mode == M_FILES:
+    zipOut=None
+    if mode == M_ZIPFILE or mode == M_ZIPDIR:
+        tmpDir=tempfile.TemporaryDirectory()
+        zipOut=zipfile.ZipFile(oname,mode='w',compression=zipfile.ZIP_DEFLATED)
+        if setname is None:
+            setname,ext=os.path.splitext(os.path.basename(oname))
+    if mode == M_FILES or mode == M_ZIPFILE:
         name,ext=os.path.splitext(os.path.basename(iname))
         ext=ext[1:]
         if not baseDirArg:
             options.basedir=os.path.dirname(iname)
-        if ext == 'sqlite':
-            sqlite2senc.main(iname,oname,options)
-        elif ext == '000' or ext == 'geojson':
+        sqliteFile=None
+        if ext == '000' or ext == 'geojson':
             tmpDir=tempfile.TemporaryDirectory()
             tmpName=os.path.join(tmpDir.name,name+".sqlite")
             try:
                 convertGdal(iname,tmpName)
                 if not os.path.exists(tmpName):
                     raise Exception("%s not created from %s"%(tmpName,iname))
-                sqlite2senc.main(tmpName,oname,options)
+                sqliteFile=tmpName
             except Exception as e:
                 if not ignoreErrors:
                     raise
                 errors.append(iname)
+        if ext == 'sqlite':
+            sqliteFile=iname
         else:
             err("unknown file type %s",iname)
+        if mode==M_ZIPFILE:
+            outfile=os.path.join(tmpDir.name,name+".senc")
+        else:
+            outfile=oname
+        sqlite2senc.main(sqliteFile,outfile,options)
+        if mode == M_ZIPFILE:
+            zipOut.write(outfile,setname+"/"+name+".senc")
     else:
         KNOWN_EXT=['sqlite','000','geojson']
         for file in glob.glob(iname+"/**",recursive=True):
@@ -141,7 +167,7 @@ if __name__ == '__main__':
                 options.basedir=os.path.dirname(file)
             if ext in KNOWN_EXT:
                 log("handling file %s",file)
-                ifile=file
+                ifile=None
                 if ext != 'sqlite':
                     if tmpDir is None:
                         tmpDir=tempfile.TemporaryDirectory()
@@ -150,14 +176,23 @@ if __name__ == '__main__':
                         convertGdal(file,tmpFile)
                         if not os.path.exists(tmpFile):
                             raise Exception("%s does not exist after conversion from %s"%(tmpFile,file))
-                        sqlite2senc.main(tmpFile,ofile,options)
+                        ifile=tmpFile
                     except Exception as e:
                         if not ignoreErrors:
                             raise
                         else:
                             errors.append(file)
                 else:
-                    sqlite2senc.main(file,ofile,options)
+                    ifile=file
+                if ifile is not None:
+                    if mode == M_ZIPDIR:
+                        ofile=os.path.join(tmpDir.name,basename+".senc")
+                    sqlite2senc.main(ifile,ofile,options)
+                    if mode == M_ZIPDIR:
+                        zipOut.write(ofile,setname+"/"+basename+".senc")
     if len(errors) > 0:
         print("ERRORS in files:","\n".join(errors))
+    if zipOut is not None:
+        zipOut.writestr(setname+"/Chartinfo.txt","ChartInfo:%s\n"%setname)
+        zipOut.close()
     log("done")
