@@ -229,24 +229,25 @@ class SoundingRecord(RecordBase):
       self.appendfloat(sndg.val)
 
 class AreaGeometryRecord(RecordBase):
-  def __init__(self,extent: Extent,vertices:list,evid:int):
+  def __init__(self,extent: Extent,vertices:list,evids:list):
     if len(vertices)%3 != 0:
       raise Exception("invalid vertex list, len %d ",len(vertices))
     super().__init__(RecordTypes.FEATURE_GEOMETRY_RECORD_AREA)
     self.appendext(extent)
     self.appenduint32(0) #contour count that is skipped any way
     self.appenduint32(1) #number of vertex lists
-    self.appenduint32(1) #number of edge vectors
+    self.appenduint32(len(evids)) #number of edge vectors
     self.appenduint8(4) #vertex type PTG - see S57Object::RenderObject::RenderSingleRule
     self.appendint32(len(vertices))
     self.appendext(extent) #is not read any way...
     for vert in vertices:
       self.appendfloat(vert.east)
       self.appendfloat(vert.north)
-    self.appendint32(-1) #first connected node
-    self.appendint32(evid) #edge vector index
-    self.appendint32(-1) #end node
-    self.appendint32(0) #always forward
+    for evid in evids:
+      self.appendint32(-1) #first connected node
+      self.appendint32(evid) #edge vector index
+      self.appendint32(-1) #end node
+      self.appendint32(0) #always forward
 
 class FeatureAttributeRecord(RecordBase):
   T_INT=0
@@ -363,6 +364,22 @@ class PolygonGeometry(GeometryBase):
       for p in ring:
         ext.add(p)
 
+class MultiPolygonGeometry(GeometryBase):
+  def __init__(self):
+    super().__init__()
+    self.polygons=[]
+  def append(self,polygon):
+    if type(polygon) is PolygonGeometry:
+      self.polygons.append(polygon.rings)
+    else:
+      self.polygons.append(polygon)
+
+  def extend(self, ext: Extent):
+    for polygon in self.polygons:
+      for ring in polygon:
+        for p in ring:
+          ext.add(p)
+
 
 class LineGeometry(GeometryBase):
   def __init__(self,points:list):
@@ -395,10 +412,14 @@ class Sounding(EastNorth):
     self.val=val
 
 class SencFile():
-  def __init__(self,s57mappings:s57.S57Mappings, name:str,header:SencHeader)->None:
+  EM_NONE=0
+  EM_EXT=1
+  EM_ALL=2
+  def __init__(self,s57mappings:s57.S57Mappings, name:str,header:SencHeader, em=EM_EXT)->None:
     self.name=name
     self.header=header
     self.s57mappings=s57mappings
+    self.em=em
     self.refPoint=Point(
       (self.header.nw.lon+self.header.se.lon)/2,
       (self.header.nw.lat+self.header.se.lat)/2,
@@ -407,7 +428,7 @@ class SencFile():
     self.featureId=1
     #should we throw an exception if feature/attribute not found
     self.errNotFound=False
-    self.nodeVectorIndex=1
+    self.edgeVectorIndex=1
     self.addedTxt=[]
     VersionRecord(self.header.version).write(self.wh)
     CellNameRecord(self.header.name).write(self.wh)
@@ -460,15 +481,23 @@ class SencFile():
     extent=Extent()
     hidx=[]
     idx=0
+    evids=[]
     for ring in rings:
       if ring[0].lon != ring[-1].lon or ring[0].lat != ring[-1].lat:
         raise Exception("ring %d in %s not closed"%(idx,txt))
+      ringpoints=[]
       for p in ring:
         en=self._toSM(p,self.refPoint)
         vertinput.append((en.east,en.north))
         enpoints.append(en)
+        ringpoints.append(en)
         extent.add(p)
       hidx.append(len(enpoints))
+      if (idx == 0 and self.em == self.EM_EXT) or self.em == self.EM_ALL:
+        evid=self.edgeVectorIndex
+        self.edgeVectorIndex+=1
+        records.append(EdgeVectorRecord(evid,ringpoints))
+        evids.append(evid)
       idx+=1
     #earcut triangulation
     triangles=[]
@@ -480,10 +509,7 @@ class SencFile():
     vertexlist=[]
     for i in range(0,len(triangles)):
       vertexlist.append(enpoints[triangles[i]])
-    evid=self.nodeVectorIndex
-    self.nodeVectorIndex+=1
-    records.append(AreaGeometryRecord(extent,vertexlist,evid))
-    records.append(EdgeVectorRecord(evid,enpoints))
+    records.append(AreaGeometryRecord(extent,vertexlist,evids))
     return records
 
   def _buildGeometryRecords(self,name:str,geometries):
@@ -497,8 +523,8 @@ class SencFile():
         geometryRecords.append(PointGeometryRecord(geometry.point))
       elif type(geometry) is LineGeometry:
         #1 compute extent and store points
-        idx=self.nodeVectorIndex
-        self.nodeVectorIndex+=1
+        idx=self.edgeVectorIndex
+        self.edgeVectorIndex+=1
         enPoints=[]
         extent=Extent()
         geometry.extend(extent)
@@ -508,6 +534,9 @@ class SencFile():
         geometryRecords.append(EdgeVectorRecord(idx,enPoints))
       elif type(geometry) is PolygonGeometry:
         geometryRecords+=self._polyRingsToRecords(geometry.rings,name)
+      elif type(geometry) is MultiPolygonGeometry:
+        for poly in geometry.polygons:
+          geometryRecords+=self._polyRingsToRecords(poly,name)
       else:
         print("unknown geometry %s for %s, ignoring"%(type(geometry),name))
         continue

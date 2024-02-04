@@ -80,6 +80,73 @@ class GVReader:
         self.start+=24
         return senc.Point(lon,lat,z)
 
+    def readPolygon(self):
+        if self.hasZ:
+            raise Exception("3rd coordinate not supported for polygons in %s"%self.txt)
+        #polygons
+        numRings=self.uint()
+        rt=senc.PolygonGeometry()
+        if numRings <= 0:
+            return rt
+        if numRings > 1:
+            debug=1
+        for nr in range(0,numRings):
+            numCoord=self.uint()
+            ring=[]
+            for i in range(0,numCoord):
+                point=self.readGeometryPoint()
+                ring.append(point)
+            rt.rings.append(ring)
+        return rt
+
+    def readLineGeometry(self):
+        if self.hasZ:
+            raise Exception("3rd coordinate not supported for line strings in %s"%self.txt)
+        num=self.uint()
+        points=[]
+        for i in range(0,num):
+            points.append(self.readGeometryPoint())
+        return senc.LineGeometry(points)
+
+    def readMultiPoint(self):
+        numPoints=self.uint()
+        rt=senc.MultiPointGeometry([])
+        for i in range(0,numPoints):
+            nestedReader=GVReader(self.gv,self.txt,self.start)
+            if nestedReader.mode != 1:
+                raise Exception("invalid multi point geometry in %s",self.txt)
+            rt.points.append(nestedReader.readGeometryPoint())
+            self.start=nestedReader.start
+        return rt
+
+    def readMultiPolygon(self):
+        numPoly=self.uint()
+        rt=senc.MultiPolygonGeometry()
+        for i in range(0,numPoly):
+            nestedReader=GVReader(self.gv,self.txt,self.start)
+            if nestedReader.mode != 3:
+                raise Exception("invalid multi polygon geometry in %s"%self.txt)
+            rt.append(nestedReader.readPolygon())
+            self.start=nestedReader.start
+        return rt
+
+    def readGeometry(self):
+        if self.mode == 1:
+            rt=self.readGeometryPoint()
+            return senc.PointGeometry(rt)
+        if self.mode == 2:
+            return self.readLineGeometry()
+        if self.mode == 3:
+            return self.readPolygon()
+        if self.mode == 4:
+            #multipoint
+            return self.readMultiPoint()
+        if self.mode == 6:
+            #multi-polygon
+            return self.readMultiPolygon()
+        raise Exception("unknown geometry %d in %s"%(self.mode,self.txt))
+
+
 def parseGeometry(gv,txt) -> senc.GeometryBase:
     '''
     see https://github.com/locationtech/jts/blob/master/modules/core/src/main/java/org/locationtech/jts/io/WKBReader.java
@@ -88,47 +155,7 @@ def parseGeometry(gv,txt) -> senc.GeometryBase:
     :return:
     '''
     reader=GVReader(gv,txt)
-    if reader.mode == 1:
-        rt=reader.readGeometryPoint()
-        return senc.PointGeometry(rt)
-    if reader.mode == 2:
-        if reader.hasZ:
-            raise Exception("3rd coordinate not supported for line strings in %s"%txt)
-        num=reader.uint()
-        points=[]
-        for i in range(0,num):
-            points.append(reader.readGeometryPoint())
-        return senc.LineGeometry(points)
-    if reader.mode == 3:
-        if reader.hasZ:
-            raise Exception("3rd coordinate not supported for polygons in %s"%txt)
-        #polygons
-        numRings=reader.uint()
-        rt=senc.PolygonGeometry()
-        if numRings <= 0:
-            return rt
-        if numRings > 1:
-            debug=1
-        for nr in range(0,numRings):
-            numCoord=reader.uint()
-            ring=[]
-            for i in range(0,numCoord):
-                point=reader.readGeometryPoint()
-                ring.append(point)
-            rt.rings.append(ring)
-        return rt
-    if reader.mode == 4:
-        #multipoint
-        numPoints=reader.uint()
-        rt=senc.MultiPointGeometry([])
-        for i in range(0,numPoints):
-            nestedReader=GVReader(gv,txt,reader.start)
-            if nestedReader.mode != 1:
-                raise Exception("invalid multi point geometry in %s",txt)
-            rt.points.append(nestedReader.readGeometryPoint())
-            reader.start=nestedReader.start
-        return rt
-    raise Exception("unknown geometry %d in %s"%(reader.mode,txt))
+    return reader.readGeometry()
 
 def objectToSenc(wh: senc.SencFile,name,dbrow,gcol,basedir=None):
     attrs=[]
@@ -200,16 +227,29 @@ def writeSoundings(wh:senc.SencFile,cur,name,gcol):
 
 
 def usage():
-    print("usage: %s [-b basedir] [-s s57datadir] infile outfile",sys.argv[0])
+    print("usage: %s [-b basedir] [-d s57datadir] [-s scale] [-e none|ext|all] infile outfile",sys.argv[0])
 if __name__ == '__main__':
     s57dir=os.path.join(os.path.dirname(__file__),"..","provider","s57static")
     basedir=None
-    optlist,args=getopt.getopt(sys.argv[1:],"s:")
+    scale=None
+    optlist,args=getopt.getopt(sys.argv[1:],"b:d:s:e:")
+    emodes={
+        'none': senc.SencFile.EM_NONE,
+        'ext': senc.SencFile.EM_EXT,
+        'all': senc.SencFile.EM_ALL
+    }
+    em=senc.SencFile.EM_ALL
     for o,a in optlist:
-        if o=='-s':
+        if o=='-d':
             s57dir=a
         elif o == '-b':
             basedir=a
+        elif o == '-s':
+            scale=int(a)
+        elif o == '-e':
+            if not a in emodes.keys():
+                err("invalid -e parameter %s (%s)",a,'|'.join(emodes.keys()))
+            em=emodes[a]
         else:
             err("invalid option %s",o)
     if not os.path.isdir(s57dir):
@@ -229,7 +269,7 @@ if __name__ == '__main__':
         se=senc.Point(179,-80),
         name=ibase,
         edition=1,
-        scale=1000) #similar to OpenCPN default
+        scale=1000 if scale is None else scale) #similar to OpenCPN default
     log("opening %s",iname)
     db=sqlite3.connect(iname)
     db.row_factory = sqlite3.Row
@@ -293,7 +333,7 @@ if __name__ == '__main__':
         pass
     if not hasDsid:
         warn("no dsid record found, using defaults")
-    wh=senc.SencFile(s57mappings,oname,header)
+    wh=senc.SencFile(s57mappings,oname,header,em=em)
     cur = db.cursor()
     tables=cur.execute("SELECT f_table_name,f_geometry_column FROM geometry_columns")
     for tablerow in tables.fetchall():
