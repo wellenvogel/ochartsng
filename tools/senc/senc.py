@@ -65,27 +65,25 @@ class RecordTypes:
 
 
 class Point:
-  def __init__(self,lon:float,lat:float) -> None:
+  def __init__(self,lon:float,lat:float,val:float=None) -> None:
     self.lon=lon
     self.lat=lat
+    if val is not None:
+      self.val=val
   def __getitem__(self, item):
     if item == 0:
       return self.lon
     if item == 1:
       return self.lat
-  def __len__(self):
-    return 2
-
-class SoundingPoint(Point):
-  def __init__(self,lon:float,lat:float,val:float) -> None:
-    super().__init__(lon,lat)
-    self.val=val
-  def __getitem__(self, item):
-    if item == 2:
+    if item == 2 and hasattr(self,'val'):
       return self.val
-    return super().__getitem__(item)
   def __len__(self):
-    return 3
+    if hasattr(self,'val'):
+      return 3
+    return 2
+  def hasZ(self):
+    return hasattr(self,'val')
+
 
 class Extent:
   def __init__(self,nw:Point=None, se:Point=None) -> None:
@@ -134,7 +132,7 @@ class RecordBase:
       val=str(val)
     if type(val) is str:
       val=val.encode(errors='ignore')
-    l=len(val)
+    l=len(val)+1
     self.append(struct.pack("@%ds"%l,val))
   def appenddouble(self,val:float):
     val=float(val)
@@ -298,6 +296,7 @@ class SencHeader:
     self.name=name
     self.edition=edition
     self.version=version
+    self.update=None
 class FAttr:
     def __init__(self,name,val):
         self.name=name
@@ -308,34 +307,50 @@ class GeometryBase:
     pass
   def extend(self,ext:Extent):
     pass
+  def hasZ(self):
+    return False
 
 class PointGeometry(GeometryBase):
   def __init__(self,point:Point):
     super().__init__()
     self.point=point
-
   def extend(self, ext: Extent):
     ext.add(self.point)
+  def hasZ(self):
+    return self.point.hasZ()
 
 
-class SoundingGeometry(GeometryBase):
-  def __init__(self,sounding:SoundingPoint):
+class MultiPointGeometry(GeometryBase):
+  def __init__(self,points: list):
     super().__init__()
-    self.point=sounding
+    self.points=points
 
   def extend(self, ext: Extent):
-    ext.add(self.point)
+    for p in self.points:
+      ext.add(p)
+  def hasZ(self):
+    if self.points is None or len(self.points) < 1:
+      return False
+    return self.points[0].hasZ()
 
 
 class PolygonGeometry(GeometryBase):
-  def __init__(self,ring:list,holes:list=None):
+  def __init__(self,rings:list=None):
+    '''
+    the first ring is the outer ring
+    others are the holes
+    :param rings:
+    '''
     super().__init__()
-    self.ring=ring
-    self.holes=holes
+    if rings is None:
+      self.rings=[]
+    else:
+      self.rings=rings
 
   def extend(self, ext: Extent):
-    for p in self.ring:
-      ext.add(p)
+    for ring in self.rings:
+      for p in ring:
+        ext.add(p)
 
 
 class LineGeometry(GeometryBase):
@@ -426,17 +441,46 @@ class SencFile():
     north = (y3 - y30)*z
     return EastNorth(east,north)
 
-  def addFeature(self,name:str,attributes:list,geometries:GeometryBase=None):
-    self._isOpen()
-    od=self.s57mappings.objByName(name)
-    if od is None:
-      if self.errNotFound:
-        raise Exception("unknown feature %s"%name)
-      return False
+  def _polyRingsToRecords(self,rings,txt):
+    records=[]
+    enpoints=[]
+    vertinput=[]
+    extent=Extent()
+    hidx=[]
+    idx=0
+    for ring in rings:
+      if ring[0].lon != ring[-1].lon or ring[0].lat != ring[-1].lat:
+        raise Exception("ring %d in %s not closed"%(idx,txt))
+      for p in ring:
+        en=self._toSM(p,self.refPoint)
+        vertinput.append((en.east,en.north))
+        enpoints.append(en)
+        extent.add(p)
+      hidx.append(len(enpoints))
+      idx+=1
+    #earcut triangulation
+    triangles=[]
+    ecverts = numpy.array(vertinput).reshape(-1,2)
+    ecrings=numpy.array(hidx)
+    triangles=earcut.triangulate_float64(ecverts,ecrings)
+    if len(triangles)%3 != 0:
+      raise Exception("invalid triangulation result, len must be multiple of 3, is %d"%len(triangles))
+    vertexlist=[]
+    for i in range(0,len(triangles)):
+      vertexlist.append(enpoints[triangles[i]])
+    evid=self.nodeVectorIndex
+    self.nodeVectorIndex+=1
+    records.append(AreaGeometryRecord(extent,vertexlist,evid))
+    records.append(EdgeVectorRecord(evid,enpoints))
+    return records
+
+  def _buildGeometryRecords(self,name:str,geometries):
+    if geometries is None:
+      return []
     if type(geometries) is not list:
       geometries=[geometries]
+    geometryRecords=[]
     for geometry in geometries:
-      geometryRecords=[]
       if type(geometry) is PointGeometry:
         geometryRecords.append(PointGeometryRecord(geometry.point))
       elif type(geometry) is LineGeometry:
@@ -451,56 +495,42 @@ class SencFile():
         geometryRecords.append(LineGeometryRecord(extent,idx))
         geometryRecords.append(EdgeVectorRecord(idx,enPoints))
       elif type(geometry) is PolygonGeometry:
-        if geometry.holes is not None:
-          raise Exception("holes in polygons are currently not supported (%s)"%name)
-        enpoints=[]
-        vertinput=[]
-        extent=Extent()
-        for p in geometry.ring:
-          en=self._toSM(p,self.refPoint)
-          vertinput.append((en.east,en.north))
-          enpoints.append(en)
-          extent.add(p)
-        #earcut triangulation
-        triangles=[]
-        if geometry.holes is None:
-          if vertinput[0][0] != vertinput[-1][0] or vertinput[0][1] != vertinput[-1][1]:
-            raise Exception("polygon not closed")
-          verts = numpy.array(vertinput).reshape(-1,2)
-          rings=numpy.array([len(verts)])
-          triangles=earcut.triangulate_float64(verts,rings)
-        if len(triangles)%3 != 0:
-          raise Exception("invalid triangulation result, len must be multiple of 3, is %d"%len(triangles))
-        vertexlist=[]
-        for i in range(0,len(triangles)):
-          vertexlist.append(enpoints[triangles[i]])
-        evid=self.nodeVectorIndex
-        self.nodeVectorIndex+=1
-        geometryRecords.append(AreaGeometryRecord(extent,vertexlist,evid))
-        geometryRecords.append(EdgeVectorRecord(evid,enpoints))
-      elif geometry is None:
-        pass
+        geometryRecords+=self._polyRingsToRecords(geometry.rings,name)
       else:
         print("unknown geometry %s for %s, ignoring"%(type(geometry),name))
         continue
+    return geometryRecords
+
+
+
+  def addFeature(self,name:str,attributes:list,geometries:GeometryBase=None):
+    self._isOpen()
+    od=self.s57mappings.objByName(name)
+    if od is None:
+      if self.errNotFound:
+        raise Exception("unknown feature %s"%name)
+      return False
+    geometryRecords=self._buildGeometryRecords(name,geometries)
         #raise Exception("unknown geometry %d for %s"%(geometry.gtype,name))
-      fid=self.featureId
-      self.featureId+=1
-      FeatureIdRecord(od.id(),fid,0).write(self.wh)
-      for geometryRecord in geometryRecords:
-        geometryRecord.write(self.wh)
-      for att in attributes:
-        ad=self.s57mappings.attrByName(att.name)
-        if ad is None:
-          if self.errNotFound:
-            raise Exception("unkown attribute %s for feature %s id=%d"%(att.name,name,fid))
-          continue
-        ft=FeatureAttributeRecord.s57TypeToType(att.name,ad.type)
-        FeatureAttributeRecord(ad.id(),ft,att.val).write(self.wh)
+    fid=self.featureId
+    self.featureId+=1
+    FeatureIdRecord(od.id(),fid,0).write(self.wh)
+    for geometryRecord in geometryRecords:
+      geometryRecord.write(self.wh)
+    for att in attributes:
+      if att.val is None:
+        continue
+      ad=self.s57mappings.attrByName(att.name)
+      if ad is None:
+        if self.errNotFound:
+          raise Exception("unkown attribute %s for feature %s id=%d"%(att.name,name,fid))
+        continue
+      ft=FeatureAttributeRecord.s57TypeToType(att.name,ad.type)
+      FeatureAttributeRecord(ad.id(),ft,att.val).write(self.wh)
     return True
 
-  def addSoundings(self,soundings:list):
-    self.addFeature("SOUNDG",[])
+  def addSoundings(self,soundings:list,attrs:list=None):
+    self.addFeature("SOUNDG",attrs)
     enlist=[]
     extent=Extent()
     for sndg in soundings:
