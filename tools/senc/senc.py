@@ -288,6 +288,17 @@ class FeatureAttributeRecord(RecordBase):
     else:
       raise Exception("unknown value type %d for feature %d"%(valueType,typeCode))
 
+
+class TXTRecord(RecordBase):
+  def __init__(self,name:str,txt:str):
+    super().__init__(RecordTypes.CELL_TXTDSC_INFO_FILE_RECORD)
+    nlen=len(name)+1
+    tlen=len(txt)+1
+    self.appenduint32(nlen)
+    self.appenduint32(tlen)
+    self.appendstr(name)
+    self.appendstr(txt)
+
 class SencHeader:
   def __init__(self,nw:Point,se:Point,scale:int,name:str,edition:int,version:int=201):
     self.nw=nw
@@ -397,6 +408,7 @@ class SencFile():
     #should we throw an exception if feature/attribute not found
     self.errNotFound=False
     self.nodeVectorIndex=1
+    self.addedTxt=[]
     VersionRecord(self.header.version).write(self.wh)
     CellNameRecord(self.header.name).write(self.wh)
     CellEditionRecord(self.header.edition).write(self.wh)
@@ -540,6 +552,12 @@ class SencFile():
       enlist.append(ensndg)
     SoundingRecord(extent,enlist).write(self.wh)
 
+  def addTxt(self,name:str, txt:str):
+    if name in self.addedTxt:
+      return False
+    self.addedTxt.append(name)
+    TXTRecord(name,txt).write(self.wh)
+    return True
 
   def close(self):
     if self.wh is None:

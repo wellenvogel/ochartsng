@@ -130,9 +130,10 @@ def parseGeometry(gv,txt) -> senc.GeometryBase:
         return rt
     raise Exception("unknown geometry %d in %s"%(reader.mode,txt))
 
-def objectToSenc(wh: senc.SencFile,name,dbrow,gcol):
+def objectToSenc(wh: senc.SencFile,name,dbrow,gcol,basedir=None):
     attrs=[]
     geometry=None
+    txtdsc=None
     for k,v in dict(dbrow).items():
         if v is None:
             continue
@@ -140,14 +141,25 @@ def objectToSenc(wh: senc.SencFile,name,dbrow,gcol):
             geometry=parseGeometry(v,name)
         else:
             attrs.append(senc.FAttr(k,v))
+            if k.upper()=='TXTDSC':
+                txtdsc=v
     wh.addFeature(name,attrs,geometry)
+    if txtdsc is not None and basedir is not None:
+        fn=os.path.join(basedir,txtdsc)
+        if os.path.exists(fn):
+            with open(fn,"r",encoding='utf-8',errors='ignore') as h:
+                txt=h.read()
+                wh.addTxt(txtdsc,txt)
+                log("added txt %s",txtdsc)
+        else:
+            warn("txt file %s not found",txtdsc)
     return True
 
 
-def writeTableToSenc(wh:senc.SencFile,cur,name,gcol):
+def writeTableToSenc(wh:senc.SencFile,cur,name,gcol,basedir=None):
     res=cur.execute("select * from %s"%name)
     for dbrow in res:
-        objectToSenc(wh,name,dbrow,gcol)
+        objectToSenc(wh,name,dbrow,gcol,basedir)
 
 #we only handle some sounding attrs to be able to group them nicely
 SOUNGD_ATTRS=['SCAMIN','SCAMAX']
@@ -188,13 +200,16 @@ def writeSoundings(wh:senc.SencFile,cur,name,gcol):
 
 
 def usage():
-    print("usage: %s [-s s57datadir] infile outfile",sys.argv[0])
+    print("usage: %s [-b basedir] [-s s57datadir] infile outfile",sys.argv[0])
 if __name__ == '__main__':
     s57dir=os.path.join(os.path.dirname(__file__),"..","provider","s57static")
+    basedir=None
     optlist,args=getopt.getopt(sys.argv[1:],"s:")
     for o,a in optlist:
         if o=='-s':
             s57dir=a
+        elif o == '-b':
+            basedir=a
         else:
             err("invalid option %s",o)
     if not os.path.isdir(s57dir):
@@ -207,6 +222,8 @@ if __name__ == '__main__':
     iname=args[0]
     oname=args[1]
     ibase,dummy=os.path.splitext(os.path.basename(iname))
+    if basedir is None:
+        basedir=os.path.dirname(iname)
     header=senc.SencHeader(
         nw=senc.Point(-179,80),
         se=senc.Point(179,-80),
@@ -289,5 +306,5 @@ if __name__ == '__main__':
         if objd is None:
             warn("ignoring unknown table %s",table)
             continue
-        writeTableToSenc(wh,cur,table,tablerow[1])
+        writeTableToSenc(wh,cur,table,tablerow[1],basedir)
     log("wrote %d features to %s",wh.featureId,oname)
