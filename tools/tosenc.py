@@ -50,15 +50,16 @@ def convertGdal(ifile,ofile):
         raise Exception("converting %s to %s returned %d"%(ifile,ofile,proc.returncode))
 
 def usage():
-    print("usage: %s [-b basedir] [-d s57datadir] [-s scale] [-e none|ext|all] infileOrDir outfileOrDir",sys.argv[0])
+    print("usage: %s [-b basedir] [-d s57datadir] [-s scale] [-e none|ext|all] [-i] infileOrDir outfileOrDir",sys.argv[0])
 M_FILES=0
 M_DIR=1
 if __name__ == '__main__':
     s57dir=os.path.join(os.path.dirname(__file__),"..","provider","s57static")
     basedir=None
     scale=None
-    optlist,args=getopt.getopt(sys.argv[1:],"b:d:s:e:")
+    optlist,args=getopt.getopt(sys.argv[1:],"b:d:s:e:i")
     options=sqlite2senc.Options()
+    ignoreErrors=False
     emodes={
         'none': senc.SencFile.EM_NONE,
         'ext': senc.SencFile.EM_EXT,
@@ -75,6 +76,8 @@ if __name__ == '__main__':
             if not a in emodes.keys():
                 err("invalid -e parameter %s (%s)",a,'|'.join(emodes.keys()))
             options.em=emodes[a]
+        elif o == '-i':
+            ignoreErrors=True
         else:
             err("invalid option %s",o)
     if not os.path.isdir(s57dir):
@@ -88,6 +91,7 @@ if __name__ == '__main__':
         err("%s not found",iname)
     oname=args[1]
     mode=M_FILES
+    errors=[]
     if os.path.isdir(iname):
         mode=M_DIR
     if os.path.exists(oname):
@@ -113,10 +117,15 @@ if __name__ == '__main__':
         elif ext == '000' or ext == 'geojson':
             tmpDir=tempfile.TemporaryDirectory()
             tmpName=os.path.join(tmpDir.name,name+".sqlite")
-            convertGdal(iname,tmpName)
-            if not os.path.exists(tmpName):
-                err("%s not created from %s",tmpName,iname)
-            sqlite2senc.main(tmpName,oname,options)
+            try:
+                convertGdal(iname,tmpName)
+                if not os.path.exists(tmpName):
+                    raise Exception("%s not created from %s"%(tmpName,iname))
+                sqlite2senc.main(tmpName,oname,options)
+            except Exception as e:
+                if not ignoreErrors:
+                    raise
+                errors.append(iname)
         else:
             err("unknown file type %s",iname)
     else:
@@ -137,10 +146,18 @@ if __name__ == '__main__':
                     if tmpDir is None:
                         tmpDir=tempfile.TemporaryDirectory()
                     tmpFile=os.path.join(tmpDir.name,basename+".sqlite")
-                    convertGdal(file,tmpFile)
-                    if not os.path.exists(tmpFile):
-                        err("%s does not exist after conversion from %s",tmpFile,file)
-                    sqlite2senc.main(tmpFile,ofile,options)
+                    try:
+                        convertGdal(file,tmpFile)
+                        if not os.path.exists(tmpFile):
+                            raise Exception("%s does not exist after conversion from %s"%(tmpFile,file))
+                        sqlite2senc.main(tmpFile,ofile,options)
+                    except Exception as e:
+                        if not ignoreErrors:
+                            raise
+                        else:
+                            errors.append(file)
                 else:
                     sqlite2senc.main(file,ofile,options)
+    if len(errors) > 0:
+        print("ERRORS in files:","\n".join(errors))
     log("done")
