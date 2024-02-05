@@ -25,6 +25,7 @@
  ***************************************************************************
  *
 '''
+import json
 import struct
 import os
 import sqlite3
@@ -154,7 +155,7 @@ def parseGeometry(gv,txt) -> senc.GeometryBase:
     reader=GVReader(gv,txt)
     return reader.readGeometry()
 
-def objectToSenc(wh: senc.SencFile,name,dbrow,gcol,basedir=None):
+def objectToSenc(wh: senc.SencFile,name,dbrow,gcol,jsonColumns:list,basedir=None):
     attrs=[]
     geometry=None
     txtdsc=None
@@ -164,6 +165,12 @@ def objectToSenc(wh: senc.SencFile,name,dbrow,gcol,basedir=None):
         if k == gcol:
             geometry=parseGeometry(v,name)
         else:
+            if k in jsonColumns:
+                jv=json.loads(v)
+                if type(jv) is list:
+                    v=",".join(map(lambda v: str(v),jv))
+                else:
+                    v=str(jv)
             attrs.append(senc.FAttr(k,v))
             if k.upper()=='TXTDSC':
                 txtdsc=v
@@ -179,11 +186,19 @@ def objectToSenc(wh: senc.SencFile,name,dbrow,gcol,basedir=None):
             warn("txt file %s not found",txtdsc)
     return True
 
+def getJsonColumns(table:str,cur):
+    res=cur.execute("SELECT name, type FROM pragma_table_info('%s')"%table)
+    rt=[]
+    for dbrow in res:
+        if dbrow[1].upper().startswith("JSON"):
+            rt.append(dbrow[0])
+    return rt
 
 def writeTableToSenc(wh:senc.SencFile,cur,name,gcol,basedir=None):
+    jsonColumns=getJsonColumns(name,cur)
     res=cur.execute("select * from %s"%name)
     for dbrow in res:
-        objectToSenc(wh,name,dbrow,gcol,basedir)
+        objectToSenc(wh,name,dbrow,gcol,jsonColumns,basedir)
 
 #we only handle some sounding attrs to be able to group them nicely
 SOUNGD_ATTRS=['SCAMIN','SCAMAX']
