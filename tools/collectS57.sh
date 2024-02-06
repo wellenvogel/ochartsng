@@ -61,31 +61,33 @@ trapfkt(){
 trap trapfkt 0
 zipdir="$tmp/$cname"
 mkdir -p "$zipdir" || err "unable to create $zipdir"
-anythingCopied=0
-ls $1 | while read f
+find  $1 -type f | while read f
 do
     if [[ "$f" =~ \.[0-9][0-9][0-9]$ ]] ; then
         echo "trying $f"
-        fb="${f%.*}"
+        bn="${f##*/}"
+        fb="${bn%.*}"
+        echo "base=$fb"
         hasCopied=0
         for fs57 in `find "$sencdir" -maxdepth 1 -name "*$fb.S57"`
         do
             echo "using $fs57"
             cp "$fs57" "$zipdir" || err "error copying $fs57 $zipdir"
             hasCopied=1
-            anythingCopied=1
         done
         [ $hasCopied != 1 ] && echo "WARNING: no S57 file for $fb"
     fi
 done
-if [ "$anythingCopied" != 1 ] ; then
+ls "$zipdir"/* > /dev/null 2>&1 
+if [ $? != 0 ] ; then
     echo "no files collected, doe not create $2"
+else
+    echo "ChartInfo:$cname" > "$zipdir/Chartinfo.txt"
+    if [ -f "$2" ]; then
+        rm -f "$2" || err "unable to remove $2"
+    fi
+    outname=`realpath $2`
+    (cd $tmp && zip -o "$outname" -r "$cname" ) || err "error creating outfile $outname"
+    echo "$outname created"
 fi
-echo "ChartInfo:$cname" > "$zipdir/Chartinfo.txt"
-if [ -f "$2" ]; then
-    rm -f "$2" || err "unable to remove $2"
-fi
-outname=`realpath $2`
-(cd $tmp && zip -o "$outname" -r "$cname" ) || err "error creating outfile $outname"
-echo "$outname created"
 
