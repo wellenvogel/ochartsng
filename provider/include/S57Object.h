@@ -190,7 +190,7 @@ public:
         void iterateSegments(SegmentIterator it, bool backward=false) const;
     };
     /**
-     * the polygon has the reference to the leine segmenmts that
+     * the polygon has the reference to the line segments that
      * form a polygon
      * for one object there could be just one polygon - or a vector
      * of polygons

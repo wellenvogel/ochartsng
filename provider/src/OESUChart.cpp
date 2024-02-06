@@ -824,7 +824,11 @@ bool OESUChart::PrepareRender(s52::S52Data::ConstPtr s52data){
     if (! s52data) throw FileException(fileName,"s52data not set in prepareRender");
     //TEMP - can already been done after loading
     buildLineGeometries();
-    RenderData::Ptr newRenderData=ocalloc::allocate_shared_pool<RenderData>(poolRef,s52data);
+    //currently we cannot recreate the render data as our allocator is 
+    //bound to the chart and we are unable to drop the render data allone
+    //additionally we have to ensure that only on thread at a time
+    //is working with our allocator any way
+    renderData=ocalloc::allocate_shared_pool<RenderData>(poolRef,s52data);
     RenderSettings::ConstPtr rs=s52data->getSettings();
     s52::LUPname boundaryStyle=rs->nBoundaryStyle;
     s52::LUPname symbolStyle=rs->nSymbolStyle;
@@ -835,8 +839,8 @@ bool OESUChart::PrepareRender(s52::S52Data::ConstPtr s52data){
         if ((*it)->featureTypeCode==S57ObjectClasses::DEPCNT){
             double valdco=1e6;
             if ((*it)->attributes.getDouble(S57AttrIds::VALDCO,valdco)){
-                if (valdco >= safetyDepth && valdco < newRenderData->nextSafetyContour){
-                    newRenderData->nextSafetyContour=valdco;
+                if (valdco >= safetyDepth && valdco < renderData->nextSafetyContour){
+                    renderData->nextSafetyContour=valdco;
                 }
             }
         }
@@ -876,7 +880,7 @@ bool OESUChart::PrepareRender(s52::S52Data::ConstPtr s52data){
             s52::RuleConditions conditions;
             conditions.geoPrimitive=(*it)->geoPrimitive;
             conditions.attributes=&((*it)->attributes);
-            conditions.nextSafetyContour=newRenderData->nextSafetyContour;
+            conditions.nextSafetyContour=renderData->nextSafetyContour;
             conditions.featureTypeCode=(*it)->featureTypeCode;
             if ((*it)->geoPrimitive == s52::GEO_POINT){
                 //floating base if there is a floating object at the same coordinates - but not a rigid
@@ -884,19 +888,19 @@ bool OESUChart::PrepareRender(s52::S52Data::ConstPtr s52data){
                 conditions.hasFloatingBase=floatAtons.find((*it)->point) != floatAtons.end() && rigidAtons.find((*it)->point) == rigidAtons.end();
             }
             renderObject->SetLUP(LUP);
-            renderObject->expand(s52data.get(), &(newRenderData->ruleCreator), &conditions);
+            renderObject->expand(s52data.get(), &(renderData->ruleCreator), &conditions);
             if (renderObject->shouldRenderCat(s52data->getSettings().get())){
-                newRenderData->addObject(renderObject);
+                renderData->addObject(renderObject);
             }
         }
     }
     //sort by display priority
-    std::stable_sort(newRenderData->renderObjects.begin(),newRenderData->renderObjects.end(),
+    std::stable_sort(renderData->renderObjects.begin(),renderData->renderObjects.end(),
         [](const S57Object::RenderObject::Ptr &left,const S57Object::RenderObject::Ptr &right){
             return left->GetDisplayPriority() < right->GetDisplayPriority();
         });
-    LOG_DEBUG("%s: prepareRender with %d objects",fileName,newRenderData->renderObjects.size());
-    renderData=newRenderData;
+    LOG_DEBUG("%s: prepareRender with %d objects",fileName,renderData->renderObjects.size());
+    renderData=renderData;
     return true;
 }
 static std::vector<s52::RenderStep> renderSteps({
@@ -907,7 +911,7 @@ static std::vector<s52::RenderStep> renderSteps({
 class OESURenderContext: public ChartRenderContext{
     String name;
     public:
-        using ObjectList=std::vector<S57Object::RenderObject::Ptr>;
+        using ObjectList=std::vector<const S57Object::RenderObject*>;
         ObjectList matchingObjects;
         ObjectList::iterator last;
         ObjectList::iterator first;
@@ -943,7 +947,9 @@ Chart::RenderResult OESUChart::Render(int pass,RenderContext & renderCtx, Drawin
     //1st step: render all areas
     //we use this to keep in mind the objects that intersect
     //as the list of objects does not change we can safely use pointers
-    RenderData::ConstPtr currentRenderData=renderData; //atomic
+    // the renderer mus ensure to hold a reference to the chart
+    //during the complete render process
+    RenderData* currentRenderData=renderData.get(); 
     if (! currentRenderData){
         throw AvException(FMT("chart %s not prepared for render",fileName));
     }
@@ -969,7 +975,7 @@ Chart::RenderResult OESUChart::Render(int pass,RenderContext & renderCtx, Drawin
             {
                 continue;
             }
-            chartCtx->matchingObjects.push_back((*it));
+            chartCtx->matchingObjects.push_back((*it).get());
             //we assume step 0 here any way
             (*it)->Render(renderCtx, ctx, tile, s52::RS_AREAS1);
         }
@@ -993,13 +999,13 @@ Chart::RenderResult OESUChart::Render(int pass,RenderContext & renderCtx, Drawin
         return RenderResult::ROK;
     }
     s52::RenderStep renderStep=renderSteps[step];
-    if (prio < chartCtx->first->get()->GetDisplayPriority()){
+    if (prio < (*(chartCtx->first))->GetDisplayPriority()){
         return RenderResult::ROK;
     }
-    if (prio > chartCtx->first->get()->GetDisplayPriority()){
+    if (prio > (*(chartCtx->first))->GetDisplayPriority()){
         //new priority
         chartCtx->first=chartCtx->last;
-        while (chartCtx->first != chartCtx->matchingObjects.end() && chartCtx->first->get()->GetDisplayPriority() < prio){
+        while (chartCtx->first != chartCtx->matchingObjects.end() && (*(chartCtx->first))->GetDisplayPriority() < prio){
             chartCtx->first++;
         }
         chartCtx->last=chartCtx->first;
@@ -1008,10 +1014,10 @@ Chart::RenderResult OESUChart::Render(int pass,RenderContext & renderCtx, Drawin
         //only smaller priorities in list
         return RenderResult::ROK;
     }
-    if (prio == chartCtx->first->get()->GetDisplayPriority()){
+    if (prio == (*(chartCtx->first))->GetDisplayPriority()){
         chartCtx->last=chartCtx->first;
-        while (chartCtx->last != chartCtx->matchingObjects.end() && chartCtx->last->get()->GetDisplayPriority() == prio ){
-            chartCtx->last->get()->Render(renderCtx,ctx,tile,renderStep);
+        while (chartCtx->last != chartCtx->matchingObjects.end() && (*(chartCtx->last))->GetDisplayPriority() == prio ){
+            (*(chartCtx->last))->Render(renderCtx,ctx,tile,renderStep);
             chartCtx->last++;
         }
         return RenderResult::ROK;
@@ -1020,9 +1026,8 @@ Chart::RenderResult OESUChart::Render(int pass,RenderContext & renderCtx, Drawin
     return RenderResult::ROK;
 }
 MD5Name OESUChart::GetMD5() const {
-    RenderData::ConstPtr currentRenderData=renderData; //atomic
-    if (! currentRenderData || !currentRenderData->s52data) return md5;
-    return currentRenderData->s52data->getMD5();
+    if (! renderData || !renderData->s52data) return md5;
+    return renderData->s52data->getMD5();
 }
 void OESUChart::LogInfo(const String &prefix) const{
     apool->logStatistics(prefix);
@@ -1062,7 +1067,7 @@ ObjectList OESUChart::FeatureInfo(RenderContext & context,DrawingContext &drawin
     cd->sencVersion=sencVersion;
     cd->info=headerInfo;
     rt.push_back(cd);
-    RenderData::ConstPtr currentRenderData=renderData;
+    RenderData *currentRenderData=renderData.get();
     context.chartContext.reset();
     for (auto &it : currentRenderData->renderObjects){
         ObjectDescription::Ptr description=it->getObjectDescription(context,drawing,box,

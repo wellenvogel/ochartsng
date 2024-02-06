@@ -195,11 +195,9 @@ class OSENC_RecordName : public OsencRecord<_OSENC_RecordName,Code>{
     using OsencRecord<_OSENC_RecordName,Code>::OsencRecord;
     public:
     String GetName(){
-        auto p=this->GetBuffer();
-        char *np=&(p->name);
-        char *ne=np;
-        while (*ne != 0 && (ne-np) < this->GetFill()) ne++;
-        return String(np,(ne-np));
+        size_t avail=0;
+        const char *str=this->GetString(avail,"NameRecord");
+        return String(str,avail);
     }
 };
 using OSENC_RecordCellName=OSENC_RecordName<HEADER_CELL_NAME>;

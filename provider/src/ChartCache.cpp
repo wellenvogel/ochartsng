@@ -251,6 +251,9 @@ int ChartCache::CloseByMD5(MD5Name cl){
             l.notifyAll();
         }
     }
+    if (rt > 0){
+        LOG_INFO("deleted %d charts with md5 %s", rt,cl.ToString());
+    }
     return rt;
 }
 int ChartCache::CloseBySet(const String &setKey)
@@ -330,7 +333,6 @@ int ChartCache::HouseKeeping()
     return rt;
 }
 
-//main thread only!
 void ChartCache::CheckMemoryLimit(){
     if (maxOpenCharts > 0) return;
     int ourKb,vszKb;

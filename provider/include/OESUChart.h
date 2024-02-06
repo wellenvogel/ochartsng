@@ -45,8 +45,6 @@ public:
         public:
         s52::S52Data::ConstPtr s52data;
         s52::RuleCreator ruleCreator;
-        typedef std::shared_ptr<const RenderData> ConstPtr;
-        typedef std::shared_ptr<RenderData> Ptr;
         typedef ocalloc::Vector<S57Object::RenderObject::Ptr> RenderObjects;
         RenderObjects renderObjects;
         double nextSafetyContour=1e6; //compute from all depth contures
@@ -104,7 +102,7 @@ protected:
     bool setRigidFloat(const S57Object *obj); 
     int sencVersion = -1;
     std::unique_ptr<Coord::CombinedPoint> referencePoint;
-    RenderData::ConstPtr renderData;
+    std::shared_ptr<RenderData> renderData;
     ocalloc::UnorderedSet<Coord::WorldXy,Coord::PointHash<Coord::World>> rigidAtons;
     ocalloc::UnorderedSet<Coord::WorldXy,Coord::PointHash<Coord::World>> floatAtons;
     VectorEdgeNodeTable edgeNodeTable;
