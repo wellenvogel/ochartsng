@@ -305,7 +305,14 @@ def main(iname:str, oname:str,options:Options=None):
                 warn("no scale found in dsid, using default %d",header.scale)
             edition=dsid.get('dsid_edtn')
             if edition is not None:
-                log("found edition %d in dsid",edition)
+                log("found edition %s in dsid",str(edition))
+                edition=int(edition)
+                if edition < 0:
+                    warn("cell edition %d < 0, setting to 0",edition)
+                    edition=0
+                if edition > 65535:
+                    warn("cell edition %d > 65535, setting to65535",edition)
+                    edition=65535
                 header.edition=edition
             else:
                 warn("no edition found in dsid, using default %d",header.edition)
@@ -317,12 +324,13 @@ def main(iname:str, oname:str,options:Options=None):
                 warn("no update date found in dsid")
             name=dsid.get('dsid_dsnm')
             if name is not None:
-                cn,=os.path.splitext(name)
+                cn,dummy=os.path.splitext(name)
                 log("found chart name %s in dsid",cn)
                 header.name=cn
             else:
                 warn("no chart name in dsid, using default %s",header.name)
-    except:
+    except Exception as e:
+        warn("Exception parsing dsid",str(e))
         pass
     if not hasDsid:
         warn("no dsid record found, using defaults")
