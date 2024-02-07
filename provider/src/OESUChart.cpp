@@ -1080,7 +1080,9 @@ ObjectList OESUChart::FeatureInfo(RenderContext & context,DrawingContext &drawin
             });
         if (description){
             description->computeDistance(ref);
-            description->chartName=FileHelper::fileName(fileName,true);
+            if (! overview){
+                description->addValue("chart",FileHelper::fileName(fileName,true));
+            }
             rt.push_back(description);
         }
     }

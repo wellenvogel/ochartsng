@@ -34,7 +34,6 @@
 class ObjectDescription
 {
 public:
-    String chartName;
     Coord::WorldXy point;
     int score=0;
     MD5Name md5;
@@ -67,11 +66,13 @@ public:
     virtual void jsonOverview(json::JSON &js) const{
         js["type"]=(int)type;
     }
+    virtual void addValue(const String &k, const String &v){}
 };
 
 class ChartDescription : public ObjectDescription{
     protected:
     String setName;
+    String chartName;
     public:
     ChartDescription(const String &n, const String &setn):setName(setn){
         distance=0;

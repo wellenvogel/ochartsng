@@ -669,6 +669,9 @@ public:
     virtual double computeDistance(const Coord::WorldXy &wp);
     virtual void toJson(json::JSON &js) const;
     virtual void jsonOverview(json::JSON &js) const;
+    virtual void addValue(const String &k, const String &v){
+        out[k]=v;
+    }
 };
 //we ignore a couple of attributes if when checking for equality
 //to avoid getting the same object twice from different charts
@@ -689,11 +692,12 @@ S57ObjectDescription::S57ObjectDescription(const S57BaseObject* cobject,bool ove
             addOns.insert(a);
         }
         MD5 builder;
+        builder.AddValue(type);
         builder.AddValue(cobject->featureTypeCode);
         builder.AddValue(cobject->geoPrimitive);
         builder.AddValue(hasPoint);
-        builder.AddValue(point);
-        builder.AddValue((int)cobject->geoPrimitive);
+        builder.AddValue(point.x);
+        builder.AddValue(point.y);
         for (const auto & [id,attr] : cobject->attributes){
             if (IGNORED_ATTRIBUTES.count(id)>0){
                 continue;
@@ -861,9 +865,6 @@ void S57ObjectDescription::buildFull(const S57BaseObject *cobject){
     uint16_t tc=cobject->featureTypeCode;
     out["type"]=(int)type;
     out["s57typeCode"]=tc;
-    if (!chartName.empty()){
-        out["chart"]=chartName;
-    }
     out["s57Id"]=cobject->featureId;
     const S57ObjectClass *clz=S57ObjectClassesBase::getObjectClass(tc);
     if (clz){

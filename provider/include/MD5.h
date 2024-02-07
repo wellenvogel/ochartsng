@@ -31,6 +31,7 @@
 #include <openssl/evp.h>
 #include <memory.h>
 #include <string_view>
+#include <OcAllocator.h>
 
 #define MD5_ADD_VALUE(md5,value) md5.AddBuffer((const unsigned char*)(&value),sizeof(value))
 #define MD5_ADD_VALUEP(md5,value) md5->AddBuffer((const unsigned char*)(&value),sizeof(value))
@@ -99,13 +100,12 @@ public:
     bool AddValue(const T &v){
         return AddBuffer((const unsigned char *)(&v),sizeof(T));
     }
-    bool AddValue(const String &s);
     bool AddValue(const char *s);
     bool AddFileInfo(const String &path,const String &base=String());
     bool IsOk() const;
     bool IsFinalized() const{ return finalized;}
     const unsigned char * GetValue();
-    MD5Name GetValueCopy();
+    MD5Name GetValueCopy(bool intermediate=false);
     String GetHex();
     static MD5Name Compute(String v);
 private:
@@ -114,6 +114,24 @@ private:
     bool finalized;
 
 };
+
+template<>
+inline bool MD5::AddValue(const String &s){
+    return AddBuffer(s.c_str(),s.size());
+}
+template<>
+inline bool MD5::AddValue(const ocalloc::String &s){
+    return AddBuffer(s.c_str(),s.size());
+}
+template<>
+inline bool MD5::AddValue(const char * const &data) {
+    return AddBuffer((const unsigned char*)data,strlen(data));
+}
+template<>
+inline bool MD5::AddValue(char * const &data) {
+    return AddBuffer((const unsigned char*)data,strlen(data));
+}
+
 
 #endif /* MD5_H */
 

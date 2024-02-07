@@ -92,14 +92,6 @@ bool MD5::AddBuffer(const unsigned char* buffer, long len){
     return IsOk();
 }
 
-
-bool MD5::AddValue(const String &data) {
-    return AddBuffer(data.c_str(),data.size());
-}
-bool MD5::AddValue(const char *data) {
-    return AddBuffer((const unsigned char*)data,strlen(data));
-}
-
 bool MD5::AddFileInfo(const String &path, const String &base){
     if (! IsOk() || finalized) return false;
     String fileName;
@@ -134,8 +126,13 @@ const unsigned char * MD5::GetValue(){
     }
     return resultBuffer;
 }
-MD5Name MD5::GetValueCopy(){
-    return MD5Name(GetValue());
+MD5Name MD5::GetValueCopy(bool intermediate){
+    if (! intermediate){
+        return MD5Name(GetValue());
+    }
+    MD5 im(*this);
+    return im.GetValueCopy();
+
 }
 
 static unsigned char ToHex(unsigned char v){
