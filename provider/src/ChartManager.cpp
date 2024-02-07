@@ -98,7 +98,9 @@ String  ChartManager::KeyFromChartDir(String chartDir){
     Synchronized l(lock);
     for (auto it=dirMappings.begin();it!=dirMappings.end();it++){
         if (StringHelper::startsWith(chartDir,it->first)){
-            return String("CSI_")+it->second+StringHelper::SanitizeString(chartDir.substr(it->first.size()));
+            String subDir=chartDir.substr(it->first.size());
+            if (it->second.empty() && subDir.size() > 0 && subDir[0] == '/') subDir=subDir.substr(1);
+            return String("CSI_")+it->second+StringHelper::SanitizeString(subDir);
         }
     }
     return StringHelper::SanitizeString(String("CS")+chartDir);
@@ -143,6 +145,14 @@ ChartSet::Ptr ChartManager::findOrCreateChartSet(String chartFile,bool mustExist
         }
         else{
             LOG_INFO("created chart set with key %s for directory %s",key.c_str(),chartDir.c_str());
+        }
+        if (info->title.empty()){
+            //seems that we did not find a chart info
+            //use our key without the prefixes
+            String title=key;
+            if (StringHelper::startsWith(title,"CSI_")) title=title.substr(4);
+            if (StringHelper::startsWith(title,"CS")) title=title.substr(2);
+            info->title=title;
         }
         {
             Synchronized locker(lock);

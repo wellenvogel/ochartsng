@@ -66,6 +66,7 @@ public:
     
     String                ToString();
     virtual               void ToJson(StatusStream &stream) override;
+    String                getTitle() const{return title.empty()?name:title;}
     
     static ChartSetInfo::Ptr   ParseChartInfo(String chartDir,String key);
     private:

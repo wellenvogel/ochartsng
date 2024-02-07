@@ -252,9 +252,6 @@ ChartSetInfo::Ptr ChartSetInfo::ParseChartInfo(String chartSetDirectory,String k
         LOG_ERROR("eula required for %s but no eula files",chartSetDirectory.c_str());
         parsedInfo->eulaMode =SHOW_NEVER;
     }
-    if (parsedInfo->title.empty()){
-        parsedInfo->title=parsedInfo->name;
-    }
     LOG_INFO("%s",parsedInfo->ToString().c_str());
     return parsedInfo;
 }
@@ -298,6 +295,6 @@ void ChartSetInfo::ToJson(StatusStream &stream){
     stream["directory"]=dirname;
     stream["version"]=edition;
     stream["validTo"]=validTo;
-    stream["title"]=title;
+    stream["title"]=getTitle();
     stream["id"]=chartSetId;
 }

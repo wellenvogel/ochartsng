@@ -202,12 +202,9 @@ int mainFunction(int argc, char **argv,bool *stopFlag=NULL)
         chartManager->UpdateSettings(base,rs);
     });
     collector.AddItem("chartManager",chartManager);
-    if (chartDir.size() > (MD5_LEN*2+2)){
-        //use an md5 hash for long chart dir names
-        MD5 cdmd5;
-        cdmd5.AddValue(chartDir);
-        chartManager->AddKnownDirectory(chartDir,cdmd5.GetHex());
-    }
+    //for our normal chart dir we use an empty prefix
+    //to get short names
+    chartManager->AddKnownDirectory(chartDir,"");
     Renderer::Ptr trender=std::make_shared<TestRenderer>(chartManager,renderDebug);
     Renderer::Ptr render=std::make_shared<Renderer>(chartManager,renderDebug);
     TokenHandler::Ptr tokenHandler=std::make_shared<TokenHandler>("all");

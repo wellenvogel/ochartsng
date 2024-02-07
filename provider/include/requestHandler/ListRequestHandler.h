@@ -54,13 +54,13 @@ public:
        json::JSON items=json::Array();
        for (auto it=map.begin();it!=map.end();it++){
            const ChartSetInfo *info=it->get();
-           String title=info->title;
+           String title=info->getTitle();
            if (!info->edition.empty()){
                title.append("[").append(info->edition).append("]");
            }
            ChartSet::Ptr set=manager->GetChartSet(info->name);
            if (! set ) continue;
-           String chartInfo=FMT("%s version %s valid to %s",StringHelper::safeJsonString(info->title),info->edition,info->validTo);
+           String chartInfo=FMT("%s version %s valid to %s",info->getTitle(),info->edition,info->validTo);
            json::JSON obj;
            obj["name"]=title;
            obj["chartKey"]=info->name;
