@@ -203,47 +203,67 @@ def writeTableToSenc(wh:senc.SencFile,cur,name,gcol,basedir=None):
 #we only handle some sounding attrs to be able to group them nicely
 SOUNGD_ATTRS=['SCAMIN','SCAMAX']
 def writeSoundings(wh:senc.SencFile,cur,name,gcol):
-    res=cur.execute("select * from %s"%name)
-    soundings=[]
-    lastAttrs= []
+    def a2l(lastAttrs):
+        return list(map(lambda v: senc.FAttr(v,lastAttrs[v]),lastAttrs))
+    #find our attr combinations
+    res=cur.execute("SELECT name, type FROM pragma_table_info('%s')"%name)
+    anames=[]
     for dbrow in res:
-        row=dict(dbrow)
-        geometry=parseGeometry(row[gcol],"soundings")
-        if not geometry.hasZ():
-            raise Exception("no 3rd dimension in sounding geometry")
-        points=None
-        attrs=[]
-        if type(geometry) is senc.MultiPointGeometry:
-            #take this "as is" and write to the senc
-            for k,v in row.items():
-                if k == gcol:
-                    continue
-                if v is None:
-                    continue
-                attrs.append(senc.FAttr(k,v))
-            wh.addSoundings(geometry.points,attrs)
-            continue
-        elif type(geometry) is senc.PointGeometry:
-            points=[geometry.point]
+        if dbrow[0].upper() in SOUNGD_ATTRS:
+            anames.append(dbrow[0])
+    chunks=[]
+    if len(anames) > 0:
+        res=cur.execute("select distinct %s from %s"%(",".join(anames),name))
+        for dbrow in res:
+            chunks.append(dict(dbrow))
+    if len(chunks) <1:
+        chunks.append({})
+    chunk={}
+    for chunk in chunks:
+        query=None
+        for k,v in chunk.items():
+            if query is not None:
+                query+=" and "
+            else:
+                query=""
+            if v is None:
+                query+="%s is null"%k
+            else:
+                query+="%s='%s'"%(k,v)
+        if query is not None:
+            query=" where "+query
         else:
-            raise Exception("unknown geometry %s for sounding",type(geometry))
-        for k,v in row.items():
-            if k == gcol:
+            query=""
+        res=cur.execute("select * from %s %s"%(name,query))
+        soundings=[]
+        for dbrow in res:
+            row=dict(dbrow)
+            geometry=parseGeometry(row[gcol],"soundings")
+            if not geometry.hasZ():
+                raise Exception("no 3rd dimension in sounding geometry")
+            attrs={}
+            if type(geometry) is senc.MultiPointGeometry:
+                #take this "as is" and write to the senc
+                attrs=[]
+                for k,v in row.items():
+                    if k == gcol:
+                        continue
+                    if v is None:
+                        continue
+                    attrs.append(senc.FAttr(k,v))
+                wh.addSoundings(geometry.points,attrs)
                 continue
-            if k.upper() in SOUNGD_ATTRS:
-                attrs.append(senc.FAttr(k,v))
-        if attrs != lastAttrs:
-            if len(soundings) > 0:
-                wh.addSoundings(soundings,lastAttrs)
-                soundings=[]
-        lastAttrs=attrs
-        for point in points:
-            soundings.append(point)
+            elif type(geometry) is senc.PointGeometry:
+                pass
+            else:
+                raise Exception("unknown geometry %s for sounding",type(geometry))
+            soundings.append(geometry.point)
             if len(soundings) >= 100:
-                wh.addSoundings(soundings,attrs)
+                wh.addSoundings(soundings,a2l(chunk))
                 soundings=[]
-    if len(soundings) > 0:
-        wh.addSoundings(soundings,lastAttrs)
+        if len(soundings) > 0:
+            wh.addSoundings(soundings,a2l(chunk))
+
 
 
 class Options:
@@ -338,7 +358,7 @@ def main(iname:str, oname:str,options:Options=None):
             else:
                 warn("no chart name in dsid, using default %s",header.name)
     except Exception as e:
-        warn("Exception parsing dsid",str(e))
+        warn("Exception parsing dsid: %s",str(e))
         pass
     if not hasDsid:
         warn("no dsid record found, using defaults")
