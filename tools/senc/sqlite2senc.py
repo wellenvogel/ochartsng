@@ -208,7 +208,25 @@ def writeSoundings(wh:senc.SencFile,cur,name,gcol):
     lastAttrs= []
     for dbrow in res:
         row=dict(dbrow)
+        geometry=parseGeometry(row[gcol],"soundings")
+        if not geometry.hasZ():
+            raise Exception("no 3rd dimension in sounding geometry")
+        points=None
         attrs=[]
+        if type(geometry) is senc.MultiPointGeometry:
+            #take this "as is" and write to the senc
+            for k,v in row.items():
+                if k == gcol:
+                    continue
+                if v is None:
+                    continue
+                attrs.append(senc.FAttr(k,v))
+            wh.addSoundings(geometry.points,attrs)
+            continue
+        elif type(geometry) is senc.PointGeometry:
+            points=[geometry.point]
+        else:
+            raise Exception("unknown geometry %s for sounding",type(geometry))
         for k,v in row.items():
             if k == gcol:
                 continue
@@ -219,16 +237,6 @@ def writeSoundings(wh:senc.SencFile,cur,name,gcol):
                 wh.addSoundings(soundings,lastAttrs)
                 soundings=[]
         lastAttrs=attrs
-        geometry=parseGeometry(row[gcol],"soundings")
-        if not geometry.hasZ():
-            raise Exception("no 3rd dimension in sounding geometry")
-        points=None
-        if type(geometry) is senc.MultiPointGeometry:
-            points=geometry.points
-        elif type(geometry) is senc.PointGeometry:
-            points=[geometry.point]
-        else:
-            raise Exception("unknown geometry %s for sounding",type(geometry))
         for point in points:
             soundings.append(point)
             if len(soundings) >= 100:
