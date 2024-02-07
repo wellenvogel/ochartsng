@@ -145,7 +145,10 @@ namespace s52
             }
             if (type == T_DOUBLE)
             {
-                return std::to_string(dv);
+                char buf[30];
+                snprintf(buf,30,"%.8g",dv);
+                buf[29]=0;
+                return String(buf);
             }
             return "";
         }

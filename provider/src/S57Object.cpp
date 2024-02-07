@@ -728,23 +728,30 @@ static String getConvertedAttrValue(const S57BaseObject *object, uint16_t attrid
         }
         break;
     case s52::Attribute::T_STRING:
-        StringVector parts=StringHelper::split(ait->second.getString(),",");
+    {
+        StringVector parts = StringHelper::split(ait->second.getString(), ",");
         String rt;
-        for (const auto &pv : parts){
-            description=nullptr;
-            int iv=::atoi(pv.c_str());
-            if (iv != 0){
-                description=S57AttrValuesBase::getDescription(attrid,iv);   
+        for (const auto &pv : parts)
+        {
+            description = nullptr;
+            int iv = ::atoi(pv.c_str());
+            if (iv != 0)
+            {
+                description = S57AttrValuesBase::getDescription(attrid, iv);
             }
-            if (!rt.empty()) rt.push_back(',');
-            if (description){
+            if (!rt.empty())
+                rt.push_back(',');
+            if (description)
+            {
                 rt.append(description->getString(includeVals));
             }
-            else{
+            else
+            {
                 rt.append(pv);
             }
         }
         return rt;
+    }
     }
     return ait->second.getString(true);
 }
