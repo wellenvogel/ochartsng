@@ -195,8 +195,18 @@ namespace s52
         RenderStep step;          //one of RS_AREAS2,RS_LINES,RS_POINTS
         int attributeMatch(const Attribute::Map *objectAttributes) const;
     };
-    typedef std::vector<LUPrec> LUPRecords;
-    typedef std::map<LUPname,LUPRecords> LUPTables;
+    class LUPRecords : public std::vector<LUPrec> {
+        public:
+        using std::vector<LUPrec>::vector;
+        using Ptr=std::shared_ptr<LUPRecords>;
+    };
+    
+    class LUPMap: public std::map<uint16_t,LUPRecords::Ptr> {
+        public:
+        using std::map<uint16_t,LUPRecords::Ptr>::map;
+        using Ptr=std::shared_ptr<LUPMap>;
+    };
+    typedef std::map<LUPname,LUPMap::Ptr> LUPTables;
     
     typedef std::map<String, RGBColor> ColorMap;
     class ColorTable
