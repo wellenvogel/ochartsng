@@ -1058,7 +1058,7 @@ class OESUChartDescription: public ChartDescription{
     }
 };
 
-ObjectList OESUChart::FeatureInfo(RenderContext & context,DrawingContext &drawing, const Coord::TileBox &box) const{
+ObjectList OESUChart::FeatureInfo(RenderContext & context,DrawingContext &drawing, const Coord::TileBox &box,bool overview) const{
     Coord::WorldXy ref=box.midPoint();
     ObjectList rt;
     std::shared_ptr<OESUChartDescription> cd=std::make_shared<OESUChartDescription>(FileHelper::fileName(fileName,true),setKey);
@@ -1070,7 +1070,7 @@ ObjectList OESUChart::FeatureInfo(RenderContext & context,DrawingContext &drawin
     RenderData *currentRenderData=renderData.get();
     context.chartContext.reset();
     for (auto &it : currentRenderData->renderObjects){
-        ObjectDescription::Ptr description=it->getObjectDescription(context,drawing,box,
+        ObjectDescription::Ptr description=it->getObjectDescription(context,drawing,box,overview,
             [this](const String &name){
                 ocalloc::String key(this->txtdscTable.get_allocator());
                 key.assign(name.c_str());

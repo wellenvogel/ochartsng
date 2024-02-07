@@ -658,23 +658,24 @@ class S57ObjectDescription : public ObjectDescription
 {
     bool hasPoint=false;
     NameValueMap addOns;
+    json::JSON out;
+    void buildOverview(const S57BaseObject* o);
+    void buildFull(const S57BaseObject* o);
 public:
     String expandedText;
-    S57ObjectDescription(const S57BaseObject::ConstPtr &o, const NameValueMap &addons=NameValueMap());
+    S57ObjectDescription(const S57BaseObject* o,bool overview, const NameValueMap &addons=NameValueMap());
     virtual ~S57ObjectDescription(){}
     virtual bool isPoint() const{ return hasPoint;};
     virtual double computeDistance(const Coord::WorldXy &wp);
     virtual void toJson(json::JSON &js) const;
     virtual void jsonOverview(json::JSON &js) const;
-    S57BaseObject::ConstPtr cobject;
 };
 //we ignore a couple of attributes if when checking for equality
 //to avoid getting the same object twice from different charts
 std::unordered_set<uint16_t> IGNORED_ATTRIBUTES={S57AttrIds::SCAMIN,S57AttrIds::SORIND,S57AttrIds::SORDAT,S57AttrIds::SIGSEQ,S57AttrIds::catgeo};
-S57ObjectDescription::S57ObjectDescription(const S57BaseObject::ConstPtr &o, const NameValueMap &ad):
-    cobject(o) {
+S57ObjectDescription::S57ObjectDescription(const S57BaseObject* cobject,bool overview, const NameValueMap &ad){
         type=T_OBJECT;
-        point=o->point;
+        point=cobject->point;
         hasPoint=cobject->geoPrimitive==s52::GEO_POINT && !cobject->isMultipoint();
         //1. prefer points
         //2. prefer lights
@@ -692,7 +693,7 @@ S57ObjectDescription::S57ObjectDescription(const S57BaseObject::ConstPtr &o, con
         builder.AddValue(cobject->geoPrimitive);
         builder.AddValue(hasPoint);
         builder.AddValue(point);
-        builder.AddValue((int)o->geoPrimitive);
+        builder.AddValue((int)cobject->geoPrimitive);
         for (const auto & [id,attr] : cobject->attributes){
             if (IGNORED_ATTRIBUTES.count(id)>0){
                 continue;
@@ -703,6 +704,8 @@ S57ObjectDescription::S57ObjectDescription(const S57BaseObject::ConstPtr &o, con
         //we do not add addOns to MD5 for equality checks
         //so they will not be considered...
         md5.fromChar(builder.GetValue());
+        if (overview) buildOverview(cobject);
+        else buildFull(cobject);
 }
 
 double S57ObjectDescription::computeDistance(const Coord::WorldXy &wpt){
@@ -712,7 +715,7 @@ double S57ObjectDescription::computeDistance(const Coord::WorldXy &wpt){
     return distance;
 }
 
-static String getConvertedAttrValue(const S57BaseObject::ConstPtr &object, uint16_t attrid, bool includeVals=true){
+static String getConvertedAttrValue(const S57BaseObject *object, uint16_t attrid, bool includeVals=true){
     auto ait=object->attributes.find(attrid);
     if (ait == object->attributes.end()) return "NVAL";
     const S57AttrValueDescription *description=nullptr;
@@ -750,7 +753,7 @@ static String getConvertedAttrValue(const S57BaseObject::ConstPtr &object, uint1
 class AttributeEntry{
 public:
     using IdVector=std::vector<uint16_t>;
-    using Mapper=std::function<String(const AttributeEntry *entry, S57BaseObject::ConstPtr object)>;
+    using Mapper=std::function<String(const AttributeEntry *entry, const S57BaseObject *object)>;
     IdVector attributes;
     IdVector features;
     String target;
@@ -770,12 +773,12 @@ public:
     bool MatchesFeatureAndAttribute(uint16_t featureId,uint16_t attributeId) const{
         return MatchesFeature(featureId) && MatchesAttribute(attributeId);
     }
-    String map(const S57BaseObject::ConstPtr object) const{
+    String map(const S57BaseObject* object) const{
         return mapper(this, object);
     }
 };
 
-static String formatTopAttributes(const AttributeEntry *entry,const S57BaseObject::ConstPtr object){
+static String formatTopAttributes(const AttributeEntry *entry,const S57BaseObject *object){
     String rt;
     bool first=false;
     for (auto it=entry->attributes.begin() ; it != entry->attributes.end();it++){
@@ -791,13 +794,13 @@ static String formatTopAttributes(const AttributeEntry *entry,const S57BaseObjec
     }
     return rt;    
 }
-static void addParamV(String &v,const S57BaseObject::ConstPtr object,uint16_t id, const String &suffix="", const String &prefix=""){
+static void addParamV(String &v,const S57BaseObject *object,uint16_t id, const String &suffix="", const String &prefix=""){
     if (!object->attributes.hasAttr(id)) return;
     v.append(prefix);
     v.append(getConvertedAttrValue(object,id,false));
     v.append(suffix);
 }
-static String formatTopLight(const AttributeEntry *entry,const S57BaseObject::ConstPtr object){
+static String formatTopLight(const AttributeEntry *entry,const S57BaseObject *object){
     String rt;
     addParamV(rt,object,S57AttrIds::LITCHR," ");
     addParamV(rt,object,S57AttrIds::LITCHR," ");
@@ -832,38 +835,43 @@ static AttributeMappings mappings={
 };
 
 void S57ObjectDescription::jsonOverview(json::JSON &js) const{
-    const AttributeEntry *converter=mappings.findEntry(cobject->featureTypeCode);
-    if (converter == nullptr) return;
-    js[converter->target]=converter->map(cobject);
-    Coord::LatLon lon=Coord::worldxToLon(point.x);
-    Coord::LatLon lat=Coord::worldyToLat(point.y);
-    js["nextTarget"]=json::Array(lon,lat);
-    if (cobject->attributes.hasAttr(S57AttrIds::OBJNAM)){
-        js["name"]=cobject->attributes.getString(S57AttrIds::OBJNAM,true);
+    for (const auto  &[k,v]:out.ObjectRange()){
+        js[k]=v;
     }
 }
-void S57ObjectDescription::toJson(json::JSON &js) const{
-    uint16_t tc=cobject->featureTypeCode;
-    js["type"]=(int)type;
-    js["s57typeCode"]=tc;
-    if (!chartName.empty()){
-        js["chart"]=chartName;
+void S57ObjectDescription::buildOverview(const S57BaseObject *cobject){
+    const AttributeEntry *converter=mappings.findEntry(cobject->featureTypeCode);
+    if (converter == nullptr) return;
+    out[converter->target]=converter->map(cobject);
+    Coord::LatLon lon=Coord::worldxToLon(point.x);
+    Coord::LatLon lat=Coord::worldyToLat(point.y);
+    out["nextTarget"]=json::Array(lon,lat);
+    if (cobject->attributes.hasAttr(S57AttrIds::OBJNAM)){
+        out["name"]=cobject->attributes.getString(S57AttrIds::OBJNAM,true);
     }
-    js["s57Id"]=cobject->featureId;
+}
+void S57ObjectDescription::buildFull(const S57BaseObject *cobject){
+    uint16_t tc=cobject->featureTypeCode;
+    out["type"]=(int)type;
+    out["s57typeCode"]=tc;
+    if (!chartName.empty()){
+        out["chart"]=chartName;
+    }
+    out["s57Id"]=cobject->featureId;
     const S57ObjectClass *clz=S57ObjectClassesBase::getObjectClass(tc);
     if (clz){
-        js["s57featureName"]=clz->ObjectClass;
-        js["s57featureAcronym"]=clz->Acronym;
+        out["s57featureName"]=clz->ObjectClass;
+        out["s57featureAcronym"]=clz->Acronym;
     }
     Coord::LatLon lat=Coord::worldyToLat(point.y);
-    js["lat"]=lat;
+    out["lat"]=lat;
     Coord::LatLon lon=Coord::worldxToLon(point.x);
-    js["lon"]=lon;
+    out["lon"]=lon;
     if (isPoint()){
-        js["nextTarget"]=json::Array(lon,lat);
+        out["nextTarget"]=json::Array(lon,lat);
     }
     if (! expandedText.empty()){
-        js["expandedText"]=expandedText;
+        out["expandedText"]=expandedText;
     }
     json::JSON attributes=json::Array();
     for (auto it=cobject->attributes.begin();it!=cobject->attributes.end();it++){
@@ -890,7 +898,7 @@ void S57ObjectDescription::toJson(json::JSON &js) const{
             values["value"] = getConvertedAttrValue(cobject, it->first, false);
         }
         if (it->first == S57AttrIds::OBJNAM){
-            js["name"]=cobject->attributes.getString(it->first,true);
+            out["name"]=cobject->attributes.getString(it->first,true);
         }
         attributes.append(values); 
     }
@@ -924,7 +932,12 @@ void S57ObjectDescription::toJson(json::JSON &js) const{
         values["value"]=ao.second;
         attributes.append(values);
     }
-    js["attributes"]=attributes;
+    out["attributes"]=attributes;
+}
+void S57ObjectDescription::toJson(json::JSON &js) const{
+    for (const auto  &[k,v]:out.ObjectRange()){
+        js[k]=v;
+    }    
 }
 
 
@@ -933,6 +946,7 @@ ObjectDescription::Ptr S57Object::RenderObject::getObjectDescription(
     RenderContext &context,
     DrawingContext &drawing,
     const Coord::TileBox &box,
+    bool overview,
     S57Object::RenderObject::StringTranslator translator) const{
     if (!Intersects(context.tileExtent,box)) return ObjectDescription::Ptr();
     if (!shouldRenderScale(context.s52Data->getSettings().get(),context.scale)) return ObjectDescription::Ptr();
@@ -1035,7 +1049,7 @@ ObjectDescription::Ptr S57Object::RenderObject::getObjectDescription(
             addOns["DEPTH"]=std::to_string(nearest.depth);
         }   
     }
-    S57ObjectDescription *rt=new S57ObjectDescription(object,addOns);
+    S57ObjectDescription *rt=new S57ObjectDescription(object.get(),overview,addOns);
     if (hasSounding){
         rt->point=nearest; //it will not be considered in the MD5
                            //but this is ok as we only check the 

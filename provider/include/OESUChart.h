@@ -81,7 +81,7 @@ public:
     virtual MD5Name GetMD5() const override;
     virtual bool IsIgnored() const override { return cellEdition == 0;}
     virtual void LogInfo(const String &prefix) const;
-    virtual ObjectList FeatureInfo(RenderContext & context,DrawingContext &drawing, const Coord::TileBox &box) const;
+    virtual ObjectList FeatureInfo(RenderContext & context,DrawingContext &drawing, const Coord::TileBox &box, bool overview) const;
     virtual OexControl::OexCommands OpenHeaderCmd() const override{
          return type==Chart::OESU?OexControl::CMD_READ_OESU_HDR:OexControl::CMD_READ_ESENC_HDR;
     }

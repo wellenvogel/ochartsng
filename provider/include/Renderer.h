@@ -69,7 +69,7 @@ public:
     }
     virtual ~Renderer(){}
     virtual void renderTile(const TileInfo &tile,const RenderInfo &info,RenderResult &result);
-    virtual ObjectList featureInfo(const TileInfo &info, const Coord::TileBox &box);
+    virtual ObjectList featureInfo(const TileInfo &info, const Coord::TileBox &box, bool overview);
     virtual ChartManager::Ptr getManager(){return chartManager;}
     protected:
         ChartManager::Ptr chartManager;

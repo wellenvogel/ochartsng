@@ -194,7 +194,7 @@ void Renderer::renderTile(const TileInfo &tile, const RenderInfo &info, RenderRe
     LOG_DEBUG("%s",drawing->getStatistics());
 }
 
-ObjectList Renderer::featureInfo( const TileInfo &info, const Coord::TileBox &box){
+ObjectList Renderer::featureInfo( const TileInfo &info, const Coord::TileBox &box, bool overview){
     //compute a pixel box from the tile box
     Coord::TileBounds pixelExtent=box.getPixelBounds();
     s52::S52Data::ConstPtr s52data=chartManager->GetS52Data();
@@ -206,6 +206,8 @@ ObjectList Renderer::featureInfo( const TileInfo &info, const Coord::TileBox &bo
     }
     LOG_DEBUG("featureInfo found %d charts",renderCharts.size());
     RenderContext context(pixelExtent);
+    ZoomLevelScales scales(s52data->getSettings()->scale);
+    context.scale = scales.GetScaleForZoom(info.zoom);
     context.s52Data=s52data;
     std::unique_ptr<DrawingContext> drawing(DrawingContext::create(context.tileExtent.xmax,context.tileExtent.ymax));
     drawing->setCheckOnly(true);
@@ -220,7 +222,7 @@ ObjectList Renderer::featureInfo( const TileInfo &info, const Coord::TileBox &bo
         }
         if (chart){
             drawing->resetDrawn();
-            ObjectList objects=chart->FeatureInfo(context,*drawing,box);
+            ObjectList objects=chart->FeatureInfo(context,*drawing,box,overview);
             if (objects.size() > 0){
                 rt.insert(rt.end(),objects.begin(),objects.end());
             }

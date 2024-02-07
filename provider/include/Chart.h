@@ -101,7 +101,7 @@ public:
     virtual RenderResult Render(int pass,RenderContext & context,DrawingContext &out, const Coord::TileBox &box) const;
     //we use a (small) tile box that contains our tolerance
     //and the click point being the mid
-    virtual ObjectList FeatureInfo(RenderContext & context,DrawingContext &drawing,const Coord::TileBox &box) const;
+    virtual ObjectList FeatureInfo(RenderContext & context,DrawingContext &drawing,const Coord::TileBox &box, bool overview) const;
     virtual MD5Name GetMD5() const { return md5;}
     virtual bool IsIgnored() const { return false;}
     virtual void LogInfo(const String &prefix) const {}

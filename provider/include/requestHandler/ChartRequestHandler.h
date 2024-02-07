@@ -258,7 +258,7 @@ public:
         LOG_DEBUG("featureInfo, tile=%s,center=%.8f,%.8f, box=%s",tile.ToString(),llcenter.x,llcenter.y,tileBox.toString());
         ObjectList objects;
         try{
-            objects=renderer->featureInfo(tile, tileBox);
+            objects=renderer->featureInfo(tile, tileBox,overview);
         }catch (AvException &e){
             return new HTTPJsonErrorResponse(e.msg());
         }

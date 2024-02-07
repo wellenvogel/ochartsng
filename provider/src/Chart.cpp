@@ -42,7 +42,7 @@ Chart::RenderResult Chart::Render(int pass,RenderContext & context,DrawingContex
 {
     return RFAIL;
 };
-ObjectList Chart::FeatureInfo(RenderContext & context, DrawingContext &drawing, const Coord::TileBox &box) const
+ObjectList Chart::FeatureInfo(RenderContext & context, DrawingContext &drawing, const Coord::TileBox &box, bool overview) const
 {
     return ObjectList();
 };

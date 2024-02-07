@@ -86,7 +86,8 @@ public:
         bool shouldRenderScale(const RenderSettings *rs,int scale) const;
         //get an object description
         //if the object would really render (could return empty)
-        ObjectDescription::Ptr getObjectDescription(RenderContext &ctx, DrawingContext &draw,const Coord::TileBox &box, StringTranslator translator) const;
+        ObjectDescription::Ptr getObjectDescription(RenderContext &ctx, DrawingContext &draw,
+                const Coord::TileBox &box,bool overview, StringTranslator translator) const;
     protected:
         ocalloc::PoolRef pool;
         S57Object::ConstPtr object;
