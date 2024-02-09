@@ -70,11 +70,18 @@ void Renderer::renderTile(const TileInfo &tile, const RenderInfo &info, RenderRe
     context.s52Data=chartManager->GetS52Data();
     RenderSettings::ConstPtr renderSettings=context.s52Data->getSettings();
     result.timer.add("settings");
+    ChartManager::ExtentList extents=chartManager->GetChartSetExtents(tile.chartSetKey,true);
+    if (extents.size() < 1){
+        throw RenderException(tile,"internal error: no chart set extent");
+    }
+    Coord::TileBox tileBox=Coord::tileToBox(tile);
     WeightedChartList renderCharts = chartManager->FindChartsForTile(renderSettings, tile);
     result.timer.add("find");
     if (renderCharts.size() < 1)
     {
-        throw NoChartsException(tile, "no charts to render");
+        if (! tileBox.intersects(extents[0])){
+            throw NoChartsException(tile, "no charts to render");
+        }
     }
     std::unique_ptr<DrawingContext> drawing(DrawingContext::create(Coord::TILE_SIZE, Coord::TILE_SIZE));
     ZoomLevelScales scales(renderSettings->scale);
@@ -173,9 +180,15 @@ void Renderer::renderTile(const TileInfo &tile, const RenderInfo &info, RenderRe
     result.timer.set(startRender,"render");
     chartContexts.clear(); //we must ensure to release all contexts before we release the charts
     renderCharts.clear();
-    if (!hasRendered)
-    {
-        throw NoChartsException(tile, "no charts rendered");
+    DrawingContext::ColorAndAlpha boundingColor = context.s52Data->convertColor(context.s52Data->getColor("XACBND"));
+    if (renderSettings->showChartBounds){
+        for (const auto &extent: extents){
+            Coord::PixelBox pixelExtent=Coord::worldExtentToPixel(extent, tileBox);
+            drawing->drawHLine(pixelExtent.ymin,pixelExtent.xmin,pixelExtent.xmax,boundingColor);
+            drawing->drawHLine(pixelExtent.ymax,pixelExtent.xmin,pixelExtent.xmax,boundingColor);
+            drawing->drawVLine(pixelExtent.xmin,pixelExtent.ymin,pixelExtent.ymax,boundingColor);
+            drawing->drawVLine(pixelExtent.xmax,pixelExtent.ymin,pixelExtent.ymax,boundingColor);
+        }
     }
     if (renderDebug)
     {

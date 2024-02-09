@@ -114,7 +114,11 @@ WeightedChartList ChartList::FindChartForTile(const Coord::Extent &tileExtent){
     }
     return rt;
 }
-
+void ChartList::FillChartExtents(std::vector<Coord::Extent> &extents) const{
+    for (const auto &info:chartList){
+        extents.push_back(info->GetExtent());
+    }
+}
 void ChartList::ToJson(StatusStream &stream){
     stream["numCharts"]=GetSize();
     stream["minScale"]=GetMinScale();

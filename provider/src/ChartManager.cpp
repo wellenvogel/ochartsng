@@ -612,6 +612,21 @@ static void fillChartList(WeightedChartList &chartList,ChartSet::Ptr chartSet,co
         chartList.add(*it);
     }
 }
+ChartManager::ExtentList ChartManager::GetChartSetExtents(const String &chartSetKey, bool includeSet)
+{
+    ExtentList rt;
+    Synchronized l(lock);
+    auto it = chartSets.find(chartSetKey);
+    if (it == chartSets.end())
+    {
+        throw AvException("unknown chart set " + chartSetKey);
+    }
+    if (includeSet){
+        rt.push_back(it->second->GetExtent().extent);
+    }
+    it->second->FillChartExtents(rt);
+    return rt;
+}
 
 WeightedChartList ChartManager::FindChartsForTile(RenderSettings::ConstPtr renderSettingsPtr,const TileInfo &tile, bool allLower){
     LOG_DEBUG("findChartsForTile %s",tile.ToString());

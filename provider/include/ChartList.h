@@ -57,7 +57,8 @@ public:
     StringVector        GetFailedChartNames(int maxErrors=-1);
     MD5Name             GetHash() const {return hash;}
     int                 RemoveUnverified();
-    size_t              NumCharts() const { return chartList.size();} 
+    size_t              NumCharts() const { return chartList.size();}
+    void                FillChartExtents(std::vector<Coord::Extent> &extents) const; 
 private:
     void                computeHash();
     InfoList            chartList;

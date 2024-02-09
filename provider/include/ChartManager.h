@@ -130,6 +130,8 @@ public:
     bool                CloseChart(const String &setName, const String &chartName);
     int                 HandleCharts(const StringVector &dirsAndFiles,bool setsOnly, bool canDelete=false);
     WeightedChartList   FindChartsForTile(RenderSettings::ConstPtr renderSettingsPtr,const TileInfo &tile, bool allLower=false);
+    using ExtentList=std::vector<Coord::Extent>;
+    ExtentList          GetChartSetExtents(const String &chartSetKey,bool includeSet);
     /**
      * add mappings to shorten the chart set names for known directories
     */

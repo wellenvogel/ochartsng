@@ -90,6 +90,7 @@ public:
     StringVector        GetFailedChartNames(int maxErrors=-1);   
     ExtentInfo          GetExtent();
     int                 RemoveUnverified();
+    void                FillChartExtents(std::vector<Coord::Extent> &extents);
 
     
     

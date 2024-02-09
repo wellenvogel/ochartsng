@@ -156,6 +156,10 @@ ChartSet::ExtentInfo ChartSet::GetExtent(){
     rt.minScale=charts->GetMinScale();
     return rt;
 }
+void ChartSet::FillChartExtents(std::vector<Coord::Extent> &extents){
+    Synchronized l(lock);
+    charts->FillChartExtents(extents);
+}
 size_t  ChartSet:: GetNumCharts(){
     Synchronized l(lock);
     return charts->NumCharts();

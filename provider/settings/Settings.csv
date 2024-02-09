@@ -32,6 +32,7 @@ important,bShowS57Text,bool,,Show text,1,,,Main,OpenCPN S52PLIB ShowText,bool,X
 ,showLights,bool,,Show Lights,1,,,Main,OpenCPN S52PLIB ShowLights,bool,X
 ,showAnchorInfo,bool,,Show Anchor Info,1,,,Main,OpenCPN S52PLIB ShowAnchorConditions,bool,X
 ,ColorScheme,enum,s52::ColorScheme,ColorScheme,0,"0,1,2,3,4","DayBright,DayBlack,DayWhite,Dusk,Night",Main,,,
+,showChartBounds,bool,,ChartBounds,true,,,Main,,,
 ,symbolScaleTolerance,float,,ScaleTolerance,0.1,0.01,0.5,Display,,,
 ,rotationTolerance,int,,RotationTolerance,2,1,10,Display,,,
 ,symbolScale,float,,SymbolScale,1.0,0.5,3,Display,,,

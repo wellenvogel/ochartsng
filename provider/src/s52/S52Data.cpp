@@ -321,7 +321,19 @@ namespace s52
     }
     void S52Data::addColorTable(const ColorTable &table)
     {
-        colorTables[table.tableName] = table;
+        auto it=colorTables.find(table.tableName);
+        if (it != colorTables.end()){
+            LOG_INFO("updating color table %s",table.tableName);
+            if (!table.rasterFileName.empty()){
+                it->second.rasterFileName=table.rasterFileName;
+            }
+            for (const auto & [name,color]:table.colors){
+                it->second.colors[name]=color;
+            }
+        }
+        else{
+            colorTables[table.tableName] = table;
+        }
     }
     void S52Data::addLUP(const LUPrec &lup)
     {
