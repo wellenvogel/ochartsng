@@ -194,11 +194,17 @@ def getJsonColumns(table:str,cur):
             rt.append(dbrow[0])
     return rt
 
-def writeTableToSenc(wh:senc.SencFile,cur,name,gcol,basedir=None):
+def writeTableToSenc(wh:senc.SencFile,cur,name,gcol,basedir=None,ignoreErrors=False):
     jsonColumns=getJsonColumns(name,cur)
     res=cur.execute("select * from %s"%name)
     for dbrow in res:
-        objectToSenc(wh,name,dbrow,gcol,jsonColumns,basedir)
+        try:
+            objectToSenc(wh,name,dbrow,gcol,jsonColumns,basedir)
+        except Exception as e:
+            if not ignoreErrors:
+                raise
+            else:
+                warn("Error when reading %s: %s",name,str(e))
 
 #we only handle some sounding attrs to be able to group them nicely
 SOUNGD_ATTRS=['SCAMIN','SCAMAX']
@@ -272,6 +278,7 @@ class Options:
         self.s57dir=os.path.join(os.path.dirname(__file__),"..","..","provider","s57static")
         self.em=senc.SencFile.EM_ALL
         self.scale=None
+        self.ignoreErrors=False
 
 def main(iname:str, oname:str,options:Options=None):
     if options is None:
@@ -375,5 +382,5 @@ def main(iname:str, oname:str,options:Options=None):
         if objd is None:
             warn("ignoring unknown table %s",table)
             continue
-        writeTableToSenc(wh,cur,table,tablerow[1],basedir)
+        writeTableToSenc(wh,cur,table,tablerow[1],basedir,options.ignoreErrors)
     log("wrote %d features to %s",wh.featureId,oname)

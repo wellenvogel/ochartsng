@@ -63,8 +63,7 @@ class Context:
     def __init__(self,tmpDir:tempfile.TemporaryDirectory=None,
                  zipFile: zipfile.ZipFile=None,
                  options:sqlite2senc.Options=None,
-                 setname:str=None,
-                 ignoreErrors:bool=False
+                 setname:str=None
                  ):
         self.zipFile=zipFile
         if zipFile is not None:
@@ -74,7 +73,7 @@ class Context:
         self.tmpDir=tmpDir
         self.options=options if options is not None else sqlite2senc.Options()
         self.setname=setname
-        self.ignoreErrors=ignoreErrors
+        self.ignoreErrors=self.options.ignoreErrors
         self.errors=[]
         self.numFiles=0
     def openZip(self,filename):
@@ -155,7 +154,6 @@ if __name__ == '__main__':
     scale=None
     optlist,args=getopt.getopt(sys.argv[1:],"b:d:s:e:ic:")
     options=sqlite2senc.Options()
-    ignoreErrors=False
     setname=None
     emodes={
         'none': senc.SencFile.EM_NONE,
@@ -174,7 +172,7 @@ if __name__ == '__main__':
                 err("invalid -e parameter %s (%s)",a,'|'.join(emodes.keys()))
             options.em=emodes[a]
         elif o == '-i':
-            ignoreErrors=True
+            options.ignoreErrors=True
         elif o == '-c':
             setname=a
         else:

@@ -482,6 +482,7 @@ class SencFile():
     hidx=[]
     idx=0
     evids=[]
+    hasPoints=False
     for ring in rings:
       if ring[0].lon != ring[-1].lon or ring[0].lat != ring[-1].lat:
         raise Exception("ring %d in %s not closed"%(idx,txt))
@@ -492,6 +493,7 @@ class SencFile():
         enpoints.append(en)
         ringpoints.append(en)
         extent.add(p)
+        hasPoints=True
       hidx.append(len(enpoints))
       if (idx == 0 and self.em == self.EM_EXT) or self.em == self.EM_ALL:
         evid=self.edgeVectorIndex
@@ -509,7 +511,8 @@ class SencFile():
     vertexlist=[]
     for i in range(0,len(triangles)):
       vertexlist.append(enpoints[triangles[i]])
-    records.append(AreaGeometryRecord(extent,vertexlist,evids))
+    if hasPoints:
+      records.append(AreaGeometryRecord(extent,vertexlist,evids))
     return records
 
   def _buildGeometryRecords(self,name:str,geometries):
