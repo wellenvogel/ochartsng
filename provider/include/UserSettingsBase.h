@@ -34,6 +34,7 @@
 #include "StringHelper.h"
 #include "RenderSettings.h"
 #define IV(...) std::vector<int>({__VA_ARGS__})
+#define SV(...) std::vector<String>({__VA_ARGS__})
 #define US_SETTER(type,field) [](RenderSettings *s, type v){s->field=v;}
 #define US_GETTER(type,field) [](const RenderSettings *s)->type{return s->field;}
 
@@ -45,7 +46,8 @@ class UserSettingsEntry{
         TYPE_ENUM,
         TYPE_INT,
         TYPE_DOUBLE,
-        TYPE_VERSION
+        TYPE_VERSION,
+        TYPE_STRINGLIST
     };
 
         String path;
@@ -71,6 +73,11 @@ class UserSettingsEntry{
     bool getJsonValue(const json::JSON &jv,bool &v)    {
         bool ok=false;
         v= jv.ToBool(ok);
+        return ok;
+    }
+    bool getJsonValue(const json::JSON &jv,String &v)    {
+        bool ok=false;
+        v= jv.ToString(ok);
         return ok;
     }
     protected:
@@ -99,7 +106,7 @@ class UserSettingsEntryBool : public UserSettingsEntry{
         UserSettingsEntry(p,n,t),getter(g),setter(s){}
     virtual void setFromJson(RenderSettings* s,const json::JSON &value) override{
         bool v=false;
-        if (! getJsonValue(value,v)) throw new InvalidValueException("no boolean");
+        if (! getJsonValue(value,v)) throw InvalidValueException("no boolean");
         setter(s,v);    
     }
     virtual void storeToJson(const RenderSettings *s, json::JSON &base) override{
@@ -154,7 +161,7 @@ class UserSettingsEntryEnum : public UserSettingsEntry{
     Getter getter;
     virtual void setFromJson(RenderSettings* s,const json::JSON &value) override{
         int v=-1;
-        if (! getJsonValue(value,v)) throw new InvalidValueException("no int value");
+        if (! getJsonValue(value,v)) throw InvalidValueException("no int value");
         for (auto it=allowed.begin();it != allowed.end();it++){
             if (*it == v) {
                 setter(s,(T)v);
@@ -178,6 +185,43 @@ class UserSettingsEntryEnum : public UserSettingsEntry{
         }
 };
 
+class UserSettingsEntryStringList : public UserSettingsEntry{
+    public:
+    std::vector<String> allowed;
+    using Setter=std::function<void(RenderSettings *s, const String &v)>;
+    using Getter=std::function<String(const RenderSettings *s)>;
+    Setter setter;
+    Getter getter;
+    virtual void setFromJson(RenderSettings* s,const json::JSON &value) override{
+        String v;
+        if (! getJsonValue(value,v)) throw InvalidValueException("no String value");
+        if (allowed.size() < 1){
+            setter(s,v);
+            return;
+        }
+        for (auto &&it:allowed){
+            if (it == v) {
+                setter(s,v);
+                return;
+            }
+        }
+        throw new InvalidValueException("unknown StringList value "+v+" for "+name);
+    }
+    virtual void storeToJson(const RenderSettings *s, json::JSON &base) override{
+        String v=getter(s);
+        base[name]=v;
+    }
+    virtual void addToMd5(const RenderSettings *s,MD5 *md5){
+        String v=getter(s);
+        md5->AddValue(v);
+    }
+    UserSettingsEntryStringList(const String &p, const String &n, const Type &t, std::vector<String> allowed,
+        Getter g, Setter s):
+        UserSettingsEntry(p,n,t),getter(g),setter(s){
+            this->allowed=allowed;
+        }
+};
+
 class UserSettingsEntryDetail : public UserSettingsEntry{
     public:
     int id;
@@ -185,7 +229,7 @@ class UserSettingsEntryDetail : public UserSettingsEntry{
         UserSettingsEntry(p,n,t),id(i){}
     virtual void setFromJson(RenderSettings* s,const json::JSON &value) override{
         bool v=false;
-        if (! getJsonValue(value,v)) throw new InvalidValueException("no bool value");
+        if (! getJsonValue(value,v)) throw InvalidValueException("no bool value");
         s->setVisibility(id,v);
     }
     virtual void storeToJson(const RenderSettings *s, json::JSON &base) override{

@@ -41,18 +41,9 @@
 
 namespace s52
 {
-    std::map<ColorScheme, String> colorSchemes = {
-        {DAY_BRIGHT, "DAY_BRIGHT"},
-        {DAY_BLACK, "DAY_BLACKBACK"},
-        {DAY_WHITE, "DAY_WHITEBACK"},
-        {DUSK, "DUSK"},
-        {NIGHT, "NIGHT"}};
     static String getColorTableName(RenderSettings::ConstPtr settings)
     {
-        auto it = colorSchemes.find(settings->ColorScheme);
-        if (it == colorSchemes.end())
-            it = colorSchemes.begin();
-        return it->second;
+        return settings->ColorScheme;
     }
     bool Attribute::operator==(const Attribute &other) const
     {
@@ -327,6 +318,9 @@ namespace s52
             if (!table.rasterFileName.empty()){
                 it->second.rasterFileName=table.rasterFileName;
             }
+            if (!table.referenceName.empty()){
+                it->second.referenceName=table.referenceName;
+            }
             for (const auto & [name,color]:table.colors){
                 it->second.colors[name]=color;
             }
@@ -414,9 +408,26 @@ namespace s52
         auto cit = table->second.colors.find(color);
         if (cit == table->second.colors.end())
         {
+            if (!table->second.referenceName.empty()){
+                auto refTable=colorTables.find(table->second.referenceName);
+                if (refTable != colorTables.end()){
+                    auto refC=refTable->second.colors.find(color);
+                    if (refC != refTable->second.colors.end()){
+                        return refC->second;
+                    }
+                }
+            }
             return RGBColor({0, 0, 0});
         }
         return cit->second;
+    }
+    StringVector S52Data::getColorTables() const{
+       AVASSERT((froozenSymbols), "symbols not froozen");
+       StringVector rt;
+       for (auto && item:colorTables){
+        rt.push_back(item.first);
+       }
+       return rt;
     }
 
     void S52Data::addSymbol(const String &name, const SymbolPosition &symbol)

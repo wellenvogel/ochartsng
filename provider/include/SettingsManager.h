@@ -27,9 +27,10 @@ public:
 class SettingsManager{
     public:
         using Updater=std::function<void(IBaseSettings::ConstPtr, RenderSettings::ConstPtr)>;
+        using ListProvider=std::function<bool(json::JSON &json,const String &item)>;
         using Ptr=std::shared_ptr<SettingsManager>;
         virtual ~SettingsManager(){}
-        SettingsManager(String dir);
+        SettingsManager(String dir,ListProvider provider);
         void registerUpdater(Updater updater);
         RenderSettings::ConstPtr GetRenderSettings() const { return renderSettings;}
         IBaseSettings::ConstPtr GetBaseSettings() const {return baseSettings;}
@@ -38,8 +39,10 @@ class SettingsManager{
         bool getAllowChanges() const;
         void setAllowChanges(bool allow=true); 
         bool enableChartSet(const String &setKey, bool enabled);
+        bool getList(json::JSON &json,const String &item) const;
         using SetMap=std::map<String,bool>;
     protected:
+        ListProvider provider;
         RenderSettings::ConstPtr renderSettings;
         IBaseSettings::ConstPtr baseSettings;  
         std::mutex lock;

@@ -98,7 +98,7 @@ public:
     }
 };
 
-static SettingsManager *settings=new SettingsManager(".");
+static SettingsManager *settings=new SettingsManager(".",[](json::JSON &,const String &)->bool{return false;});
 
 class TS52Data : public s52::S52Data{
     public:

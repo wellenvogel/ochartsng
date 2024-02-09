@@ -181,42 +181,97 @@ const CheckBoxItem=(props)=>{
     );
 };
 
-const SelectItem=(props)=>{
-    let values=props.item.values.split(/ *, */).map((x)=>parseInt(x));
-    let choices=props.item.choices.split(/ *, */);
-    let selectList=[];
-    for (let i=0;i< Math.min(values.length,choices.length);i++){
-        selectList.push({label:choices[i],value:values[i]})
+class SelectItem extends React.Component{
+    constructor(props) {
+        super(props);
     }
-    let dialog=(dp)=>{
-        return <SelectDialog
-            {...dp}
-            item={props.item}
-            selected={props.value}
-            onChange={props.onChange}
-            list={selectList}
-            />
-    };
-    let cv="unknown";
-    for (let i in selectList) {
-        if (selectList[i].value == props.value) {
-            cv = selectList[i].label;
-            break;
+    componentDidMount() {
+        if (this.props.item.request){
+            fetchJson(url+"/list?item="+encodeURIComponent(this.props.item.request))
+                .then((data)=>{
+                    let values=data.data;
+                    if (! values) throw new Error("no items available");
+                    let nextState={
+                        values:[],
+                        choices:[]
+                    };
+                    values.forEach((v)=>{
+                        if (v instanceof Object){
+                            nextState.values.push(v.label);
+                            nextState.choices.push(v.value);
+                        }
+                        else{
+                            nextState.values.push(v);
+                            nextState.choices.push(v);
+                        }
+                    })
+                    this.setState(nextState);
+                })
+                .catch((err)=>setError("unable to query data for "+this.props.item.name));
         }
     }
-    return (
-        <div className={"settingsItem" + props.className}
-             key={props.item.name}
-             onClick={(ev)=>{
-                ev.stopPropagation();
-                props.showDialog(dialog)}}
+
+    render() {
+        let props=this.props;
+        let item=assign({},props.item,this.state);
+        let values = [];
+        if (item.values) {
+            if (typeof(values) === 'string') {
+                values = item.values.split(/ *, */).map((x) => parseInt(x));
+            }
+            else{
+                values=item.values;
+            }
+        }
+        let choices = [];
+        if (item.choices) {
+            if (typeof(item.choices) === 'string') {
+                choices = item.choices.split(/ *, */);
+            }
+            else{
+                choices=item.choices;
+            }
+        }
+        if (choices.length < 1) {
+            let debug = 1;
+        }
+        let selectList = [];
+        for (let i = 0; i < Math.min(values.length, choices.length); i++) {
+            selectList.push({label: choices[i], value: values[i]})
+        }
+        let dialog = (dp) => {
+            return <SelectDialog
+                {...dp}
+                item={item}
+                selected={props.value}
+                onChange={props.onChange}
+                list={selectList}
+            />
+        };
+        let cv = "unknown";
+        for (let i in selectList) {
+            if (selectList[i].value == props.value) {
+                cv = selectList[i].label;
+                break;
+            }
+        }
+        return (
+            <div className={"settingsItem" + props.className}
+                 key={item.name}
+                 onClick={(ev) => {
+                     ev.stopPropagation();
+                     props.showDialog(dialog)
+                 }}
             >
-            <span className="label">{props.item.title}</span>
-            <span className="value"
-                  onClick={()=>{props.showDialog(dialog)}}>
+                <span className="label">{item.title}</span>
+                <span className="value"
+                      onClick={() => {
+                          props.showDialog(dialog)
+                      }}>
                 {cv}</span>
-        </div>
-    );
+            </div>
+        );
+    }
 };
 
 const RangeItem=(props)=>{
@@ -319,7 +374,7 @@ const SettingsList= (props)=>{
                             onChange={props.onChange}/>
                     )
                 }
-                if (item.type == 'enum'){
+                if (item.type == 'enum' || item.type == 'stringlist'){
                     return (
                         <SelectItem
                             className={addClass}

@@ -95,7 +95,7 @@ public:
         if (StringHelper::startsWith(type,"sym")){
             symbol=s52data->getSymbol(symbolName,symbolRotation,symbolScale);
             if (! symbol){
-                throw new AvException("symbol not found");
+                throw AvException("symbol not found");
             }
         }
         Timer::Measure timer;

@@ -85,7 +85,14 @@ public:
                 return new HTTPJsonErrorResponse(ex.msg());
             }
             
-        }       
+        } 
+        if (url == "list"){
+            String item=GetQueryValue(request,"item");
+            if (item.empty()) return new HTTPJsonErrorResponse("missing parameter item");
+            json::JSON rt=json::Array();
+            if (manager->getList(rt,item)) return new HTTPJsonResponse(rt);
+            return new HTTPJsonErrorResponse("unable to provide list");
+        }      
         if (StringHelper::startsWith(url,"enable")){
             String key;
             GET_QUERY(key,"chartSet");

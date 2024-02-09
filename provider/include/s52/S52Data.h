@@ -214,6 +214,7 @@ namespace s52
         public:
         typedef std::shared_ptr<ColorTable> Ptr;
         String tableName;
+        String referenceName;
         String rasterFileName;
         ColorMap colors;
         ColorTable(){}
@@ -321,6 +322,7 @@ namespace s52
          * 0 - always convert
         */
         double convertSounding(double valMeters, uint16_t attrid=0) const;
+        StringVector getColorTables() const;
     protected:
         std::unique_ptr<ocalloc::Pool> pool;
         ocalloc::PoolRef pref;

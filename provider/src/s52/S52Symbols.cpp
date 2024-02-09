@@ -87,11 +87,15 @@ namespace s52
             LOG_DEBUG("parsing color table %s at %d",tableName,table->GetLineNum());
             ColorTable colorTable(tableName);
             for (XMLEl *entry=table->FirstChildElement();entry != NULL;entry=entry->NextSiblingElement()){
-                if (strcmp(entry->Value(),"graphics-file") == 0){
+                String type(entry->Name());
+                if (type == "graphics-file"){
                     colorTable.rasterFileName=entry->Attribute("name");
                     LOG_DEBUG("S52Symbols: color table %s rasterFile %s",colorTable.tableName,colorTable.rasterFileName);
                 }
-                else{
+                else if (type == "reference"){
+                    colorTable.referenceName=entry->Attribute("name");
+                }
+                else if (type == "color"){
                     RGBColor color;
                     color.R=getIntAttr(entry,"r");
                     color.G=getIntAttr(entry,"g");

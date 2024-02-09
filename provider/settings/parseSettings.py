@@ -41,7 +41,8 @@ DEFAULTCOL=5
 MINCOL=6 #also enum values
 MAXCOL=7 #also enum names
 GROUPCOL=8
-MINLEN= GROUPCOL + 1
+REQUESTCOL=9
+MINLEN= REQUESTCOL + 1
 
 def entryFromRow(row):
   rt={}
@@ -63,6 +64,7 @@ def entryFromRow(row):
     default="1"
   rt['default']=default
   rt['valtype']=row[VALCOL]
+  rt['request']=row[REQUESTCOL]
   return rt
 
 def parseSettings(infile):
@@ -144,6 +146,20 @@ def generateHeader(infile,outfile):
                  ))
           written=True
           continue
+        if type == 'stringlist':
+          of.write("new UserSettingsEntryStringList(\"%s\",\"%s\",UserSettingsEntry::TYPE_%s,SV(%s),US_GETTER(%s,%s),US_SETTER(%s,%s))"%
+                 (
+                 cat,
+                 entry['name'],
+                 entry['type'].upper(),
+                 entry.get('values') or '',
+                 'String',
+                 entry['name'],
+                 'String',
+                 entry['name']
+                 ))
+          written=True
+          continue
         if type == 'int' or type == 'double':
           of.write(
             "new UserSettingsEntryMinMax<%s>(\"%s\",\"%s\",UserSettingsEntry::TYPE_%s, %s,%s,US_GETTER(%s,%s),US_SETTER(%s,%s))" %
@@ -196,6 +212,8 @@ def generateDef(infile,outfile):
         type=entry['type']
         if type == 'int':
           of.write("    int %s=%s;\n"%(entry['name'],entry['default']))
+        if type == 'stringlist':
+          of.write("    String %s=\"%s\";\n"%(entry['name'],entry['default']))  
         if type == 'double' or type == 'depth' or type == 'float':
           of.write("    double %s=%s;\n"%(entry['name'],entry['default']))
         if type == 'bool':

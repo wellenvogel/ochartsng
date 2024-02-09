@@ -64,7 +64,7 @@ public:
             try{
                 installRequest=installer->StartRequestForUpload();
                 if (! installRequest.stream){
-                    throw new AvException("no stream for upload");
+                    throw AvException("no stream for upload");
                 }
                 size_t written=WriteFromInput(request,installRequest.stream,uploadSize);
                 if (written != uploadSize){

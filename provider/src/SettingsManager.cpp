@@ -38,7 +38,7 @@ json::JSON readJson(String fn){
     std::stringstream data;
     std::ifstream fstream(fn);
     if (! fstream.is_open()){
-        throw new FileException(fn,"unable to open");
+        throw FileException(fn,"unable to open");
     }
     data << fstream.rdbuf();
     return json::JSON::Load(data.str());
@@ -81,7 +81,7 @@ class BaseSettings : public IBaseSettings{
     virtual ~BaseSettings(){}
 };
 
-SettingsManager::SettingsManager(String dir){
+SettingsManager::SettingsManager(String dir, SettingsManager::ListProvider p):provider(p){
     settingsDir=dir;
     RenderSettings::ConstPtr newSettings=loadRenderSettings();
     renderSettings=newSettings;
@@ -139,7 +139,7 @@ void fillFromJson(RenderSettings *rs, json::JSON &data)
         try{
             e->setFromJson(rs, value);
         }catch (UserSettingsEntry::InvalidValueException &ex){
-            throw AvException(FMT("invalid json for %s: %s",e->name,ex.msg()));
+            LOG_ERROR("invalid json for %s: %s, using default",e->name,ex.msg());
         }
     }
 }
@@ -249,4 +249,7 @@ bool SettingsManager::enableChartSet(const String &setKey, bool enabled){
         updater(baseSettings,renderSettings);
     }
     return true;
+}
+bool SettingsManager::getList(json::JSON &json,const String &item) const{
+    return provider(json,item);
 }

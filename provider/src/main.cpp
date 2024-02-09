@@ -192,12 +192,21 @@ int mainFunction(int argc, char **argv,bool *stopFlag=NULL)
         memoryLimit=systemKb*memPercent/100;
         LOG_INFO("setting memory limit to %d kb",memoryLimit);
     }
-
-    SettingsManager::Ptr settings=std::make_shared<SettingsManager>(configDir);
+    ChartManager::Ptr chartManager;
+    SettingsManager::Ptr settings=std::make_shared<SettingsManager>(configDir,
+        [&chartManager](json::JSON &json,const String &item)->bool{
+            if (!chartManager) return false;
+            if (item == "colorTables"){
+                auto tables=chartManager->GetS52Data()->getColorTables();
+                for (auto &&table:tables) json.append(table);
+                return true;
+            }
+            return false;
+    });
     ChartFactory::Ptr chartFactory=std::make_shared<ChartFactory>(OexControl::Instance());
     FontFileHolder::Ptr fontFile=std::make_shared<FontFileHolder>(FileHelper::concatPath(s57Dir,"Roboto-Regular.ttf"));
     fontFile->init();
-    ChartManager::Ptr chartManager=std::make_shared<ChartManager>(fontFile,settings->GetBaseSettings(), settings->GetRenderSettings(),chartFactory,s57Dir, memoryLimit,numOpeners);
+    chartManager=std::make_shared<ChartManager>(fontFile,settings->GetBaseSettings(), settings->GetRenderSettings(),chartFactory,s57Dir, memoryLimit,numOpeners);
     settings->registerUpdater([&chartManager](IBaseSettings::ConstPtr base,RenderSettings::ConstPtr rs){
         chartManager->UpdateSettings(base,rs);
     });
