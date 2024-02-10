@@ -183,7 +183,7 @@ void Renderer::renderTile(const TileInfo &tile, const RenderInfo &info, RenderRe
     result.timer.set(startRender,"render");
     chartContexts.clear(); //we must ensure to release all contexts before we release the charts
     renderCharts.clear();
-    DrawingContext::ColorAndAlpha boundingColor = context.s52Data->convertColor(context.s52Data->getColor("XACBND"));
+    DrawingContext::ColorAndAlpha boundingColor = context.s52Data->convertColor(context.s52Data->getColor("UINFG"));
     if (renderSettings->showChartBounds){
         for (const auto &extent: extents){
             Coord::PixelBox pixelExtent=Coord::worldExtentToPixel(extent, tileBox);

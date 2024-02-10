@@ -988,7 +988,7 @@ Chart::RenderResult OESUChart::Render(int pass,RenderContext & renderCtx, Drawin
         throw AvException(FMT("%s: pass 0 with existing chartContext",fileName));
     }
     pass--;
-    if (pass == 1){
+    if (pass == 0){
         //symbolized areas
         for (auto &&ro:chartCtx->matchingObjects){
             ro->Render(renderCtx, ctx, tile, s52::RS_AREASY);
