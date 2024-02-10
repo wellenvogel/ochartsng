@@ -60,6 +60,8 @@ public:
             STATE_READY        
     } ;
     using RunFunction=std::function<void (void)>;
+    using SetChangeFunction=std::function<void(const String &setKey)>;
+    using SettingsChangeFunction=std::function<void(s52::S52Data::ConstPtr newData)>;
     ChartManager(FontFileHolder::Ptr fontFile, IBaseSettings::ConstPtr bs, RenderSettings::ConstPtr rs, IChartFactory::Ptr chartFactory,String s57dataDir, unsigned int memLimitKb, int numOpeners);
     /**
      * really start reading the charts
@@ -129,8 +131,7 @@ public:
     bool                CloseChart(const String &setName, const String &chartName);
     int                 HandleCharts(const StringVector &dirsAndFiles,bool setsOnly, bool canDelete=false);
     WeightedChartList   FindChartsForTile(RenderSettings::ConstPtr renderSettingsPtr,const TileInfo &tile, bool allLower=false);
-    using ExtentList=std::vector<Coord::Extent>;
-    ExtentList          GetChartSetExtents(const String &chartSetKey,bool includeSet);
+    ChartSet::ExtentList  GetChartSetExtents(const String &chartSetKey,bool includeSet);
     /**
      * add mappings to shorten the chart set names for known directories
     */
@@ -145,6 +146,8 @@ public:
     bool                HasOpeners() const;
     s52::S52Data::ConstPtr GetS52Data() const;
     Chart::ChartType    GetChartType(const String &fileName) const;
+    void                registerSetChagend(SetChangeFunction f);
+    void                registerSettingsChanged(SettingsChangeFunction f);
 private:
     class HouseKeeper : public Thread{
         ChartCache::Ptr cache;
@@ -193,8 +196,8 @@ private:
     HouseKeeper::Ptr    houseKeeper;
     int                 numOpeners;
     FontFileHolder::Ptr fontFile;
-
-
+    SetChangeFunction   setChanged;
+    SettingsChangeFunction settingsChanged;
 };
 
 #endif /* CHARTMANAGER_H */

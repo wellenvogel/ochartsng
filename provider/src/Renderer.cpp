@@ -70,9 +70,20 @@ void Renderer::renderTile(const TileInfo &tile, const RenderInfo &info, RenderRe
     context.s52Data=chartManager->GetS52Data();
     RenderSettings::ConstPtr renderSettings=context.s52Data->getSettings();
     result.timer.add("settings");
-    ChartManager::ExtentList extents=chartManager->GetChartSetExtents(tile.chartSetKey,true);
+    ChartSet::ExtentList extents=chartManager->GetChartSetExtents(tile.chartSetKey,true);
     if (extents.size() < 1){
         throw RenderException(tile,"internal error: no chart set extent");
+    }
+    TileCache::CacheDescription cd;
+    cd.settingsSequence=context.s52Data->getSequence();
+    cd.setHash=extents.setHash;
+    cd.setSequence=extents.setSequence;
+    TileCache::Png tileFromCache=cache->getTile(cd,tile);
+    if (tileFromCache){
+        result.timer.add("cache");
+        LOG_DEBUG("tile %s from cache",tile.ToString());
+        result.result=tileFromCache;
+        return;
     }
     Coord::TileBox tileBox=Coord::tileToBox(tile);
     WeightedChartList renderCharts = chartManager->FindChartsForTile(renderSettings, tile);
@@ -207,6 +218,7 @@ void Renderer::renderTile(const TileInfo &tile, const RenderInfo &info, RenderRe
     encoder->setContext(drawing.get());
     bool rt = encoder->encode(result.result);
     result.timer.add("png");
+    cache->addTile(result.result,cd,tile);
     LOG_DEBUG("%s",drawing->getStatistics());
 }
 

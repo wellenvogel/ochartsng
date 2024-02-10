@@ -41,9 +41,15 @@ class CacheReaderWriter;
 class ChartList;
 class ChartSet : public StatusCollector{
 public:
-    typedef std::vector<ChartInfo::Ptr> InfoList;
-    typedef std::shared_ptr<ChartSet> Ptr;
-    typedef std::shared_ptr<const ChartSet> ConstPtr;
+    using InfoList=std::vector<ChartInfo::Ptr>;
+    using Ptr=std::shared_ptr<ChartSet>;
+    using ConstPtr=std::shared_ptr<const ChartSet>;
+    class ExtentList: public std::vector<Coord::Extent>{
+        public:
+        using std::vector<Coord::Extent>::vector;
+        String setHash;
+        int setSequence=0;
+    };
     const int MAX_ERRORS_RETRY=10; //stop retrying after that many errors
     typedef enum{
         STATE_INIT,
@@ -66,7 +72,7 @@ public:
     ChartSetInfo::Ptr   info;
     ChartSet(ChartSetInfo::Ptr info, bool canDelete=false);
     virtual             ~ChartSet(){}
-    const String        GetKey();
+    const String        GetKey() const;
     bool                IsActive(){return (state == STATE_READY && (numValidCharts>0) && ! DisabledByErrors());}
     /**
      * change the enabled/disabled state
@@ -93,7 +99,7 @@ public:
     StringVector        GetFailedChartNames(int maxErrors=-1);   
     ExtentInfo          GetExtent();
     int                 RemoveUnverified();
-    void                FillChartExtents(std::vector<Coord::Extent> &extents);
+    void                FillChartExtents(ExtentList &extents);
 
     
     

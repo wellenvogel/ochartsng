@@ -36,6 +36,7 @@
 #include "S52Data.h"
 #include "FontManager.h"
 #include <memory>
+#include "TileCache.h"
 class Renderer
 {
 public:
@@ -47,7 +48,6 @@ public:
     class RenderResult
     {
         public:
-        typedef std::shared_ptr<DataVector> DataPtr;
         DataPtr result;
         Timer::Measure timer;
         RenderResult(){
@@ -63,9 +63,10 @@ public:
         public:
         String pngType="fpng";
     };
-    Renderer(ChartManager::Ptr m, bool debug){
+    Renderer(ChartManager::Ptr m,TileCache::Ptr tc, bool debug){
         chartManager=m;
         renderDebug=debug;
+        cache=tc;
     }
     virtual ~Renderer(){}
     virtual void renderTile(const TileInfo &tile,const RenderInfo &info,RenderResult &result);
@@ -73,6 +74,7 @@ public:
     virtual ChartManager::Ptr getManager(){return chartManager;}
     protected:
         ChartManager::Ptr chartManager;
+        TileCache::Ptr cache;
         bool renderDebug=false;
 
 };

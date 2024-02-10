@@ -449,6 +449,9 @@ int ChartManager::computeActiveSets(){
         }
         set->SetEnabled(enabled,disabledBy);
         if (enabled) numEnabled++;
+        else{
+            if (setChanged) setChanged(set->GetKey());
+        }
     }
     return numEnabled;
 }
@@ -488,6 +491,7 @@ bool ChartManager::DeleteChartSet(const String &key){
         computeActiveSets();
         chartCache->CloseBySet(key); 
     });
+    if (setChanged) setChanged(key);
     return true;
 }
 
@@ -612,9 +616,9 @@ static void fillChartList(WeightedChartList &chartList,ChartSet::Ptr chartSet,co
         chartList.add(*it);
     }
 }
-ChartManager::ExtentList ChartManager::GetChartSetExtents(const String &chartSetKey, bool includeSet)
+ChartSet::ExtentList ChartManager::GetChartSetExtents(const String &chartSetKey, bool includeSet)
 {
-    ExtentList rt;
+    ChartSet::ExtentList rt;
     Synchronized l(lock);
     auto it = chartSets.find(chartSetKey);
     if (it == chartSets.end())
@@ -843,14 +847,23 @@ bool ChartManager::Stop(){
 typedef std::unordered_set<ChartInfo::Ptr> ChartInfoSet;
 void ChartManager::CloseDisabled(){
     LOG_INFO("ChartManager::CloseDisabled");
-    Synchronized l(lock);
+    StringVector closed;
     int numClosed=0;
-    for (auto it=chartSets.begin();it!=chartSets.end();it++){
-        ChartSet::Ptr set=it->second;
-        if (set->IsEnabled()) continue;
-        numClosed+=chartCache->CloseBySet(set->GetKey());
+    {
+    Synchronized l(lock);
+        for (auto it=chartSets.begin();it!=chartSets.end();it++){
+            ChartSet::Ptr set=it->second;
+            if (set->IsEnabled()) continue;
+            numClosed+=chartCache->CloseBySet(set->GetKey());
+            closed.push_back(set->GetKey());
+        }
     }
     LOG_INFO("ChartManager::CloseDisabled finished and closed %d charts",numClosed);
+    if (setChanged){
+        for (auto &&cs:closed){
+            setChanged(cs);
+        }
+    }
 }
 
 Chart::ConstPtr ChartManager::OpenChart(s52::S52Data::ConstPtr s52data,ChartInfo::Ptr chartInfo,bool doWait){
@@ -1143,6 +1156,16 @@ bool ChartManager::buildS52Data(RenderSettings::ConstPtr s){
         s52data=newS52Data;
         AddItem("s52data",s52data);
     }
-    if (hasOld && chartCache) chartCache->CloseByMD5(oldMd5); 
+    if (hasOld && chartCache) chartCache->CloseByMD5(oldMd5);
+    if (settingsChanged){
+        settingsChanged(s52data);
+    } 
     return true;  
+}
+
+void ChartManager::registerSetChagend(ChartManager::SetChangeFunction f){
+    setChanged=f;
+}
+void ChartManager::registerSettingsChanged(ChartManager::SettingsChangeFunction f){
+    settingsChanged=f;
 }

@@ -54,7 +54,7 @@
 #include "S52Data.h"
 #include "FontManager.h"
 #include "SystemHelper.h"
-
+#include "TileCache.h"
 
 #define CHART_TEMP_DIR "_TMP"
 using std::cout;
@@ -214,8 +214,16 @@ int mainFunction(int argc, char **argv,bool *stopFlag=NULL)
     //for our normal chart dir we use an empty prefix
     //to get short names
     chartManager->AddKnownDirectory(chartDir,"");
-    Renderer::Ptr trender=std::make_shared<TestRenderer>(chartManager,renderDebug);
-    Renderer::Ptr render=std::make_shared<Renderer>(chartManager,renderDebug);
+    TileCache::Ptr tileCache=std::make_shared<TileCache>(40960); //TODO config
+    chartManager->registerSetChagend([&tileCache](const String &key){
+        tileCache->clean(key);
+    });
+    chartManager->registerSettingsChanged([&tileCache](s52::S52Data::ConstPtr s52data){
+        tileCache->cleanBySettings(s52data->getSequence());
+    });
+    collector.AddItem("tileCache",tileCache);
+    Renderer::Ptr trender=std::make_shared<TestRenderer>(chartManager,tileCache,renderDebug);
+    Renderer::Ptr render=std::make_shared<Renderer>(chartManager,tileCache,renderDebug);
     TokenHandler::Ptr tokenHandler=std::make_shared<TokenHandler>("all");
     tokenHandler->start();
     HTTPServer server(port,5);

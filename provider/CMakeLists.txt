@@ -61,6 +61,7 @@ set(SRC
     src/RenderHelper.cpp
     src/SettingsManager.cpp
     src/TokenHandler.cpp
+    src/TileCache.cpp
     src/s52/S52Data.cpp
     src/s52/S52Symbols.cpp
     src/s52/S52CondRules.cpp

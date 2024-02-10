@@ -45,7 +45,7 @@ ChartSet::ChartSet(ChartSetInfo::Ptr info, bool canDelete)
     numValidCharts = 0;
 }
 
-const String ChartSet::GetKey()
+const String ChartSet::GetKey() const
 {
     ChartSetInfo::Ptr ip = info; // avoid lock
     if (!ip)
@@ -207,9 +207,10 @@ ChartSet::ExtentInfo ChartSet::GetExtent()
     rt.minScale = minScale;
     return rt;
 }
-void ChartSet::FillChartExtents(std::vector<Coord::Extent> &extents)
+void ChartSet::FillChartExtents(ChartSet::ExtentList &extents)
 {
     Synchronized l(lock);
+    extents.setHash=hash.ToString();
     for (const auto &info : chartList)
     {
         extents.push_back(info->GetExtent());
