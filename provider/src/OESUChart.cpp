@@ -930,14 +930,15 @@ class OESURenderContext: public ChartRenderContext{
         }
 };
 int OESUChart::getRenderPasses() const{
-    return s52::PRIO_NUM * renderSteps.size() +1; //see comment below about passes
+    return s52::PRIO_NUM * renderSteps.size() +2; //see comment below about passes
 }
 Chart::RenderResult OESUChart::Render(int pass,RenderContext & renderCtx, DrawingContext &ctx, Coord::TileBox const &tile) const
 {
     /**
      * render flow:
      * (1) render areas only (AC)
-     * (2) iterate over priorities
+     * (2) symbolized areas
+     * (3) iterate over priorities
      *     on each priority:
      *     (2) render areas - all other rules (tables PLAIN_BOUNDARIES/SYMBOLIZED_BOUNDARIES)
      *     (3) render lines (table LINES)
@@ -986,6 +987,15 @@ Chart::RenderResult OESUChart::Render(int pass,RenderContext & renderCtx, Drawin
     if (pass < 1){
         throw AvException(FMT("%s: pass 0 with existing chartContext",fileName));
     }
+    pass--;
+    if (pass == 1){
+        //symbolized areas
+        for (auto &&ro:chartCtx->matchingObjects){
+            ro->Render(renderCtx, ctx, tile, s52::RS_AREASY);
+        }
+        return RenderResult::ROK;
+    }
+    //now all the rest priority based
     pass--;
     int prio = pass / renderSteps.size();
     int step=pass - prio * renderSteps.size();

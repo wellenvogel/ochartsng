@@ -170,8 +170,9 @@ namespace s52
 
     typedef enum {
             RS_AREAS1=1, //AC rules only
-            RS_AREAS2=2, //rules from LUP table PLAIN_BOUNDARIES/SYMBOLIZED_BOUNDARIES
-            RS_LINES=3,  //rules from table LINES
+            RS_AREASY=2,
+            RS_AREAS2=3, //rules from LUP table PLAIN_BOUNDARIES/SYMBOLIZED_BOUNDARIES
+            RS_LINES=4,  //rules from table LINES
             RS_POINTS=4  //rules from table PAPER_CHART/SIMPLIFIED
         } RenderStep; 
     class LUPrec

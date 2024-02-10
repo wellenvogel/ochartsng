@@ -683,6 +683,7 @@ WeightedChartList ChartManager::FindChartsForTile(RenderSettings::ConstPtr rende
     //maxUnder gives the zoom we used to display better (higher zoom, smaller scale charts)
     //if we did not already fully cover
     int maxUnder=tile.zoom+renderSettings->underZoom;
+    int maxSoftUnder=maxUnder+renderSettings->softUnderZoom;
     ZoomLevelScales scales(renderSettings->scale); //TODO: keep this
     //the scales for a zoom level are all scales with
     //scale <= scales[zoom] && scale > scales[zoom+1]
@@ -694,16 +695,20 @@ WeightedChartList ChartManager::FindChartsForTile(RenderSettings::ConstPtr rende
     double startScaleUpper=scales.GetScaleForZoom(requestedZoom); //Scale that we start detecting coverage (including)
     double startScaleLower=scales.GetScaleForZoom(requestedZoom+1); //Scale that we start detecting coverage (excluding) 
     //minuScale is the minimum scale we accept at all
-    double minuScale=(maxUnder > MAX_ZOOM)?0:scales.GetScaleForZoom(maxUnder+1);
-    //first remove everything outside minZoom, maxUnder
-    avnav::erase_if(rt,[maxzScale,minuScale](const ChartInfoWithScale &it){ 
-        if (it.scale < minuScale) return true;
+    double minuScale=(maxUnder >= MAX_ZOOM)?0:scales.GetScaleForZoom(maxUnder+1);
+    double minSoftUScale=(maxSoftUnder >= MAX_ZOOM)?0:scales.GetScaleForZoom(maxSoftUnder+1);
+    //first remove everything outside minZoom, maxSoftUnder
+    avnav::erase_if(rt,[maxzScale,minSoftUScale](const ChartInfoWithScale &it){ 
+        if (it.scale < minSoftUScale) return true;
         if (it.scale >= maxzScale) return true;
         return false;
     });
     if (allLower){
         //for feature info requests we do not check any coverages
-        
+        return rt;
+    }
+    for (auto && c:rt){
+        if (c.scale < minuScale) c.softUnder=true;
     }
     //now we look at the coverage
     //we start with our requested zoom level and the go down (i.e. larger scale charts)

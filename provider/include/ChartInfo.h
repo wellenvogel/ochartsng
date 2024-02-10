@@ -125,6 +125,7 @@ class ChartInfoWithScale{
 public:
     ChartInfo::Ptr info;
     int scale;
+    bool softUnder=false;
     ChartInfoWithScale(int weight, ChartInfo::Ptr info){
         this->scale=weight;
         this->info=info;

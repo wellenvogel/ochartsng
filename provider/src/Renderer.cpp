@@ -159,9 +159,12 @@ void Renderer::renderTile(const TileInfo &tile, const RenderInfo &info, RenderRe
                 for (auto scaleChart = scaleCharts.begin(); scaleChart != scaleCharts.end(); scaleChart++)
                 {
                     context.chartContext = chartContexts[scaleChart->idx];
-                    scaleChart->chart->Render(pass, context, *drawing,  renderCharts[scaleChart->idx].tile);
-                    hasRendered = true;
-                    chartContexts[scaleChart->idx] = context.chartContext;
+                    if (pass == 0 || ! renderCharts[scaleChart->idx].softUnder){
+                        //for "soft under" charts we only render areas
+                        scaleChart->chart->Render(pass, context, *drawing,  renderCharts[scaleChart->idx].tile);
+                        hasRendered = true;
+                        chartContexts[scaleChart->idx] = context.chartContext;
+                    }
                     context.chartContext.reset();
                 }
             }

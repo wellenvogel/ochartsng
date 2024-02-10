@@ -71,7 +71,6 @@ namespace s52
             return (T*)this;
         }
         bool isValid() const{ return valid;}
-        bool isArea() const { return type == RUL_ARE_CO || type == RUL_ARE_PA;}
         protected:
         std::size_t sz=0;
         std::size_t al=0;
