@@ -35,7 +35,6 @@
 #include <atomic>
 #include "ChartInfo.h"
 #include "ChartSetInfo.h"
-#include "ChartList.h"
 #include "Logger.h"
 #include "SimpleThread.h"
 #include "CacheHandler.h"

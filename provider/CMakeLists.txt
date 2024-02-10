@@ -47,7 +47,6 @@ set(SRC
     src/Chart.cpp
     src/ChartSetInfo.cpp
     src/ChartSet.cpp
-    src/ChartList.cpp
     src/ChartCache.cpp
     src/ChartFactory.cpp
     src/SystemHelper.cpp

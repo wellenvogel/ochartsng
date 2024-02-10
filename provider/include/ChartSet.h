@@ -30,10 +30,7 @@
 #include "ChartSetInfo.h"
 #include "SimpleThread.h"
 #include "ChartInfo.h"
-#include "ChartList.h"
-
 #include "StatusCollector.h"
-
 #include "MD5.h"
 #include <vector>
 #include <map>
@@ -44,6 +41,7 @@ class CacheReaderWriter;
 class ChartList;
 class ChartSet : public StatusCollector{
 public:
+    typedef std::vector<ChartInfo::Ptr> InfoList;
     typedef std::shared_ptr<ChartSet> Ptr;
     typedef std::shared_ptr<const ChartSet> ConstPtr;
     const int MAX_ERRORS_RETRY=10; //stop retrying after that many errors
@@ -59,6 +57,11 @@ public:
             int minScale=0;
             int maxScale=0;
     };
+    class ChartCounts{
+        public:
+        int valid=0;
+        int ignored=0;
+    } ;
 
     ChartSetInfo::Ptr   info;
     ChartSet(ChartSetInfo::Ptr info, bool canDelete=false);
@@ -96,7 +99,6 @@ public:
     
 private:
     std::atomic<SetState> state={STATE_INIT};
-    ChartList::Ptr      charts;
     String              dataDir;
     std::mutex          lock;
     bool                canDelete;
@@ -106,7 +108,17 @@ private:
     std::atomic<int>    reopenErrors={0}; //errors during reopen
     std::atomic<int>    reopenOk={0}; //consecutive reopen ok
     std::atomic<int>    numValidCharts={0}; 
-    std::atomic<int>    numIgnoredCharts={0}; 
+    std::atomic<int>    numIgnoredCharts={0};
+    std::atomic<int>    numCharts={0};
+    /**
+     * compute hash, numbers
+    */
+    void                computeHash();
+    InfoList            chartList;
+    std::atomic<int>    minScale={std::numeric_limits<int>().max()};
+    std::atomic<int>    maxScale={std::numeric_limits<int>().min()}; 
+    MD5Name             hash;
+    Coord::Extent       boundings;
 };
 
 

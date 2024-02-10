@@ -33,7 +33,6 @@ const ChartSetStatus=(props)=>{
     let info=props.info||{};
     let cache=props.cache;
     let writer=props.cacheWriter;
-    let charts=props.charts||{};
     let status=props.status;
     if (!props.active && status !== "DELETED"){
         status="INACTIVE";
@@ -53,7 +52,7 @@ const ChartSetStatus=(props)=>{
                 }
             >
             <StatusLine label="Status" value={status} icon={true}/>
-            <StatusLine label="Charts" value={props.numValidCharts+"/"+(props.numValidCharts+props.numIgnoredCharts)+", minScale="+charts.minScale+", maxScale="+charts.maxScale}/>
+            <StatusLine label="Charts" value={props.numValidCharts+"/"+(props.numValidCharts+props.numIgnoredCharts)+", minScale="+props.minScale+", maxScale="+props.maxScale}/>
             <StatusLine label="Directory" value={info.directory}/>
             <StatusLine label="Info"  value={"Version="+info.version+", ValidTo="+info.validTo}/>
             {props.showDetails &&
@@ -76,7 +75,6 @@ ChartSetStatus.propTypes={
     info: PropTypes.object,
     cache: PropTypes.object,
     cacheWriter:  PropTypes.object,
-    charts: PropTypes.object,
     showDetails: PropTypes.bool
 }
 
