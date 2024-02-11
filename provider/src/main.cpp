@@ -143,7 +143,8 @@ int mainFunction(int argc, char **argv,bool *stopFlag=NULL)
                     break;
                 case 'c':
                     tileCacheMem=::atoi(optarg);
-                    if (tileCacheMem < 0) tileCacheMem=0;                         
+                    if (tileCacheMem < 0) tileCacheMem=0;
+                    break;                         
                 default: /* '?' */
                    usage(argv[0]);
                    return -1;
