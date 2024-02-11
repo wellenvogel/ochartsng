@@ -71,7 +71,7 @@ void usage (const char *name){
     std::cerr <<  "       -k switch on debug info in rendered tiles" << std::endl;
     std::cerr <<  "       -b predefinedName - predefined system name to be used when registering this system (android)" << std::endl;
     std::cerr <<  "       -x memPercent limit the chart memory to this percentage of the system memory (default: 50)" << std::endl;
-    std::cerr <<  "       -c tileCacheKb - the memory for the tile cache in KB(default:"<< (10*1024) <<"), use 0 to disable" << std::endl;
+    std::cerr <<  "       -c tileCacheKb - the memory for the tile cache in KB(default:"<< (40*1024) <<"), use 0 to disable" << std::endl;
 }
 void termHandler(int sig){
     std::cerr << "termhandler" << std::endl;
@@ -105,7 +105,7 @@ int mainFunction(int argc, char **argv,bool *stopFlag=NULL)
     bool renderDebug=false;
     int logLevel=LOG_LEVEL_INFO;
     int numOpeners=6;
-    int tileCacheMem=10*1024;
+    int tileCacheMem=40*1024;
     while ((opt = getopt(argc, argv, "l:a:d:u:g:t:kp:b:x:o:c:")) != -1) {
                 switch (opt) {
                 case 'k':
