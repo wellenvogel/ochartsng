@@ -72,6 +72,7 @@ void usage (const char *name){
     std::cerr <<  "       -b predefinedName - predefined system name to be used when registering this system (android)" << std::endl;
     std::cerr <<  "       -x memPercent limit the chart memory to this percentage of the system memory (default: 50)" << std::endl;
     std::cerr <<  "       -c tileCacheKb - the memory for the tile cache in KB(default:"<< (40*1024) <<"), use 0 to disable" << std::endl;
+    std::cerr <<  "       -z additional chart dir, multiple possible" << std::endl;
 }
 void termHandler(int sig){
     std::cerr << "termhandler" << std::endl;
@@ -106,7 +107,8 @@ int mainFunction(int argc, char **argv,bool *stopFlag=NULL)
     int logLevel=LOG_LEVEL_INFO;
     int numOpeners=6;
     int tileCacheMem=40*1024;
-    while ((opt = getopt(argc, argv, "l:a:d:u:g:t:kp:b:x:o:c:")) != -1) {
+    StringVector additionalChartDirs;
+    while ((opt = getopt(argc, argv, "l:a:d:u:g:t:kp:b:x:o:c:z:")) != -1) {
                 switch (opt) {
                 case 'k':
                     renderDebug=true;
@@ -144,6 +146,9 @@ int mainFunction(int argc, char **argv,bool *stopFlag=NULL)
                 case 'c':
                     tileCacheMem=::atoi(optarg);
                     if (tileCacheMem < 0) tileCacheMem=0;
+                    break;
+                case 'z':
+                    additionalChartDirs.push_back(optarg);
                     break;                         
                 default: /* '?' */
                    usage(argv[0]);
@@ -223,6 +228,12 @@ int mainFunction(int argc, char **argv,bool *stopFlag=NULL)
     //for our normal chart dir we use an empty prefix
     //to get short names
     chartManager->AddKnownDirectory(chartDir,"");
+    int idx=1;
+    for (auto &&acd:additionalChartDirs){
+        acd=FileHelper::realpath(acd);
+        chartManager->AddKnownDirectory(acd,FMT("E%d-%s",idx,FileHelper::fileName(acd)));
+        idx++;
+    }
     TileCache::Ptr tileCache=std::make_shared<TileCache>(tileCacheMem);
     chartManager->registerSetChagend([&tileCache](const String &key){
         tileCache->clean(key);
@@ -279,6 +290,7 @@ int mainFunction(int argc, char **argv,bool *stopFlag=NULL)
         }
         //TODO: chartInfoCache
         chartManager->ReadCharts(toRead,true);
+        chartManager->ReadCharts(additionalChartDirs,false);
         chartManager->RemoveUnverified();
         int systemKb=0;
         int ourKb=0;

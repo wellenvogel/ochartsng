@@ -60,6 +60,8 @@ class ConfigParam:
         return v
       return int(v)
     if self.type == 'BOOLEAN':
+      if type(v) is bool:
+        return v
       return v.lower() == 'true'
     return v 
   def fromParam(self,param, doRaise=False):
@@ -111,16 +113,20 @@ class Plugin:
   C_DEBUG=ConfigParam("debug",type='SELECT',default='1',description='debuglevel for provider',rangeOrList=['0','1','2'], mandatory=True)
   C_MEMPERCENT=ConfigParam("memPercent",type='NUMBER',default='50',description='percent of existing mem to be used',rangeOrList=[2,95])
   C_TILECACHEKB=ConfigParam("tileCacheKb",type='NUMBER',default='40960',description='kb memory to be used for the tile cache',rangeOrList=[100,400000])
+  C_USELEGACY=ConfigParam("useLegacy",type='BOOLEAN',default='false',description='also show charts installed with the old ocharts plugin')
   EDITABLE_CONFIG=[
     C_PORT,
     C_DEBUG,
     C_MEMPERCENT,
-    C_TILECACHEKB
+    C_TILECACHEKB,
+    C_USELEGACY
   ]
   
   C_DATADIR=ConfigParam('dataDir',type='STRING',description='base directory for data',default='$DATADIR/ochartsng', mandatory=True)
+  C_LEGACYDIR=ConfigParam('legacyDir',type='STRING',description='base directory for old ocharts data',default='$DATADIR/ocharts/charts', mandatory=False)
   BASE_CONFIG=[
-    C_DATADIR
+    C_DATADIR,
+    C_LEGACYDIR
   ]
                
   CONFIG=EDITABLE_CONFIG+BASE_CONFIG
@@ -261,6 +267,7 @@ class Plugin:
     if not os.path.exists(dataDir):
       raise Exception("data dir %s not found" % dataDir)
     logname = os.path.join(dataDir, "log")
+
     cmdline = ["/bin/sh",exe,
                '-d',str(self.config['debug']),
                '-l' ,logname,
@@ -272,6 +279,16 @@ class Plugin:
     tileCacheKb=self.C_TILECACHEKB.fromParam(self.config)
     if tileCacheKb is not None:
       cmdline=cmdline + ["-c",str(tileCacheKb)]
+    if self.C_USELEGACY.fromParam(self.config):
+      legacyDir=self.C_LEGACYDIR.fromParam(self.config)
+      if legacyDir is not None and os.path.exists(legacyDir):
+        zlist=[]
+        for d in os.listdir(legacyDir):
+          dn=os.path.join(legacyDir,d)
+          if os.path.isdir(dn):
+            zlist+=['-z',dn]
+      if len(zlist) > 0:
+        cmdline+=zlist
     cmdline=cmdline + [dataDir,str(self.C_PORT.fromParam(self.config))]
     return cmdline
 
