@@ -64,7 +64,7 @@ class ErrorDisplay extends React.Component{
 }
 
 export default ErrorDisplay;
-
+const DEFAULT_ERROR_TIMEOUT=20000; //ms
 let timer=undefined;
 export const setError=(txt,opt_timeout)=>{
     if (timer){
@@ -72,7 +72,8 @@ export const setError=(txt,opt_timeout)=>{
         timer=undefined;
     }
     errorStore.storeData(CURRENT_ERROR,txt+"");
-    if (opt_timeout !== undefined && opt_timeout > 0){
+    if (opt_timeout === undefined) opt_timeout=DEFAULT_ERROR_TIMEOUT;
+    if (opt_timeout > 0){
         timer=window.setTimeout(()=>errorStore.storeData(CURRENT_ERROR,undefined),opt_timeout);
     }
 }
