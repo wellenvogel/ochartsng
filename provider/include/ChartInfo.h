@@ -73,9 +73,9 @@ public:
         NEEDS_VER //need verification as data only from cache
     } State;
     //create from loaded chart, compute fileHash, state=READY
-    ChartInfo(const Chart::ChartType &type, const String &fileName, int nativeScale,Coord::Extent extent, bool ignore=false);
+    ChartInfo(const Chart::ChartType &type, const String &fileName, int nativeScale,Coord::Extent extent, bool softUnder,bool ignore=false);
     //create from cache, state=NEEDS_VER
-    ChartInfo(const Chart::ChartType &type,const String &fileName, int nativeScale,Coord::Extent extent,int64_t fileSize, int64_t fileTime, bool ignore=false);
+    ChartInfo(const Chart::ChartType &type,const String &fileName, int nativeScale,Coord::Extent extent,int64_t fileSize, int64_t fileTime, bool softUnder,bool ignore=false);
     //unable to read chart header
     ChartInfo(const Chart::ChartType &type,const String &fileName);
     ~ChartInfo();
@@ -103,6 +103,7 @@ public:
     int64_t     GetFileSize()const {return fileSize;}
     State       GetState() const {return state;}
     bool        IsIgnored() const { return ignore;}
+    bool        HasSoftUnder() const { return softUnder;}
     Chart::ChartType GetType() const { return type;}
 
     private:
@@ -118,6 +119,7 @@ public:
     int             numErrors=0; //count tries
     bool            checkOrSetFileData();
     bool            ignore=false;
+    bool            softUnder=false; //does this support area under zoom?
     Chart::ChartType type;
 };
 

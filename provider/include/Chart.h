@@ -104,6 +104,7 @@ public:
     virtual ObjectList FeatureInfo(RenderContext & context,DrawingContext &drawing,const Coord::TileBox &box, bool overview) const;
     virtual MD5Name GetMD5() const { return md5;}
     virtual bool IsIgnored() const { return false;}
+    virtual bool SoftUnder() const { return false;}
     virtual void LogInfo(const String &prefix) const {}
     virtual OexControl::OexCommands OpenHeaderCmd() const{ return OexControl::OexCommands::CMD_UNKNOWN;}
     virtual OexControl::OexCommands OpenFullCmd() const{ return OexControl::OexCommands::CMD_UNKNOWN;}

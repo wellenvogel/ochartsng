@@ -243,7 +243,7 @@ bool ChartManager::HandleChart(const String &chartFile,bool setsOnly,bool canDel
             if (chart) {
                 numRead++;
                 ChartInfo::Ptr info=std::make_shared<ChartInfo>(chart->GetType(), chartFile,
-                        chart->GetNativeScale(), chart->GetChartExtent(), chart->IsIgnored());
+                        chart->GetNativeScale(), chart->GetChartExtent(), chart->SoftUnder(), chart->IsIgnored());
                 set->AddChart(info);
                 LOG_INFO("adding chart %s",info->ToString());
                 return true;
@@ -701,8 +701,16 @@ WeightedChartList ChartManager::FindChartsForTile(RenderSettings::ConstPtr rende
     //minuScale is the minimum scale we accept at all
     double minuScale=(maxUnder >= MAX_ZOOM)?0:scales.GetScaleForZoom(maxUnder+1);
     double minSoftUScale=(maxSoftUnder >= MAX_ZOOM)?0:scales.GetScaleForZoom(maxSoftUnder+1);
-    //first remove everything outside minZoom, maxSoftUnder
-    avnav::erase_if(rt,[maxzScale,minSoftUScale](const ChartInfoWithScale &it){ 
+    const int MAX_SOFT_UNDER_CHARTS=4;  //avoid too many charts to be opend for the tile
+                                        //we just keep this number of the highest scale charts
+    int numSoftUnder=0;
+    //first remove everything outside minZoom, maxSoftUnder/maxUnder
+    avnav::erase_if(rt,[&numSoftUnder,maxzScale,minSoftUScale,minuScale](const ChartInfoWithScale &it){ 
+        if (it.scale < minuScale){
+            if (! it.info->HasSoftUnder()) return true;
+            numSoftUnder++;
+            if (numSoftUnder > MAX_SOFT_UNDER_CHARTS) return true;
+        }
         if (it.scale < minSoftUScale) return true;
         if (it.scale >= maxzScale) return true;
         return false;
@@ -712,7 +720,9 @@ WeightedChartList ChartManager::FindChartsForTile(RenderSettings::ConstPtr rende
         return rt;
     }
     for (auto && c:rt){
-        if (c.scale < minuScale) c.softUnder=true;
+        if (c.scale < minuScale){
+            c.softUnder=true;
+        }
     }
     //now we look at the coverage
     //we start with our requested zoom level and the go down (i.e. larger scale charts)

@@ -114,82 +114,88 @@ void Renderer::renderTile(const TileInfo &tile, const RenderInfo &info, RenderRe
         }
     }
     std::vector<ChartRenderContext::Ptr> chartContexts(renderCharts.size(),ChartRenderContext::Ptr());    
-    idx=0;
-    ChartIdx currentChart;
-    while(idx < renderCharts.size() || currentChart.valid)
-    {
-        try
+    for (int round=0;round<2;round ++){
+        //1st round: softUnder, second round: normal
+        idx=0;
+        ChartIdx currentChart;
+        while(idx < renderCharts.size() || currentChart.valid)
         {
-            //build a vector of all charts of the same scale
-            //and render all passes for them together
-            int maxSteps=0;
-            ChartIdx::List scaleCharts;
-            if (currentChart.valid){
-                //must always succeed
-                scaleCharts.addIfSame(currentChart);
-                currentChart.valid=false;
-            }
-            if (idx < renderCharts.size())
+            try
             {
-                bool added = false;
-                do
-                {
-                    int currentIdx=idx;
-                    idx++; //go to the next chart in case of errors
-                    Chart::ConstPtr chart;
-                    auto cit = openCharts.find(currentIdx);
-                    if (cit != openCharts.end())
-                    {
-                        chart = cit->second;
-                    }
-                    else
-                    {
-                        try{
-                            chart = chartManager->OpenChart(context.s52Data, renderCharts[currentIdx].info);
-                            result.timer.add("open", currentIdx);
-                        }
-                        catch(RecurringException &e){
-                            LOG_DEBUG("%s:%s",tile.ToString(),e.msg());
-                        }
-                        catch(AvException &e){
-                            LOG_ERROR("%s:%s",tile.ToString(),e.msg());
-                        }
-                    }
-                    if (chart){
-                        currentChart = ChartIdx(chart, currentIdx);
-                        added = scaleCharts.addIfSame(currentChart);
-                        if (added)
-                        {
-                            currentChart.valid = false;
-                        }
-                    }
-                } while (added && idx < renderCharts.size());
-            }
-            for (int pass = 0; pass < scaleCharts.getMaxPasses(); pass++)
-            {
-                for (auto scaleChart = scaleCharts.begin(); scaleChart != scaleCharts.end(); scaleChart++)
-                {
-                    context.chartContext = chartContexts[scaleChart->idx];
-                    if (pass == 0 || ! renderCharts[scaleChart->idx].softUnder){
-                        //for "soft under" charts we only render areas
-                        scaleChart->chart->Render(pass, context, *drawing,  renderCharts[scaleChart->idx].tile);
-                        hasRendered = true;
-                        chartContexts[scaleChart->idx] = context.chartContext;
-                    }
-                    context.chartContext.reset();
+                //build a vector of all charts of the same scale
+                //and render all passes for them together
+                int maxSteps=0;
+                ChartIdx::List scaleCharts;
+                if (currentChart.valid){
+                    //must always succeed
+                    scaleCharts.addIfSame(currentChart);
+                    currentChart.valid=false;
                 }
+                if (idx < renderCharts.size())
+                {
+                    bool added = false;
+                    do
+                    {
+                        int currentIdx=idx;
+                        idx++; //go to the next chart in case of errors
+                        bool isSoft=renderCharts[currentIdx].softUnder;
+                        if ((round == 0 && isSoft) || (round != 0 && ! isSoft) ){
+                            Chart::ConstPtr chart;
+                            auto cit = openCharts.find(currentIdx);
+                            if (cit != openCharts.end())
+                            {
+                                chart = cit->second;
+                            }
+                            else
+                            {
+                                try{
+                                    chart = chartManager->OpenChart(context.s52Data, renderCharts[currentIdx].info);
+                                    result.timer.add("open", currentIdx);
+                                }
+                                catch(RecurringException &e){
+                                    LOG_DEBUG("%s:%s",tile.ToString(),e.msg());
+                                }
+                                catch(AvException &e){
+                                    LOG_ERROR("%s:%s",tile.ToString(),e.msg());
+                                }
+                            }
+                            if (chart){
+                                currentChart = ChartIdx(chart, currentIdx);
+                                added = scaleCharts.addIfSame(currentChart);
+                                if (added)
+                                {
+                                    currentChart.valid = false;
+                                }
+                            }
+                        }
+                    } while (added && idx < renderCharts.size());
+                }
+                for (int pass = 0; pass < scaleCharts.getMaxPasses(); pass++)
+                {
+                    for (auto scaleChart = scaleCharts.begin(); scaleChart != scaleCharts.end(); scaleChart++)
+                    {
+                        context.chartContext = chartContexts[scaleChart->idx];
+                        if (pass == 0 || ! renderCharts[scaleChart->idx].softUnder){
+                            //for "soft under" charts we only render areas
+                            scaleChart->chart->Render(pass, context, *drawing,  renderCharts[scaleChart->idx].tile);
+                            hasRendered = true;
+                            chartContexts[scaleChart->idx] = context.chartContext;
+                        }
+                        context.chartContext.reset();
+                    }
+                }
+                result.timer.add("draw");
             }
-            result.timer.add("draw");
+            catch (AvException &r)
+            {
+                LOG_ERROR("%s:%s",tile.ToString(), r.msg());
+            }
+            catch (Exception &e)
+            {
+                LOG_ERROR("%s: %s", tile.ToString(), e.what());
+            }
+            context.textBoxes.clear(); //declutter only per chart???
         }
-        catch (AvException &r)
-        {
-            LOG_ERROR("%s:%s",tile.ToString(), r.msg());
-        }
-        catch (Exception &e)
-        {
-            LOG_ERROR("%s: %s", tile.ToString(), e.what());
-        }
-        context.textBoxes.clear(); //declutter only per chart???
     }
     result.timer.set(startRender,"render");
     chartContexts.clear(); //we must ensure to release all contexts before we release the charts

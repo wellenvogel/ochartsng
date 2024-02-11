@@ -35,7 +35,7 @@ TEST(ChartInfo,fromCache){
     String fns=fn;
     Coord::Extent e;
     e.xmin=Coord::lonToWorldx(30);
-    ChartInfo i(Chart::ChartType::OESU,fn,10000,e);
+    ChartInfo i(Chart::ChartType::OESU,fn,10000,e,false);
     EXPECT_EQ(i.GetType(),Chart::ChartType::OESU);
     EXPECT_FALSE(i.IsRaster());
     EXPECT_FALSE(i.IsOverlay());
@@ -52,7 +52,7 @@ TEST(ChartInfo,fromCacheRaster){
     String fns=fn;
     Coord::Extent e;
     e.xmin=Coord::lonToWorldx(30);
-    ChartInfo i(Chart::ChartType::ORNC,fn,10000,e);
+    ChartInfo i(Chart::ChartType::ORNC,fn,10000,e,false);
     EXPECT_EQ(i.GetType(),Chart::ChartType::ORNC);
     EXPECT_TRUE(i.IsRaster());
     EXPECT_FALSE(i.IsOverlay()); 
@@ -62,7 +62,7 @@ TEST(ChartInfo,fromCacheOverlay){
     String fns=fn;
     Coord::Extent e;
     e.xmin=Coord::lonToWorldx(30);
-    ChartInfo i(Chart::ChartType::OESU,fn,10000,e);
+    ChartInfo i(Chart::ChartType::OESU,fn,10000,e,false);
     EXPECT_EQ(i.GetType(),Chart::ChartType::OESU);
     EXPECT_FALSE(i.IsRaster());
     EXPECT_TRUE(i.IsOverlay()); 
@@ -142,7 +142,7 @@ TEST(ChartInfo,HasChartForTile){
     e.s_lat=54;
     e.w_lon=13;
     e.n_lat=55;
-    ChartInfo i(Chart::ChartType::OESU,fn,nativeScale,e.toWorld());
+    ChartInfo i(Chart::ChartType::OESU,fn,nativeScale,e.toWorld(),false);
     EXPECT_TRUE(i.IsValid());
     for (int x=548;x<=551;x++){
         for(int y=323;y<=328;y++){

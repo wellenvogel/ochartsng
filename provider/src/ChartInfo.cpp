@@ -84,7 +84,7 @@ void ChartInfo::CheckOverlay(){
     }
 }
 
-ChartInfo::ChartInfo(const Chart::ChartType &type,const String &fileName,int nativeScale, Coord::Extent extent,bool ignore){
+ChartInfo::ChartInfo(const Chart::ChartType &type,const String &fileName,int nativeScale, Coord::Extent extent,bool softUnder,bool ignore){
     this->filename=fileName;
     this->type=type;
     this->nativeScale=nativeScale;
@@ -92,9 +92,10 @@ ChartInfo::ChartInfo(const Chart::ChartType &type,const String &fileName,int nat
     checkOrSetFileData();
     this->state=READY;
     this->ignore=ignore;
+    this->softUnder=softUnder;
     CheckOverlay();
 }
-ChartInfo::ChartInfo(const Chart::ChartType &type,const String &fileName,int nativeScale, Coord::Extent extent, int64_t fileSize, int64_t fileTime,bool ignore){
+ChartInfo::ChartInfo(const Chart::ChartType &type,const String &fileName,int nativeScale, Coord::Extent extent, int64_t fileSize, int64_t fileTime,bool softUnder,bool ignore){
     this->filename=fileName;
     this->type=type;
     this->nativeScale=nativeScale;
@@ -103,6 +104,7 @@ ChartInfo::ChartInfo(const Chart::ChartType &type,const String &fileName,int nat
     this->fileTime=fileTime;
     this->state=NEEDS_VER;
     this->ignore=ignore;
+    this->softUnder=softUnder;
     CheckOverlay();
 }
 ChartInfo::ChartInfo(const Chart::ChartType &type,const String &fileName){
