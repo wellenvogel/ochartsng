@@ -70,22 +70,23 @@ class TileCache : public ItemStatus{
         CacheEntry(Png d,  const CacheDescription &dsc, size_t keySize):
                 data(d),description(dsc){
                     lastAccess=Timer::steadyNow();
-                    size+=data->size()+keySize;
+                    size+=data->capacity()+keySize;
                     size=size/1024;
             }
         bool isNewer(const CacheEntry &other) const{
             return description.isNewer(other.description);
         }
     };
-    std::mutex lock;
+    Condition lock;
     using Data=std::map<String,CacheEntry::Ptr>;
     std::atomic<int> numEntries={0};
     std::atomic<int> numKb={0};
     size_t maxMem;
     Data cache;
     String getKey(const TileInfo &tile);
-    public:
     bool stopAudit=false;
+    void auditRun();
+    public:
     TileCache(size_t max);
     virtual void ToJson(StatusStream &stream);
     void cleanup();
@@ -93,7 +94,7 @@ class TileCache : public ItemStatus{
     void cleanBySettings(int remainingSeqeunce);
     bool addTile(Png d, const CacheDescription &description, const TileInfo &tile);
     Png getTile(const CacheDescription &description, const TileInfo &tile);
-    void stop(){stopAudit=true;}
+    void stop();
 
 };
 #endif

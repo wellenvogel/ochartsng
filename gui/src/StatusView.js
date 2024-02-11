@@ -94,6 +94,16 @@ const OexStatus=(props)=>{
     );
 };
 
+const TileCacheStatus=(props)=>{
+    let percent=props.maxKb?100*(props.numKb||0)/props.maxKb:0;
+    return (
+        <StatusItem title="TileCache">
+            <StatusLine label="Number" value={props.numEntries}/>
+            <StatusLine label="Memory" value={`${props.numKb}kb/${props.maxKb}kb (${percent.toFixed(1)}%)`}/>
+        </StatusItem>
+    )
+}
+
 
 const url="/status/";
 class StatusView extends Component {
@@ -126,6 +136,7 @@ class StatusView extends Component {
     render() {
         let managerStatus=this.state.data?this.state.data.chartManager||{}:{};
         let fillerStatus=managerStatus.cacheFiller;
+        let tileCache=this.state.data?this.state.data.tileCache:undefined;
         let chartSets=managerStatus.chartSets||[];
         let oex=this.state.data?this.state.data.oexserverd||{}:{};
         return (
@@ -136,6 +147,7 @@ class StatusView extends Component {
                         <StatusLine label="Version" value={Version}/>
                         </StatusItem>
                         <OexStatus {...oex}/>
+                        {tileCache?<TileCacheStatus {...tileCache}/>:null}
                         <GeneralStatus {...managerStatus}/>
                         {fillerStatus?<FillerStatus {...fillerStatus}/>:null}
                         {chartSets.map((set)=>{

@@ -52,12 +52,14 @@ class FpngEncoder : public PngEncoder{
     FpngEncoder(): PngEncoder(){}
     virtual bool encode(DataPtr out) override{
         if (! context) return false;
-        return fpng::fpng_encode_image_to_memory(
+        bool rt= fpng::fpng_encode_image_to_memory(
             context->getBuffer(),
             context->getWidth(),
             context->getHeight(),
             context->getBpp(),
             *out);
+        out->shrink_to_fit();
+        return rt;
     }
 };
 static PngCreatorInstance fpngCreator("fpng",[](){

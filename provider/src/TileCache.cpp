@@ -33,6 +33,7 @@ String TileCache::getKey(const TileInfo &tile){
 void TileCache::ToJson(StatusStream &stream){
     stream["numEntries"]=(int)numEntries;
     stream["numKb"]=(int)numKb;
+    stream["maxKb"]=maxMem;
 }
 class CHelper{
     public:
@@ -45,36 +46,45 @@ class CHelper{
 void TileCache::cleanup(){
     if (numKb <= maxMem) return;
     using CHList=std::vector<CHelper>;
+    int removed=0;
+    int removeKb=0;
     std::unique_ptr<CHList> items=std::make_unique<CHList>();
     {
-        Synchronized l(lock);
+        CondSynchronized l(lock);
+        size_t initialItems=cache.size();
+        int initialKb=0; //we recompute the current size
         items->reserve(cache.size());
         for (auto &&[key,ci]:cache){
             items->push_back(CHelper(key,ci->lastAccess, ci->size));
+            initialKb+=ci->size;
         }
         std::sort(items->begin(),items->end(),[](CHelper const & c1, CHelper const & c2){
             return c1.lastAccess < c2.lastAccess;
         });
         auto last=items->begin();
-        int removeKb=0;
         for (auto it=items->begin();it != items->end();it++){
             removeKb+=it->kb;
-            if (removeKb >= (numKb-maxMem)){
+            if (removeKb >= (initialKb-maxMem)){
                 last=it;
                 break;
             }
         }
         for(auto it=items->begin();it!= last && it != items->end();it++){
             cache.erase(it->key);
+            removed++;
         }
-        int newKb=numKb-removeKb;
+        int newKb=initialKb-removeKb;
         if (newKb < 0) newKb=0;
         numKb=newKb;
         numEntries=cache.size();
     }
+    if (removed > 0){
+        LOG_INFO("TileCache Audit: removed %d tiles, freeing %d kb",
+            removed,removeKb);
+    }
 }
 void TileCache::clean(String setKey){
-    Synchronized l(lock);
+    CondSynchronized l(lock);
     size_t current=cache.size();
     int currentKb=numKb;
     int newKb=0;
@@ -100,7 +110,7 @@ void TileCache::clean(String setKey){
     numEntries=cache.size();
 }
 void TileCache::cleanBySettings(int remainingSequence){
-    Synchronized l(lock);
+    CondSynchronized l(lock);
     size_t current=cache.size();
     int currentKb=numKb;
     int newKb=0;
@@ -119,19 +129,22 @@ void TileCache::cleanBySettings(int remainingSequence){
     numEntries=cache.size();
 }
 bool TileCache::addTile(TileCache::Png d, const TileCache::CacheDescription &description, const TileInfo &tile){
-    Synchronized l(lock);
+    if (maxMem <= 0){
+        return false;
+    }
+    CondSynchronized l(lock);
     String key=getKey(tile);
     auto cur=cache.find(key);
     bool rt=false;
     if (cur == cache.end()){
-        CacheEntry::Ptr ne=std::make_shared<CacheEntry>(d,description,key.size());
+        CacheEntry::Ptr ne=std::make_shared<CacheEntry>(d,description,key.capacity());
         cache[key]=ne;
         numKb+=ne->size;
         rt=true;
     }
     else if (description.isNewer(cur->second->description)){
         int oldKb=cur->second->size/1024;
-        CacheEntry::Ptr ne=std::make_shared<CacheEntry>(d,description,key.size());
+        CacheEntry::Ptr ne=std::make_shared<CacheEntry>(d,description,key.capacity());
         cache[key]=ne;
         int newKb=ne->size;
         numKb+=(newKb-oldKb);
@@ -141,7 +154,7 @@ bool TileCache::addTile(TileCache::Png d, const TileCache::CacheDescription &des
     return rt;
 }
 TileCache::Png TileCache::getTile(const TileCache::CacheDescription &description, const TileInfo &tile){
-    Synchronized l(lock);
+    CondSynchronized l(lock);
     String key=getKey(tile);
     auto cur=cache.find(key);
     if (cur == cache.end()){
@@ -153,12 +166,28 @@ TileCache::Png TileCache::getTile(const TileCache::CacheDescription &description
     }
     return TileCache::Png();
 }
-
-TileCache::TileCache(size_t max):maxMem(max){
-    std::thread([this](){
-        while (! this->stopAudit){
-            Timer::microSleep(1000000L);
-            this->cleanup();
+void TileCache::auditRun(){
+    while (! this->stopAudit){
+        {
+            CondSynchronized l(lock);
+            l.wait(3000);
         }
-    }).detach();
+        this->cleanup();
+    }
+}
+TileCache::TileCache(size_t max):maxMem(max){
+    if (max > 0){
+        LOG_INFO("Tile Cache started with %d kb",max);
+        std::thread([this](){
+            this->auditRun();
+        }).detach();
+    }
+    else{
+        LOG_INFO("Tile Cache disabled");
+    }
+}
+void TileCache::stop(){
+    stopAudit=true;
+    CondSynchronized l(lock);
+    l.notifyAll();
 }
