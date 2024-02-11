@@ -216,7 +216,7 @@ class SelectItem extends React.Component{
         let item=assign({},props.item,this.state);
         let values = [];
         if (item.values) {
-            if (typeof(values) === 'string') {
+            if (typeof(item.values) === 'string') {
                 values = item.values.split(/ *, */).map((x) => parseInt(x));
             }
             else{
