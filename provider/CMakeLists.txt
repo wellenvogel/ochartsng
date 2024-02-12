@@ -224,7 +224,7 @@ if (AVNAV_ANDROID)
         TARGET ${TARGET} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
         ${CMAKE_CURRENT_LIST_DIR}/external/o-charts_pi/libs/oeserverd/oeserverda_android/oexserverd
-        ${CMAKE_CURRENT_LIST_DIR}
+        ${CMAKE_CURRENT_LIST_DIR}/../android/app/src/main/jniLibs/${CMAKE_ANDROID_ARCH_ABI}/liboexserverd.so
         )
 else()
     #testing only
