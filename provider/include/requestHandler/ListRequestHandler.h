@@ -76,8 +76,8 @@ public:
            obj["info"]=chartInfo;
            obj["sequence"]=manager->GetChartSetSequence(info->name);
            String host=StringHelper::trim(request->header["host"],' ');
-           obj["tokenUrl"]=FMT("http://%s/tokens/?request=script",host);
-           obj["tokenFunction"]="ochartsProvider";
+           obj["tokenUrl"]=FMT("http://%s/tokens/?request=script&scriptKey=ochartsProviderNG",host);
+           obj["tokenFunction"]="ochartsProviderNG";
            obj["hasFeatureInfo"]=true;
            items.append(obj);
        }
