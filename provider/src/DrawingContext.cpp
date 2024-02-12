@@ -1043,12 +1043,12 @@ void DrawingContext::drawTriangle(const Coord::PixelXy &p00, const Coord::PixelX
                 if (pyRaster > 0 && pxRaster > 0)
                 {
                     Coord::Pixel patterny = (y + pattern->yoffset) % pyRaster;
-                    if (patterny < pattern->height)
+                    if (patterny < pattern->height && patterny >= 0)
                     {
                         Coord::Pixel pxOffset = 0;
                         if (pattern->stagger)
                         {
-                            if (((y + pattern->yoffset) / pyRaster) & 1)
+                            if (((y + pattern->yoffset) / pyRaster) & 1) //shift pattern in every second row
                             {
                                 pxOffset=pxRaster/2;
                             }
@@ -1057,7 +1057,7 @@ void DrawingContext::drawTriangle(const Coord::PixelXy &p00, const Coord::PixelX
                         ColorAndAlpha *ptr = buffer.get() + y * linelen;
                         for (Coord::Pixel x=xmin;x <= xmax; x++){
                             Coord::Pixel patternx= (x+pattern->xoffset+pxOffset)%pxRaster;
-                            if (patternx < pattern->width){
+                            if (patternx < pattern->width && patternx >= 0){
                                 ColorAndAlpha *target = ptr + x;
                                 ColorAndAlpha src= *(psrc+patternx);
                                 hasDrawn=true;

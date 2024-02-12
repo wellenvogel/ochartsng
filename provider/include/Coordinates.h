@@ -246,9 +246,20 @@ namespace Coord
         return rt;
     }
     
+    //be careful when using this:
+    //as the world coordinates are shifted the returned pixel are shifted too
+    //so normally it only make sense to call this for relative coordinates (e.g. relative to a tile)
     static inline Pixel worldToPixel(World c, uint32_t zoom){
         if (zoom > COORD_ZOOM_LEVEL) return c;
         return bitshift(c,-((COORD_ZOOM_LEVEL-zoom)+SUB_PIXEL_BITS));
+    }
+
+    //convert to 0 based Pixel coordinates
+    static inline Pixel worldToAbsPixel(World c, uint32_t zoom){
+        while (c > worldLimits.max()) c=worldLimits.shift(c,-worldLimits.worldShift());
+        while (c < worldLimits.min()) c=worldLimits.shift(c,worldLimits.worldShift());
+        c=worldLimits.clip(c);
+        return worldToPixel(worldLimits.shift(c,-worldLimits.halfshift()),zoom);
     }
 
     typedef Point<Pixel> PixelXy;

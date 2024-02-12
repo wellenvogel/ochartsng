@@ -12,6 +12,8 @@
                 "-k",
                 "-d",
                 "2",
+                "-c",
+                "0",
                 "-g",
                 "${workspaceFolder}/gui/build/debug",
                 "-t",

@@ -249,10 +249,12 @@ DrawingContext::PatternSpec *RenderHelper::createPatternSpec(s52::SymbolPtr symb
             symbol->height);
         pattern->distance = symbol->minDist;
         pattern->stagger = symbol->stagger;
-        Coord::World xraster = pattern->width + pattern->distance;
-        Coord::World yraster = pattern->height + pattern->distance;
-        Coord::World xoffset = Coord::worldToPixel(tile.xmin,tile.zoom) % xraster;
-        Coord::World yoffset = Coord::worldToPixel(tile.ymin,tile.zoom) % yraster;
+        Coord::Pixel xraster = pattern->width + pattern->distance;
+        Coord::Pixel yraster = pattern->height + pattern->distance;
+        //we need some absolute pixel values for the %
+        //as our world coordinates are shifted we have to shift back
+        Coord::Pixel xoffset = Coord::worldToAbsPixel(tile.xmin,tile.zoom) % xraster;
+        Coord::Pixel yoffset = Coord::worldToAbsPixel(tile.ymin,tile.zoom) % yraster;
         pattern->xoffset = xoffset;
         pattern->yoffset = yoffset;
         return pattern;
