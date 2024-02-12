@@ -381,7 +381,7 @@ public:
                 chartUrl=res.url;
             }
             else{
-                ;//return new HTTPErrorResponse(400,"unencryped url "+url);
+                return new HTTPErrorResponse(400,"unencryped url "+url);
             }
         }
         TileInfo tile(chartUrl, chartSetKey);
