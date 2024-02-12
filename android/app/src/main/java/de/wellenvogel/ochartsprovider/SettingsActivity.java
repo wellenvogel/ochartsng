@@ -9,6 +9,7 @@ import android.text.InputType;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -51,10 +52,14 @@ public class SettingsActivity extends AppCompatActivity {
         public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
             Dialog rt= super.onCreateDialog(savedInstanceState);
             AlertDialog art=(AlertDialog) rt;
-            art.setButton(DialogInterface.BUTTON_NEUTRAL,getString(R.string.btimport),(dialogInterface, i) -> {});
+            if (BuildConfig.SHOW_IMPORT_OPENCPN) {
+                art.setButton(DialogInterface.BUTTON_NEUTRAL, getString(R.string.btimport), (dialogInterface, i) -> {
+                });
+            }
             art.setOnShowListener(dialogInterface -> {
                 //we must override the button onClick here again to prevent closing the dialog
-                art.getButton(DialogInterface.BUTTON_NEUTRAL).setOnClickListener(view -> {
+                Button nb=art.getButton(DialogInterface.BUTTON_NEUTRAL);
+                if (nb != null) nb.setOnClickListener(view -> {
                     SigningImporter importer=new SigningImporter(getContext());
                     String id = importer.retrieveIdentity();
                     if (id != null){
