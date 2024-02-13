@@ -17,4 +17,6 @@ public class Constants {
 
     static final String EXTRA_TXT="permissionText";
     static final String EXTRA_PERMISSIONS="permissions";
+    static final int SAVE_KEY_REQ=1000;
+    static final String KEY_FILE_NAME="ochartsng.key";
 }

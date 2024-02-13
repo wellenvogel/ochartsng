@@ -265,7 +265,7 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
         timerSequence++;
     }
 
-    public String getOCPNWVID() {
+    public static String getOCPNWVID() {
         String rv = "";
         MediaDrm mediaDrm;
         final UUID WIDEVINE_UUID = UUID.fromString("edef8ba9-79d6-4ace-a3c8-27dcd51d21ed");
@@ -281,9 +281,9 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
         }
         return sb.toString();
     }
-    private String getUUID(){
+    private static String getUUID(Context ctx){
         final String androidId = Settings.Secure.getString(
-                this.getContentResolver(), Settings.Secure.ANDROID_ID);
+                ctx.getContentResolver(), Settings.Secure.ANDROID_ID);
         if(androidId.isEmpty())
             return "";
 
@@ -301,10 +301,19 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
             return aParameter;
         }
         if (Build.VERSION.SDK_INT < 29){
-            return "-z:"+getUUID();
+            return "-z:"+getUUID(this);
         }
         else{
-            return "-y:"+getOCPNWVID()+":-z:"+getUUID();
+            return "-y:"+getOCPNWVID()+":-z:"+getUUID(this);
+        }
+    }
+
+    public static String getDefaultAParameter(Context ctx){
+        if (Build.VERSION.SDK_INT < 29){
+            return "-z:"+getUUID(ctx);
+        }
+        else{
+            return "-y:"+getOCPNWVID()+":-z:"+getUUID(ctx);
         }
     }
 
@@ -328,7 +337,7 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
         String name = android.os.Build.DEVICE;
         if(name.length() > 11)
             name = name.substring(0, 10);
-        String UUID = getUUID();
+        String UUID = getUUID(this);
         String OCPNUUID = getOCPNuniqueID();
         String OCPNWVID = getOCPNWVID();
         String selID;

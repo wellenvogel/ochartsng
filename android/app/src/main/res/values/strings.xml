@@ -39,4 +39,5 @@
     <string name="altkeyMsg">Whenever you switch to/from an alternate key all charts being installed with the other key will become unusable.</string>
     <string name="altKeyTitle">Alert</string>
     <string name="btimport">Import OCPN</string>
+    <string name="export">export key</string>
 </resources>
