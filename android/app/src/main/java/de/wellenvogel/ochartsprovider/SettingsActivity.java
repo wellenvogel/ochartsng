@@ -24,7 +24,14 @@ import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
+
+import javax.crypto.Cipher;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
@@ -55,6 +62,22 @@ public class SettingsActivity extends AppCompatActivity {
         }
         return type;
     }
+    static final byte[] base={'a','v','o','h','a','r','t','s','n','g',2,6,8,2,4,1};
+    static final String CSP="AES/ECB/PKCS5Padding";
+    static byte[] encryptKey(String key) throws Exception {
+        SecretKeySpec secret=new SecretKeySpec(base,"AES");
+        Cipher cipher= Cipher.getInstance(CSP);
+        cipher.init(Cipher.ENCRYPT_MODE,secret);
+        byte[] encrypted=cipher.doFinal(key.getBytes(StandardCharsets.UTF_8));
+        return encrypted;
+    }
+    static String decryptKey(byte [] key, int len) throws Exception {
+        SecretKeySpec secret=new SecretKeySpec(base,"AES");
+        Cipher cipher= Cipher.getInstance(CSP);
+        cipher.init(Cipher.DECRYPT_MODE,secret);
+        byte [] decrypted=cipher.doFinal(key,0,len);
+        return new String(decrypted,StandardCharsets.UTF_8);
+    }
     ActivityResultLauncher<String> saveKey = registerForActivityResult(new ActivityResultContracts.CreateDocument(getKeyMimeType()),
             new ActivityResultCallback<Uri>() {
                 @Override
@@ -62,7 +85,7 @@ public class SettingsActivity extends AppCompatActivity {
                     if (uri == null) return;
                     try {
                         OutputStream os=SettingsActivity.this.getContentResolver().openOutputStream(uri);
-                        os.write(OchartsService.getDefaultAParameter(SettingsActivity.this).getBytes(StandardCharsets.UTF_8));
+                        os.write(encryptKey(OchartsService.getDefaultAParameter(SettingsActivity.this)));
                         os.close();
                     } catch (Exception e){
                         Toast.makeText(SettingsActivity.this,"unable to write key file "+uri.toString()+": "+e.getMessage(),Toast.LENGTH_LONG).show();
@@ -89,7 +112,8 @@ public class SettingsActivity extends AppCompatActivity {
                 InputStream istr=SettingsActivity.this.getContentResolver().openInputStream(result);
                 byte[] buffer =new byte[1024];
                 int len=istr.read(buffer);
-                String key=new String(buffer,0,len,StandardCharsets.UTF_8);
+                String key=decryptKey(buffer,len);
+
                 List<Fragment> fragments= getSupportFragmentManager().getFragments();
                 for (Fragment fragment:fragments) {
                     if (fragment instanceof MyETDialogFragment) {
@@ -106,7 +130,7 @@ public class SettingsActivity extends AppCompatActivity {
                     }
                 }
             } catch (Throwable e) {
-                Toast.makeText(SettingsActivity.this, "unable to read key file " + result.toString() + ": " + e.getMessage(), Toast.LENGTH_LONG).show();
+                Toast.makeText(SettingsActivity.this, e.getMessage(), Toast.LENGTH_LONG).show();
             }
         }
     });
