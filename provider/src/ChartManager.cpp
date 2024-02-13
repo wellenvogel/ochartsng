@@ -573,6 +573,7 @@ class Coverage{
             this->width=width;
             this->height=height;
             points=new uint8_t[this->width*this->height];
+            memset(points,0,width*height);
         }
         ~Coverage(){
             delete [] points;
