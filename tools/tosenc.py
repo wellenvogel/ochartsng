@@ -208,7 +208,10 @@ if __name__ == '__main__':
             setname,ext=os.path.splitext(os.path.basename(oname))
             context.setname=setname
         context.openZip(oname)
-        oname=context.getTmpDir(Context.TMP_SUB)
+        if mode == M_DIR:
+            oname=context.getTmpDir(Context.TMP_SUB)
+        else:
+            oname=os.path.join(context.getTmpDir(Context.TMP_SUB),ifname+"."+Context.OUT_EXT)
     else:
         if os.path.exists(oname):
             if mode == M_DIR and not os.path.isdir(oname):
