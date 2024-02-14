@@ -97,8 +97,10 @@ public:
             String key;
             GET_QUERY(key,"chartSet");
             String enableV;
-            GET_QUERY(enableV,"enable");           
-            bool enable= enableV == "1";
+            GET_QUERY(enableV,"enable");
+            IBaseSettings::EnabledState enable=IBaseSettings::UNCONFIGURED;
+            if (enableV == "enable") enable=IBaseSettings::ENABLED;
+            else if (enableV == "disable") enable=IBaseSettings::DISABLED;           
             //TODO: check for existance
             bool rs=false;
             try{

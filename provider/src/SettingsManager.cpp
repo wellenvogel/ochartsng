@@ -237,11 +237,24 @@ void SettingsManager::saveBaseSettings(){
     out[CSKEY]=outSets;
     writeJson(out,fn);
 }
-bool SettingsManager::enableChartSet(const String &setKey, bool enabled){
+bool SettingsManager::enableChartSet(const String &setKey, IBaseSettings::EnabledState enabled){
     Synchronized l(lock);
     auto it=configuredSets.find(setKey);
-    if (it != configuredSets.end() && it->second == enabled) return false;
-    configuredSets[setKey]=enabled;
+    bool shouldEnable=enabled==IBaseSettings::ENABLED;
+    if (it != configuredSets.end()){
+        if (enabled == IBaseSettings::UNCONFIGURED){
+            configuredSets.erase(it);
+        }
+        else{
+            if (it->second == shouldEnable) return false;
+        }
+    }
+    else{
+        if (enabled == IBaseSettings::UNCONFIGURED) return false;
+    }
+    if (enabled != IBaseSettings::UNCONFIGURED){
+        configuredSets[setKey]=shouldEnable;
+    }
     std::shared_ptr<BaseSettings> newSettings=std::make_shared<BaseSettings>(configuredSets);
     baseSettings=newSettings;
     saveBaseSettings();

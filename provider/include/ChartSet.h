@@ -35,7 +35,8 @@
 #include <vector>
 #include <map>
 #include <memory>
-#include <CacheHandler.h>
+#include "CacheHandler.h"
+#include "SettingsManager.h"
 #include <atomic>
 class CacheReaderWriter;
 class ChartList;
@@ -79,7 +80,7 @@ public:
      * @param enabled
      * @return true if state has changed
      */
-    bool                SetEnabled(bool enabled=true,String disabledBy=String());
+    bool                SetEnabled(IBaseSettings::EnabledState original, bool enabled=true,String disabledBy=String());
     bool                IsEnabled(){return state != STATE_DISABLED;}
     void                SetReopenStatus(String fileName,bool ok);
     void                SetReady();
@@ -109,6 +110,7 @@ private:
     std::mutex          lock;
     bool                canDelete;
     String              disabledBy;
+    IBaseSettings::EnabledState originalState=IBaseSettings::UNCONFIGURED;
     std::atomic<int>    openErrors={0}; //consecutive openErrors, disable set when limit reached
     std::atomic<int>    openErrorsGlob={0}; //openErrors global
     std::atomic<int>    reopenErrors={0}; //errors during reopen

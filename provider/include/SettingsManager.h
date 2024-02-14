@@ -16,9 +16,9 @@ public:
     typedef std::shared_ptr<const IBaseSettings> ConstPtr;
     typedef enum
     {
-        ENABLED,
-        UNCONFIGURED,
-        DISABLED
+        ENABLED=1,
+        UNCONFIGURED=0,
+        DISABLED=2
     } EnabledState;
     virtual EnabledState IsChartSetEnabled(const String &setKey) const =0;
     virtual MD5Name GetMD5()const =0;
@@ -38,7 +38,7 @@ class SettingsManager{
         json::JSON getSettings() const;
         bool getAllowChanges() const;
         void setAllowChanges(bool allow=true); 
-        bool enableChartSet(const String &setKey, bool enabled);
+        bool enableChartSet(const String &setKey, IBaseSettings::EnabledState enabled);
         bool getList(json::JSON &json,const String &item) const;
         using SetMap=std::map<String,bool>;
     protected:

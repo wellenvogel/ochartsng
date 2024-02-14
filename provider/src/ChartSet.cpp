@@ -71,10 +71,11 @@ void ChartSet::SetReopenStatus(String fileName, bool ok)
     }
 }
 
-bool ChartSet::SetEnabled(bool enabled, String disabledBy)
+bool ChartSet::SetEnabled(IBaseSettings::EnabledState original,bool enabled, String disabledBy)
 {
     LOG_INFO("ChartSet %s set enabled to %s", GetKey(), PF_BOOL(enabled));
     Synchronized l(lock);
+    originalState=original;
     if (enabled)
     {
         this->disabledBy.clear();
@@ -121,6 +122,7 @@ bool ChartSet::LocalJson(StatusStream &stream)
     stream["status"] = status;
     stream["active"] = IsActive();
     stream["ready"] = state == STATE_READY;
+    stream["originalState"]=(int) originalState;
     stream["errors"] = (int)openErrors;
     stream["globalErrors"] = (int)openErrorsGlob;
     stream["reopenErrors"] = (int)reopenErrors;

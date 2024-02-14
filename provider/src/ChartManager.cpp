@@ -165,7 +165,7 @@ ChartSet::Ptr ChartManager::findOrCreateChartSet(String chartFile,bool mustExist
             if (addToList){
                 IBaseSettings::EnabledState state=baseSettings->IsChartSetEnabled(newSet->GetKey());
                 if (state == IBaseSettings::EnabledState::DISABLED){
-                    newSet->SetEnabled(false,"settings");
+                    newSet->SetEnabled(state,false);
                 }
                 chartSets[key]=newSet;
                 AddItem("chartSets",newSet,true);
@@ -427,7 +427,7 @@ int ChartManager::computeActiveSets(){
         ChartSet::Ptr set=it->second;
         IBaseSettings::EnabledState isActive=baseSettings->IsChartSetEnabled(set->GetKey());
         if (isActive == IBaseSettings::EnabledState::DISABLED){
-            set->SetEnabled(false,"settings");
+            set->SetEnabled(isActive,false);
             continue; //ignore sets disabled by settings
         }
         bool enabled=false;
@@ -447,7 +447,7 @@ int ChartManager::computeActiveSets(){
             enabled=(isActive == IBaseSettings::UNCONFIGURED || 
                  isActive == IBaseSettings::ENABLED);        
         }
-        set->SetEnabled(enabled,disabledBy);
+        set->SetEnabled(isActive,enabled,disabledBy);
         if (enabled) numEnabled++;
         else{
             if (setChanged) setChanged(set->GetKey());

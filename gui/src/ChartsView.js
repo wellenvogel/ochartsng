@@ -291,17 +291,22 @@ class ChartsView extends Component {
         let disabled=this.isReady()?"":" disabled ";
         let EnableButton=(props)=>{
             if (! props.info || ! props.info.name) return null;
-            let changeUrl=SETTINGSURL+"enable+?chartSet="+encodeURI(props.info.name)+"&enable="+(props.active?"0":"1");
+            let changeUrl=SETTINGSURL+"enable+?chartSet="+encodeURI(props.info.name)+"&enable="+(props.active?"disable":"enable");
             let buttonText=props.active?"Disable":"Enable";
             let addClass=self.isReady()?"":" disabled ";
             let onClickDo=()=>{
+                this.showSpinner();
                 fetchJson(changeUrl)
                     .then((jsonData)=>{
+                        this.dialog.hideDialog();
                         if (jsonData.changed){
                             self.chartListFetcher();
                         }
                     })
-                    .catch((error)=>{setError(error)})
+                    .catch((error)=>{
+                        this.dialog.hideDialog();
+                        setError(error)
+                    })
             };
             let onClick=()=>{
                 if (props.disabledBy && ! props.active){
@@ -332,6 +337,27 @@ class ChartsView extends Component {
                         this.downloadRef.current.src=CHARTSURL+props.info.name+"/download";
                     }
                 }}>Download</button>
+            )
+        }
+        let AutoButton=(props)=>{
+            if (! props.info) return null;
+            let addClass=(self.isReady() && props.originalState != 0)?"":" disabled ";
+            return(
+                <button className={"button auto "+addClass} onClick={()=>{
+                    let changeUrl=SETTINGSURL+"enable+?chartSet="+encodeURI(props.info.name)+"&enable=auto";
+                    this.showSpinner();
+                    fetchJson(changeUrl)
+                        .then((jsonData)=>{
+                            this.dialog.hideDialog();
+                            if (jsonData.changed){
+                                self.chartListFetcher();
+                            }
+                        })
+                        .catch((error)=>{
+                            this.dialog.hideDialog();
+                            setError(error)
+                        })
+                }}>Auto</button>
             )
         }
         let DeleteButton=(props)=>{
@@ -419,6 +445,7 @@ class ChartsView extends Component {
                                 >
                                 <div className="chartSetButtons">
                                     <EnableButton {...chartSet}/>
+                                    <AutoButton {...chartSet}/>
                                     <DeleteButton {...chartSet}/>
                                     <DownloadButton {...chartSet}/>
                                 </div>
