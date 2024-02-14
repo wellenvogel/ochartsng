@@ -58,10 +58,60 @@ public:
     }
     String GetMimeType(){return mimeType;}
     virtual bool SupportsChunked(){return false;}
-    virtual unsigned long GetLength(){return 0;}
+    virtual void SetContentLength(){
+        responseHeaders["Content-Length"]=std::to_string(GetLength());
+    }
     virtual const char * GetData(/*inout*/unsigned long &maxLen){return NULL;}
+    virtual bool useCallback() const {return false;}
+    virtual bool callback(int socketFd){return false;}
+    protected:
+    virtual unsigned long GetLength(){return 0;}
 };
 
+class CallbackHTTPResponse : public HTTPResponse{
+    public:
+    using WriteCallback=std::function<void(int socketFd,CallbackHTTPResponse *r)>;
+    protected:
+    WriteCallback writer;
+    public:
+    CallbackHTTPResponse(WriteCallback cb, const String &mimeType, bool chunked=true):writer(cb),HTTPResponse(mimeType){
+        if (chunked){
+            responseHeaders["Transfer-Encoding"]="chunked";
+        }
+    }
+    virtual bool useCallback() const {return true;}
+    virtual bool callback(int socketFd){
+        if (!  writer) return false;
+        writer(socketFd,this);
+        return true;
+    }
+    virtual void SetContentLength(){}
+    static int writeChunk(int socket,const void *buf, int len, long timeout=0l){
+        char hbuf[20];
+        snprintf(hbuf,19,"%X\r\n",len);
+        hbuf[19]=0;
+        int plen=strlen(hbuf);
+        Timer::SteadyTimePoint start=Timer::steadyNow();
+        int rd=SocketHelper::WriteAll(socket,hbuf,plen,timeout);
+        if (rd != plen){
+            return -1;
+        }
+        long remain=timeout>0?Timer::remainMillis(start,timeout):timeout;
+        if (len > 0){
+            rd=SocketHelper::WriteAll(socket,buf,len,remain);
+            if (rd != len) return rd;
+        }
+        hbuf[0]='\r';
+        hbuf[1]='\n';
+        remain=timeout>0?Timer::remainMillis(start,timeout):timeout;
+        rd=SocketHelper::WriteAll(socket,hbuf,2,timeout);
+        if (rd != 2) return -1;
+        return len;
+    }
+    static int writeLastChunk(int socket, long timeout=0L){
+        return writeChunk(socket,nullptr,0,timeout);
+    }
+};
 
 class HTTPStringResponse : public HTTPResponse{
 protected:

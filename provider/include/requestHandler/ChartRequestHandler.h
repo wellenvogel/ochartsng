@@ -37,6 +37,7 @@
 #include "Renderer.h"
 #include "Coordinates.h"
 #include "TokenHandler.h"
+#include "miniz.h"
 
 
 
@@ -64,6 +65,46 @@ static String DEFAULT_EULA="<html>"
     "<p>Refer to <a href=\"https://o-charts.org/\">o-charts</a> for license info.</p>"
     "</body"
     "</html>";
+
+class ZipWriterHelper{
+    public:
+    int socket;
+    unsigned long bytesWritten=0;
+    ZipWriterHelper(int s):socket(s){}
+};
+static size_t zipWrite(void *pOpaque, mz_uint64 file_ofs, const void *pBuf, size_t n){
+    ZipWriterHelper *r=(ZipWriterHelper*)pOpaque;
+    if (n == 0) return 0;
+    //TODO? offset
+    int written=CallbackHTTPResponse::writeChunk(r->socket,pBuf,n);
+    if (written >= 0) r->bytesWritten+=written;
+    return written;
+}
+
+static void addDirectoryToZip(mz_zip_archive *zip_archive, String base, String relName){
+    mz_bool status;
+    for (auto && file: FileHelper::listDir(base,"",false)){
+        if (file == "." || file == "..") continue;
+        String fullName=FileHelper::concatPath(base,file);
+        String relPath=relName+"/"+file;
+        if (FileHelper::exists(fullName,true)){
+            String archivePath=relPath+"/";
+            //directory
+            status=mz_zip_writer_add_mem(zip_archive,archivePath.c_str(),nullptr,0,MZ_DEFAULT_COMPRESSION);
+            if (! status){
+                throw AvException("cannot add directory to archive "+archivePath);
+            }
+            addDirectoryToZip(zip_archive,fullName,relPath);
+        }
+        else if(FileHelper::exists(fullName,false)){
+            LOG_DEBUG("adding %s to archive",fullName);
+            status=mz_zip_writer_add_file(zip_archive,relPath.c_str(),fullName.c_str(),nullptr,0,MZ_DEFAULT_COMPRESSION);
+            if (! status){
+                throw AvException("unable to add to archive: "+fullName);
+            }
+        }
+    }
+}
 class ChartRequestHandler : public RequestHandler {
 public:
     const String URL_PREFIX="/charts/";
@@ -74,6 +115,48 @@ private:
     Renderer::Ptr renderer;
     Renderer::RenderInfo info;  
     TokenHandler::Ptr tokenHandler; 
+
+    HTTPResponse *handleDownload(String base){
+        ChartSet::Ptr cset=renderer->getManager()->GetChartSet(base);
+        if (! cset){
+            return new HTTPErrorResponse(404,"chart set not found "+base);
+        }
+        String dir=cset->info->dirname;
+        if (! FileHelper::exists(dir,true)){
+            return new HTTPErrorResponse(404, "chart dir not found "+dir);
+        }
+        String subDir=FileHelper::fileName(dir);
+        CallbackHTTPResponse *rt=new CallbackHTTPResponse([dir,subDir](int socketFd,CallbackHTTPResponse *r){
+            mz_bool status;
+            mz_zip_archive *zip_archive=new mz_zip_archive();
+            mz_zip_zero_struct(zip_archive);
+            avnav::VoidGuard zipGuard([&zip_archive](){
+                mz_zip_writer_end(zip_archive);
+                delete zip_archive;
+            });
+            auto helper=std::make_unique<ZipWriterHelper>(socketFd);
+            zip_archive->m_pWrite=zipWrite;
+            zip_archive->m_pIO_opaque=helper.get();
+            status=mz_zip_writer_init(zip_archive,0);
+            if (! status){
+                throw AvException("cannot create zip stream");
+            }
+            String subName=subDir+"/";
+            status=mz_zip_writer_add_mem(zip_archive,subName.c_str(),nullptr,0,MZ_DEFAULT_COMPRESSION);
+            if (! status){
+                throw AvException("unable to add "+subName);
+            }
+            addDirectoryToZip(zip_archive,dir,subDir);
+            status=mz_zip_writer_finalize_archive(zip_archive);
+            if (! status){
+                throw AvException("unable to finalize archive");
+            }
+            r->writeLastChunk(socketFd);
+            LOG_DEBUG("chartset download finished after writen %ld bytes",helper->bytesWritten);
+        },"application/octet-stream");
+        rt->responseHeaders["Content-Disposition"]=FMT("attachment; filename=\"%s\"", StringHelper::SanitizeString(subDir+".zip"));
+        return rt;
+    }
     
     HTTPResponse *tryOpenFile(String base,String file,String mimeType){
         String fileName=FileHelper::concatPath(base,file);
@@ -357,6 +440,9 @@ public:
             if (StringHelper::startsWith(url, "listInfo"))
             {
                 return handleListInfoRequest(chartSetKey, request);
+            }
+            if (StringHelper::startsWith(url,"download")){
+                return handleDownload(chartSetKey);
             }
         }
         String fi=GetQueryValue(request,"featureInfo");

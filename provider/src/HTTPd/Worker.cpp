@@ -234,13 +234,19 @@ void Worker::ParseAndExecute(int socket,StringVector header,HTTPRequest *request
         ReturnError(socket, 404, "not found");
         return;
     }
-    HTTPResponse *response = handler->HandleRequest(request);
+    HTTPResponse *response=nullptr;
+    try{
+    response = handler->HandleRequest(request);
     if (response->valid) {
         SendData(socket, response, request);
     } else {
         ReturnError(socket, 404, "not found");
     }
-    delete response;
+    }catch (Exception &e){
+        LOG_DEBUG("Exception while handling HTTP request %s: %s",header[0],e.what());
+        ReturnError(socket,500,e.what());
+    }
+    if (response  != nullptr) delete response;
 }
 
 
@@ -289,27 +295,40 @@ void Worker::SendData(int socket,HTTPResponse *response,HTTPRequest *request){
     sHTTP << "Server: AvNav-Provider" << sHTMLEol;
     sHTTP << "Content-Type: " <<  response->mimeType  << sHTMLEol;
     sHTTP << "Cache-Control: no-store, no-cache, must-revalidate, max-age=0" << sHTMLEol;
-    sHTTP << "Content-Length: "  << response->GetLength() << sHTMLEol;
     sHTTP << "Connection: Close" << sHTMLEol;
     String hdr=sHTTP.str();
     SocketHelper::WriteAll(socket, hdr.c_str(), hdr.length(),1000 );
+    response->SetContentLength();
     WriteHeadersAndCookies(socket,response,request);
-    unsigned long maxLen=0;
-    if (response->SupportsChunked()){
-        maxLen=10000;
-        const char *data;
-        while (maxLen > 0){
-            data=response->GetData(maxLen);
-            if (maxLen <= 0)return;
-            int written=SocketHelper::WriteAll(socket,data,maxLen,10000);
-            if (written < 0 || (unsigned long)written != maxLen){
-                LOG_ERROR("unable to write all data to socket %d, expected %ld, written %d",socket,maxLen,written);
-            }
-            maxLen=10000;
-        }
+    if (response->useCallback())
+    {
+        response->callback(socket);
     }
-    else{
-        SocketHelper::WriteAll(socket, response->GetData(maxLen), response->GetLength() ,10000);
+    else
+    {
+        unsigned long maxLen = 0;
+        if (response->SupportsChunked())
+        {
+            maxLen = 10000;
+            const char *data;
+            while (maxLen > 0)
+            {
+                data = response->GetData(maxLen);
+                if (maxLen <= 0)
+                    return;
+                int written = SocketHelper::WriteAll(socket, data, maxLen, 10000);
+                if (written < 0 || (unsigned long)written != maxLen)
+                {
+                    LOG_ERROR("unable to write all data to socket %d, expected %ld, written %d", socket, maxLen, written);
+                }
+                maxLen = 10000;
+            }
+        }
+        else
+        {
+            const char *data = response->GetData(maxLen);
+            SocketHelper::WriteAll(socket, data, maxLen, 10000);
+        }
     }
 }
 
