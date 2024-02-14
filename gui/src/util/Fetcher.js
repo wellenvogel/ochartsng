@@ -39,9 +39,15 @@ const fetcher=(fetchMethod,thisref,interval)=>{
 };
 
 const setState=(thisref,stateName,value)=>{
-    let newState = {};
-    newState[stateName] = value;
-    thisref.setState(newState);
+    thisref.setState((prevState)=>{
+        let old=prevState[stateName];
+        if (nestedEquals(old,value)){
+            return null;
+        }
+        let newState = {};
+        newState[stateName] = value;
+        return newState;
+    });
 }
 export const fetchChartList=(thisref, intervall,opt_errorcallback, opt_stateName)=>{
     if (! opt_stateName) opt_stateName="charts";
