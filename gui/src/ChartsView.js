@@ -29,7 +29,7 @@ import PropTypes from 'prop-types';
 import {setError} from './components/ErrorDisplay.js';
 import OverlayDialog from './components/OverlayDialog.js';
 import ChartSetStatus from './components/ChartSetStatus.js';
-import {SETTINGSURL, SHOPURL, STATUSURL, TOPIC_INSTALL, TOPIC_UPLOAD, UPLOADURL} from './util/Constants';
+import {CHARTSURL, SETTINGSURL, SHOPURL, STATUSURL, TOPIC_INSTALL, TOPIC_UPLOAD, UPLOADURL} from './util/Constants';
 import {InstallProgress, PROGRESS_STORE_KEY, ProgressDisplay} from "./components/InstallProgress";
 import {fetchJson, hexToBase64, nestedEquals, uploadFile} from "./util/Util";
 import {resetError} from "./components/ErrorDisplay";
@@ -87,38 +87,6 @@ const readyState=(ready)=>{
     return ready?"READY":"BUSY";
 };
 
-class UploadProgress extends React.Component{
-    constructor(props){
-        super(props);
-        let self=this;
-        this.state={loaded:0,total:0};
-        let oldHandler=props.handler.progresshandler;
-        props.handler.progresshandler=(ev)=>{
-            if (ev.lengthComputable){
-                if (ev.loaded > 0 && ev.total == ev.loaded){
-                    if (props.upload100) props.upload100();
-                }
-                self.setState({
-                    loaded:ev.loaded,total:ev.total
-                });
-            }
-            if (oldHandler) oldHandler(ev);
-        }
-    }
-    render(){
-        let percentComplete = this.state.total ? 100 * this.state.loaded/ this.state.total : 0;
-        let doneStyle = {
-            width: percentComplete + "%"
-        };
-        return (<div className="progressContainer">
-            <div className="progressInfo">{(this.state.loaded||0) + "/" + (this.state.total||0)}</div>
-            <div className="progressDisplay">
-                <div className="progressDone" style={doneStyle}></div>
-            </div>
-        </div>);
-    }
-}
-
 
 const RESTART_WINDOW=60000; //ms to ignore errors during restart
 const MIN_RESTART_WINDOW=2000; //ms before we reset the restart flag
@@ -135,6 +103,7 @@ class ChartsView extends Component {
         };
         this.formRef = React.createRef();
         this.fileInputref = React.createRef();
+        this.downloadRef=React.createRef();
         this.store = new Store("chartView");
         this.dialog = new OverlayDialog(this);
         this.restartTime = undefined;
@@ -354,6 +323,17 @@ class ChartsView extends Component {
             return  <button className={"button"+addClass} onClick={onClick}>{buttonText}</button>;
 
         };
+        let DownloadButton=(props)=>{
+            if (! props.info) return null;
+            if (! this.downloadRef.current) return null;
+            return(
+                <button className={"button download"} onClick={()=>{
+                    if (this.downloadRef){
+                        this.downloadRef.current.src=CHARTSURL+props.info.name+"/download";
+                    }
+                }}>Download</button>
+            )
+        }
         let DeleteButton=(props)=>{
             if (! props.canDelete || ! props.info) return null;
             let addClass=self.isReady()?"":" disabled ";
@@ -440,6 +420,7 @@ class ChartsView extends Component {
                                 <div className="chartSetButtons">
                                     <EnableButton {...chartSet}/>
                                     <DeleteButton {...chartSet}/>
+                                    <DownloadButton {...chartSet}/>
                                 </div>
                                 </ChartSetStatus>
 
@@ -465,6 +446,17 @@ class ChartsView extends Component {
                 </form>
                 <this.dialog.render/>
                 <Content/>
+                <iframe className="downloadFrame"
+                        ref={this.downloadRef}
+                        onLoad={(e) => {
+                            let etxt = undefined;
+                            try {
+                                etxt = e.target.contentDocument.body.textContent;
+                            } catch (e) {
+                            }
+                            setError((etxt !== undefined) ? etxt.replace("\n", " ") : "unable to download");
+                        }}
+                ></iframe>
             </div>
         );
     }

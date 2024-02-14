@@ -29,6 +29,7 @@ export const SETTINGSURL="/settings/";
 export const UPLOADURL="/upload/";
 export const STATUSURL="/status/";
 export const SHOPURL="/shop/";
+export const CHARTSURL="/charts/"
 //PubSub topics
 export const TOPIC_UPLOAD="upload";
 export const TOPIC_INSTALL="install";
