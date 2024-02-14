@@ -128,7 +128,7 @@ public:
     virtual ~HTTPStringResponse(){
     }
     virtual unsigned long GetLength(){return data.length();}
-    virtual const char * GetData(unsigned long &maxLen){ return data.c_str();}
+    virtual const char * GetData(unsigned long &maxLen){  maxLen=data.size(); return data.c_str();}
 };
 
 class HTTPErrorResponse : public HTTPStringResponse{
@@ -150,7 +150,7 @@ public:
     virtual ~HTTPDataResponse(){
     }
     virtual unsigned long GetLength(){return data->size();}
-    virtual const char * GetData(unsigned long &maxLen){ return (const char *)data->data();}
+    virtual const char * GetData(unsigned long &maxLen){ maxLen=data->size(); return (const char *)data->data();}
 };
 
 class HTTPJsonErrorResponse : public HTTPStringResponse{
