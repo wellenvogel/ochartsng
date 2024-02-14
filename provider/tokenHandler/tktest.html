@@ -77,7 +77,7 @@
                 timer=-1;
                 return;
             }
-            window.avnav.ochartsProvider.heartBeat().then(function(ok){}).catch(function(error){console.log(error);});
+            window.avnav.ochartsProviderNG.heartBeat().then(function(ok){}).catch(function(error){console.log(error);});
         },20000);
         document.getElementById("testimg").onload=function(){
             if (testRunning) nextLoad();  
@@ -85,7 +85,7 @@
         document.getElementById("testimg").onerror=function(){
             if (testRunning) nextLoad();  
         }
-        window.avnav.ochartsProvider.heartBeat()
+        window.avnav.ochartsProviderNG.heartBeat()
             .then(function(ok){
                 nextLoad();
             })
