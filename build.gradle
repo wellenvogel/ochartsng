@@ -356,7 +356,14 @@ ospackage {
             include "*.sh"
             include "*.css"
             fileMode 0755
-        }        
+        }
+        from('tools'){
+            include "tosenc.py"
+            fileMode 0755
+        }
+        from('tools/senc')
+            include "*.py"
+            into "senc"        
     }
     into("/etc/udev/rules.d"){
         from(projectDir){
