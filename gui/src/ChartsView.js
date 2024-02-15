@@ -285,28 +285,37 @@ class ChartsView extends Component {
             if (chartSets[k].info.name === key) return chartSets[k];
         }
     }
+
+    handleEnable(name,kind){
+        let changeUrl=SETTINGSURL+"enable+?chartSet="+encodeURI(name)+"&enable="+kind;
+        this.showSpinner();
+        fetchJson(changeUrl)
+            .then((jsonData)=>{
+                if (jsonData.data && jsonData.data.changed){
+                    this.chartListFetcher()
+                        .then(()=>this.dialog.hideDialog())
+                        .catch(()=>this.dialog.hideDialog())
+                }
+                else{
+                    this.dialog.hideDialog();
+                }
+            })
+            .catch((error)=>{
+                this.dialog.hideDialog();
+                setError(error)
+            })
+    }
     render() {
         let self=this;
         let chartSets=this.state.charts||[];
         let disabled=this.isReady()?"":" disabled ";
         let EnableButton=(props)=>{
             if (! props.info || ! props.info.name) return null;
-            let changeUrl=SETTINGSURL+"enable+?chartSet="+encodeURI(props.info.name)+"&enable="+(props.active?"disable":"enable");
+            let changeKind=props.active?"disable":"enable";
             let buttonText=props.active?"Disable":"Enable";
             let addClass=self.isReady()?"":" disabled ";
             let onClickDo=()=>{
-                this.showSpinner();
-                fetchJson(changeUrl)
-                    .then((jsonData)=>{
-                        this.dialog.hideDialog();
-                        if (jsonData.changed){
-                            self.chartListFetcher();
-                        }
-                    })
-                    .catch((error)=>{
-                        this.dialog.hideDialog();
-                        setError(error)
-                    })
+                this.handleEnable(props.info.name,changeKind);
             };
             let onClick=()=>{
                 if (props.disabledBy && ! props.active){
@@ -340,23 +349,11 @@ class ChartsView extends Component {
             )
         }
         let AutoButton=(props)=>{
-            if (! props.info) return null;
+            if (! props.info || ! props.info.name) return null;
             let addClass=(self.isReady() && props.originalState != 0)?"":" disabled ";
             return(
                 <button className={"button auto "+addClass} onClick={()=>{
-                    let changeUrl=SETTINGSURL+"enable+?chartSet="+encodeURI(props.info.name)+"&enable=auto";
-                    this.showSpinner();
-                    fetchJson(changeUrl)
-                        .then((jsonData)=>{
-                            this.dialog.hideDialog();
-                            if (jsonData.changed){
-                                self.chartListFetcher();
-                            }
-                        })
-                        .catch((error)=>{
-                            this.dialog.hideDialog();
-                            setError(error)
-                        })
+                    this.handleEnable(props.info.name,"auto");
                 }}>Auto</button>
             )
         }
@@ -438,9 +435,14 @@ class ChartsView extends Component {
                                 status = "PENDING";
                             }
                             else status=chartSet.status;
+                            let disablingSet;
+                            if (chartSet.originalState == 0 && ! chartSet.active && chartSet.disabledBy){
+                                disablingSet=self.findSetByKey(chartSet.disabledBy);
+                            }
                             return <ChartSetStatus
                                         key={chartSet.info?chartSet.info.name:""}
                                         {...chartSet}
+                                        disablingSet={disablingSet}
                                         status={status}
                                 >
                                 <div className="chartSetButtons">

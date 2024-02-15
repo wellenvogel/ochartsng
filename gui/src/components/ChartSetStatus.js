@@ -43,6 +43,10 @@ const ChartSetStatus=(props)=>{
     if ( status === 'READY' && props.reopenErrors > 0){
         status="ERROR";
     }
+    let disableInfo;
+    if (props.disablingSet && props.disablingSet.info){
+        disableInfo=`${props.disablingSet.info.title} [${props.disablingSet.info.version}]`;
+    }
     return(
         <StatusItem title={
                 <span>
@@ -51,7 +55,9 @@ const ChartSetStatus=(props)=>{
                 </span>
                 }
             >
-            <StatusLine label="Status" value={status} icon={true}/>
+            <StatusLine label="Status" value={status} icon={true}>
+            </StatusLine>
+            {disableInfo?<StatusLine label="DisabledBy" value={disableInfo}/>:null}
             <StatusLine label="Charts" value={props.numValidCharts+"/"+(props.numValidCharts+props.numIgnoredCharts)+", minScale="+props.minScale+", maxScale="+props.maxScale}/>
             <StatusLine label="Directory" value={info.directory}/>
             <StatusLine label="Info"  value={"Version="+info.version+", ValidTo="+info.validTo}/>
@@ -74,6 +80,7 @@ const ChartSetStatus=(props)=>{
 ChartSetStatus.propTypes={
     info: PropTypes.object,
     cache: PropTypes.object,
+    disablingSet: PropTypes.object,
     cacheWriter:  PropTypes.object,
     showDetails: PropTypes.bool
 }
