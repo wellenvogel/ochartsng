@@ -269,7 +269,7 @@ public:
     }
     
 protected:
-    
+    using ProgressFunction=std::function<void(int percent)>;
     String    GetHeaderValue(HTTPRequest *request,String name){
         NameValueMap::iterator it = request->header.find(name);
         if (it == request->header.end()) {
@@ -285,7 +285,7 @@ protected:
         return it->second;
     }
     size_t WriteFromInput(HTTPRequest *request, std::shared_ptr<std::ostream> openOutput,
-                          size_t len, long chunkTimeOut=20000)
+                          size_t len,ProgressFunction progress=ProgressFunction(), long chunkTimeOut=20000)
     {
         size_t bRead = 0;
         static constexpr const int BUFSIZE = 10000;
@@ -306,6 +306,9 @@ protected:
                 throw AvException(FMT("unable to write %d bytes", rd));
             }
             bRead += rd;
+            if (len > 0 && progress){
+                progress(bRead*100/len);
+            }
         }
         return bRead;
     }

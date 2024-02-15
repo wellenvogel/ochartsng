@@ -408,10 +408,10 @@ class ChartsView extends Component {
                         onChange={(v)=>this.handleReadyState(v)}
                         onError={(e)=>this.handleSubError(e)}
                     />
-                    <InstallProgress
-                        className="ChartViewStatus"
-                        interval={1000}
-                    />
+                        <InstallProgress
+                            className="ChartViewStatus"
+                            interval={1000}
+                        />
                     </div>
                     <div className="actions globalActions">
                         <button
@@ -456,15 +456,6 @@ class ChartsView extends Component {
                         })
                     }
                 </div>
-                    {self.state.uploadIndicator && <ProgressDisplay
-                            store={this.store}
-                            title="Uploading"
-                            closeCallback={()=>self.finishUpload(true)}
-                            upload100={()=>{
-                                self.setState({uploadIndicator:undefined});
-                            }}
-                        />
-                    }
                 </React.Fragment>
             )
         };

@@ -89,13 +89,13 @@ class ChartInstaller: public ItemStatus{
         ~ChartInstaller();
         bool IsActive() const { return worker != NULL;}
         bool CanInstall() const;
+        void UpdateProgress(int requestId, int progress,bool checkInterrupted=true);
         virtual void ToJson(StatusStream &stream);
     protected:
         class WorkerRunner;
         String CreateTempDir(int requestId);    
         Request NextRequest();
         void UpdateRequest(const Request &v, bool checkInterrupted=true);
-        void UpdateProgress(int requestId, int progress,bool checkInterrupted=true);
         void HouseKeeping(bool doThrow=true);
         bool CheckInterrupted(int requestId, bool throwInterrupted=true);
         typedef std::map<int,Request> RequestMap;

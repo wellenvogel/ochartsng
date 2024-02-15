@@ -66,7 +66,14 @@ public:
                 if (! installRequest.stream){
                     throw AvException("no stream for upload");
                 }
-                size_t written=WriteFromInput(request,installRequest.stream,uploadSize);
+                int lastProgress=0;
+                size_t written=WriteFromInput(request,installRequest.stream,uploadSize,
+                    [&lastProgress,installRequest,this](int percent){
+                        if (lastProgress != percent){
+                            this->installer->UpdateProgress(installRequest.id,percent,true);
+                            lastProgress=percent;
+                        }
+                    });
                 if (written != uploadSize){
                     throw AvException(FMT("only written %d from %d bytes",written,uploadSize));
                 }
