@@ -361,6 +361,7 @@ ospackage {
         }
         from('tools'){
             include "tosenc.py"
+            include "collectS57.sh"
             fileMode 0755
         }
         from('tools/senc')
