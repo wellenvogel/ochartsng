@@ -1,0 +1,3 @@
+#! /bin/bash
+echo pip installing mapbox-earcut
+pip3 install mapbox-earcut || echo "ignoring install error for mapbox-earcut"
