@@ -149,7 +149,7 @@ def handleSingleFile(context:Context,ifile:str,ofile:str):
 M_FILES=0
 M_DIR=1
 if __name__ == '__main__':
-    s57dir=os.path.join(os.path.dirname(__file__),"..","provider","s57static")
+    s57dir=os.path.join(os.path.dirname(__file__),"senc","s57static")
     basedir=None
     scale=None
     optlist,args=getopt.getopt(sys.argv[1:],"b:d:s:e:ic:")

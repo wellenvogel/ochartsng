@@ -57,7 +57,9 @@ def DEFAULT_DEPS = [
                 ['libstdc++6'],
                 ['libssl1.1'],
                 ['libcurl4'],
-                [primary:['python3-mapbox-earcut'], or:['base-files']]
+                [primary:['python3-mapbox-earcut'], or:['base-files']],
+                ['gdal-bin'],
+                ['libusb-0.1-4']
         ]
 def IMAGE_VERSION = "A1"        
 def VARIANTS=[
@@ -93,14 +95,6 @@ def VARIANTS=[
          oexdir: 'linux64',
          dependencies: DEFAULT_DEPS
         ],
-        [osline:'debian',
-         osversion:'buster',
-         arch: 'i386',
-         tag: IMAGE_VERSION,
-         dockerbase:'i386/debian',
-         dockerfile:'Dockerfile.all',
-         dependencies: DEFAULT_DEPS
-         ],
         [osline:'debian',
          osversion:'buster',
          arch: 'amd64',
@@ -364,9 +358,13 @@ ospackage {
             include "collectS57.sh"
             fileMode 0755
         }
-        from('tools/senc')
+        from('tools/senc'){
             include "*.py"
-            into "senc"        
+            into "senc"    
+        } 
+        from('tools/senc/s57static'){
+            into "senc/s57static"    
+        }    
     }
     into("/etc/udev/rules.d"){
         from(projectDir){

@@ -275,7 +275,7 @@ def writeSoundings(wh:senc.SencFile,cur,name,gcol):
 class Options:
     def __init__(self):
         self.basedir=None
-        self.s57dir=os.path.join(os.path.dirname(__file__),"..","..","provider","s57static")
+        self.s57dir=os.path.join(os.path.dirname(__file__),"s57static")
         self.em=senc.SencFile.EM_ALL
         self.scale=None
         self.ignoreErrors=False
