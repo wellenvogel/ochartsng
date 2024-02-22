@@ -37,6 +37,7 @@ public:
     public:
         String decimal;
         String fract;
+        bool negative=0;
     };
     
     static StrSounding valToSounding(float v, s52::S52Data::ConstPtr s52data);
@@ -68,10 +69,6 @@ public:
         int shift_fract = asc / 2;
         for (auto it = soundings->begin(); it != soundings->end(); it++)
         {
-            if (it->depth < 0)
-            {
-                continue; // TODO
-            }
             StrSounding st = valToSounding(it->depth, s52Data);
             size_t dlen = st.decimal.size();
             if (dlen < 1)
@@ -87,6 +84,11 @@ public:
                                                 st.decimal,
                                                 dp,
                                                 it->depth >= safetyDepth ? cDeep : cShallow);
+            if (st.negative){
+                //draw underscore
+                Coord::PixelXy up=dp.getShifted(x-cwidth,asc/7);
+                drawText(fm,ctx,"_",up,it->depth >= safetyDepth ? cDeep : cShallow);
+            }
             if (flen)
             {
                 dp.shift(x, shift_fract);

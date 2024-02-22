@@ -31,7 +31,10 @@ template <typename T>
 static Coord::PixelXy getPivot(const T &t){return Coord::PixelXy(t->pivot_x,t->pivot_y);}
 RenderHelper::StrSounding RenderHelper::valToSounding(float v, s52::S52Data::ConstPtr s52data){
     StrSounding rt;
-    if (v < 0) return rt;
+    if (v < 0){
+        rt.negative=true;
+        v=::abs(v);
+    }
     if (v > 40000) v=99999.0;
     v=s52data->convertSounding(v,0);
     //if we show feet - always not decimals
