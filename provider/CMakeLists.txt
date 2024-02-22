@@ -208,6 +208,8 @@ else()
     message("openssl...")
     #find_package(OpenSSL REQUIRED CONFIG) #already included by curl
     target_link_libraries(${TARGET} PRIVATE openssl::crypto )
+    #package openssl
+    target_link_libraries(${TARGET} PRIVATE openssl::ssl )
 endif()
 
 #filesystem

@@ -151,6 +151,7 @@ class OexConfig{
     bool fprStdout;
     String preload;
     String socketAddress;
+    bool setLibPath;
     NameValueMap environment;
 };
 
@@ -159,7 +160,8 @@ class OexConfig{
         String("liboexserverd.so"),
         true,
         String(""),
-        String("com.opencpn.ocharts_pi")
+        String("com.opencpn.ocharts_pi"),
+        false
     };
 #else
     static OexConfig oexconfig={
@@ -167,6 +169,7 @@ class OexConfig{
         false,
         String("libpreload.so"),
         String("com.opencpn.ocharts_pi"),
+        true,
         {{String(TEST_PIPE_ENV),String("LOCAL:com.opencpn.ocharts_pi")}}
     };
 #endif
@@ -237,7 +240,13 @@ StartResult runOexServerd(const OexConfig &config,const String &progDir,const St
             putenv(StringHelper::cloneData(StringHelper::format("%s=%s",it->first.c_str(),it->second.c_str())));
         }
         putenv(StringHelper::cloneData(StringHelper::format("%s=%d",ENV_AVNAV_PID,parent)));
-        putenv(StringHelper::cloneData(StringHelper::format("LD_LIBRARY_PATH=%s",progDir)));
+        if (config.setLibPath){
+            LOG_DEBUG("setting LD_LIBRARY_PATH to %s",progDir);
+            putenv(StringHelper::cloneData(StringHelper::format("LD_LIBRARY_PATH=%s",progDir)));
+        }
+        else{
+            unsetenv("LD_LIBRARY_PATH");
+        }
         if (config.preload != String("") && usePreload){
             String preload=FileHelper::concatPath(progDir,oexconfig.preload);
             putenv(StringHelper::cloneData(StringHelper::format("%s=%s","LD_PRELOAD",preload.c_str()))); 
