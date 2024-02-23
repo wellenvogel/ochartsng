@@ -249,8 +249,8 @@ if __name__ == '__main__':
   if os.path.exists(ods):
     odsTs=os.stat(ods).st_mtime
     if inTs < odsTs:
-      print("ERROR: file %s is newer then %s"%(ods,infile))
-      sys.exit(1)
+      print("WARN: file %s is newer then %s"%(ods,infile))
+      #sys.exit(1)
   if mode == "all" or mode == "json":
     jsonfile=os.path.join(pdir,"..","..","gui","generated","settings.json")
     if checkOlder(jsonfile,inTs):
