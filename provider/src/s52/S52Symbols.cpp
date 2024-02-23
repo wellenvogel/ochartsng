@@ -49,7 +49,7 @@ namespace s52
         if (rt) {
             throw FileException(fileName,FMT("S52Symbols: unable to parse XML: %s",doc->ErrorStr()));
         }
-        LOG_DEBUG("S52Symbols: loading from %s",fileName);
+        LOG_INFO("S52Symbols: loading from %s",fileName);
         XMLEl *symbols=doc->FirstChildElement("chartsymbols");
         if (symbols)
         {
