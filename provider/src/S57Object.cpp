@@ -1061,7 +1061,7 @@ ObjectDescription::Ptr S57Object::RenderObject::getObjectDescription(
             }
         }
         if (hasSounding){
-            addOns["DEPTH"]=std::to_string(nearest.depth);
+            addOns["DEPTH"]=s52::Attribute::doubleToStr(nearest.depth);
         }   
     }
     S57ObjectDescription *rt=new S57ObjectDescription(object.get(),overview,addOns);

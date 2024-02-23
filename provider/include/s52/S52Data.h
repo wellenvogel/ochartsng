@@ -129,6 +129,12 @@ namespace s52
                 break;
             }
         }
+        static String doubleToStr(const double &v){
+            char buf[30];
+                snprintf(buf,30,"%.8g",v);
+                buf[29]=0;
+                return String(buf);
+        }
         String getString(bool convert=false) const
         {
             if (type != T_STRING && !convert)
@@ -145,10 +151,7 @@ namespace s52
             }
             if (type == T_DOUBLE)
             {
-                char buf[30];
-                snprintf(buf,30,"%.8g",dv);
-                buf[29]=0;
-                return String(buf);
+                return doubleToStr(dv);
             }
             return "";
         }

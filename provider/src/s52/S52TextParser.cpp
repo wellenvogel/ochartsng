@@ -31,25 +31,6 @@
 #include "generated/S57AttributeIds.h"
 namespace s52
 {
-    //some hardcoded attribute translates for NATSUR (113)
-    //from expectedinput
-    static std::map<int,String> natsur({
-        {1,"mud"},
-        {2,"clay"},
-        {3,"silt"},
-        {4,"sand"},
-        {5,"stone"},
-        {6,"gravel"},
-        {7,"pebbles"},
-        {8,"cobbles"},
-        {9,"rock"},
-        {11,"lava"},
-        {14,"coral"},
-        {17,"shells"},
-        {18,"boulder"},
-        {56,"Bo"},
-        {51,"Wd"}
-    });
     static Attribute::Type atypeFromFormat(const char fmtType)
     {
         switch (fmtType)
@@ -179,7 +160,7 @@ namespace s52
             }
             switch(atype){
                 case Attribute::T_DOUBLE:
-                    stream << s52data->convertSounding(attributes->getDouble(aid),aid);
+                    stream << Attribute::doubleToStr(s52data->convertSounding(attributes->getDouble(aid),aid));
                     return;
                 case Attribute::T_INT:
                     stream << attributes->getInt(aid);
@@ -238,11 +219,10 @@ namespace s52
                     for (auto it=parts.begin();it != parts.end();it++){
                         if (it->empty()) continue;
                         int idx = ::atoi(it->c_str());
-                        auto nsi = natsur.find(idx);
-                        if (nsi != natsur.end())
-                        {
+                        auto nsv=S57AttrValuesBase::getDescription(S57AttrIds::NATSUR,idx);
+                        if (nsv != nullptr){
                             if (!rt.value.empty()) rt.value.append(1,',');
-                            rt.value.append(nsi->second.c_str());
+                            rt.value.append(nsv->strValue);
                         }
                     }
                     if (rt.value.empty()) rt.value.assign("unk");
@@ -253,7 +233,7 @@ namespace s52
                     auto it=attributes->find(aid);
                     if (it != attributes->end()){
                         if (it->second.getType() == s52::Attribute::T_DOUBLE){
-                            s=std::to_string(s52data->convertSounding(attributes->getDouble(aid)));
+                            s=Attribute::doubleToStr(s52data->convertSounding(attributes->getDouble(aid)));
                         }
                         else{
                             s=attributes->getString(aid, true);
