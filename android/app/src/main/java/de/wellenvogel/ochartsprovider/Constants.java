@@ -14,9 +14,12 @@ public class Constants {
     static final String PRFX="Ocharts";
     static final String STARTPAGE="/static/index.html";
     static final String PREF_UNIQUE_ID = "uniqueId" ;
+    static final String PREF_LICENSE_ACCEPTED="licenseAccepted";
+    static final int LICENSE_VERSION=1;
 
     static final String EXTRA_TXT="permissionText";
     static final String EXTRA_PERMISSIONS="permissions";
     static final int SAVE_KEY_REQ=1000;
     static final String KEY_FILE_NAME="ochartsng.key";
+    static final int LICENSE_ACCEPT_REQUEST=1001;
 }

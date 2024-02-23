@@ -66,6 +66,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import androidx.core.app.NotificationCompat;
+import androidx.preference.PreferenceManager;
 
 
 public class OchartsService extends Service implements ChartListFetcher.ResultHandler {
@@ -597,6 +598,15 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
+        int license=0;
+        try{
+            license= PreferenceManager.getDefaultSharedPreferences(this).getInt(Constants.PREF_LICENSE_ACCEPTED,0);
+        }catch (Throwable t){}
+        if (license != Constants.LICENSE_VERSION) {
+            Toast.makeText(this,"License not accepted",Toast.LENGTH_LONG).show();
+            stopSelf();
+            return Service.START_NOT_STICKY;
+        }
         if (! isRunning){
             if (startUp()) {
                 isRunning = true;

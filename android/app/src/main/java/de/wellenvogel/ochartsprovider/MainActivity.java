@@ -62,8 +62,15 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContract;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityOptionsCompat;
 import androidx.preference.PreferenceManager;
 
 import java.io.File;
@@ -82,6 +89,27 @@ public class MainActivity extends AppCompatActivity {
     Button launchButton;
     boolean running=false;
 
+    ActivityResultLauncher<Integer> licenseQuery=registerForActivityResult(new ActivityResultContract<Integer, Object>() {
+        @Override
+        public Object parseResult(int i, @Nullable Intent intent) {
+            if (i != 1) {
+                finish();
+                return null;
+            }
+            PreferenceManager.getDefaultSharedPreferences(MainActivity.this).edit().putInt(Constants.PREF_LICENSE_ACCEPTED,1).commit();
+            return null;
+        }
+
+        @NonNull
+        @Override
+        public Intent createIntent(@NonNull Context context, Integer integer) {
+            return new Intent(MainActivity.this,LicenseActivity.class);
+        }
+    }, new ActivityResultCallback<Object>() {
+        @Override
+        public void onActivityResult(Object o) {
+        }
+    });
     String launchUrl="";
     private final Runnable timer = new Runnable() {
         @Override
@@ -275,6 +303,13 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        int license=0;
+        try{
+            license=PreferenceManager.getDefaultSharedPreferences(this).getInt(Constants.PREF_LICENSE_ACCEPTED,0);
+        }catch (Throwable t){}
+        if (license != Constants.LICENSE_VERSION){
+            licenseQuery.launch(1);
+        }
         running=true;
         handler.postDelayed(timer,1000);
     }

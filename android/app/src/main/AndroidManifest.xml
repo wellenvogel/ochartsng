@@ -19,10 +19,15 @@
         android:theme="@style/Theme.AvNavOchartsProvider"
         android:usesCleartextTraffic="true">
         <activity
+            android:name=".LicenseActivity"
+            android:exported="false"
+            android:label="@string/title_activity_license"
+            android:theme="@style/Theme.AvNavOchartsProvider" />
+        <activity
             android:name=".SettingsActivity"
             android:exported="false"
             android:label="@string/title_activity_settings"
-            android:parentActivityName=".MainActivity"/>
+            android:parentActivityName=".MainActivity" />
         <activity
             android:name=".PermissionActivity"
             android:exported="false"
