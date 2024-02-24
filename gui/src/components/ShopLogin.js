@@ -96,7 +96,7 @@ export class SystemState extends React.Component{
         return (
             <React.Fragment>
                 {(status !== undefined) ?
-                    <StatusLine label="Shop System Name" className={this.props.className}
+                    <StatusLine label="Shop System" className={this.props.className}
                                 value={status}
                                 text={statusText}
                                 icon={true}/>
@@ -163,6 +163,7 @@ const shopErrors={
     '3e': 'invalid username',
     '3f': 'empty password',
     '3g': 'wrong password',
+    '3k': 'invalid characters',
     '8l': 'no system name for this device',
     '8h': 'something has changed in the device assigned to this system name',
     '8j': 'there is already a system name for this device',

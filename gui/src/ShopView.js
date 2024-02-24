@@ -128,8 +128,26 @@ class RegisterDialog extends React.Component{
         }
         this.dialog=new OverlayDisplay(this);
     }
+    validSystemName(name){
+        //see ochartsShop.cpp::doGetNewSystemName
+        if (! name || name === "") return "name must not be empty"
+        if (name.length < 3) return "name must be at least 3 characters";
+        if (name.length > 15) return "name must be <= 15 characters";
+        if (name.match(/[^0-9A-Za-z]/)) return "invalid characters in name, only characters and numbers";
+        let knownSystems=ShopLogin.getKnownSystems();
+        if (knownSystems){
+            for (let i=0;i<knownSystems.length;i++){
+                if (knownSystems[i] === name) return "name already used for another system";
+            }
+        }
+    }
     render(){
         let headLine=this.props.forDongle?"Register Dongle":"Register System";
+        let error;
+        if (! this.props.forDongle){
+            error=this.validSystemName(this.state.name);
+        }
+        let nameClass=(error !== undefined)?"invalidValue":"";
         return (
             <React.Fragment>
             <this.dialog.render/>
@@ -144,10 +162,17 @@ class RegisterDialog extends React.Component{
                         :
                         <div className="dialogRow">
                             <div className="label">SystemName</div>
-                            <input type="text" value={this.state.name}
+                            <input type="text"
+                                   className={nameClass}
+                                   value={this.state.name}
                                    onChange={(ev) => this.setState({name: ev.target.value})}/>
                         </div>
                     }
+                    {(error !== undefined) && <div className="dialogRow">
+                        <div className="label">Error</div>
+                        <div className="value error">{error}</div>
+                    </div>}
+
                 </div>
                 <div className="dialogRow dialogButtons">
                     <button
@@ -156,6 +181,7 @@ class RegisterDialog extends React.Component{
                     >Cancel</button>
                     <button
                         className="button ok"
+                        disabled={error !== undefined}
                         onClick={()=>{
                             if (!this.state.name){
                                 setError("system name must not be empty",10000);
