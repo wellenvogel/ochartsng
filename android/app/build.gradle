@@ -31,6 +31,12 @@ else{
 
 android {
     compileSdkVersion 33
+    externalNativeBuild {
+        cmake {
+            path "../../provider/CMakeLists.txt"
+            version "3.18.1"
+        }
+    }
     defaultConfig {
         applicationId "de.wellenvogel.ochartsprovider"
         versionName "avnavocharts-$avnavVersion"
@@ -113,6 +119,11 @@ android {
             manifestPlaceholders.label='avocharts'
             manifestPlaceholders.suffix=""
             manifestPlaceholders.queryPkg=IDENTITYPROVIDER_PKG
+            externalNativeBuild {
+                cmake {
+                    arguments "-DANDROID_VARIANT=0"
+                }
+            }
         }
         debug{
             applicationIdSuffix ".debug"
@@ -121,6 +132,11 @@ android {
             manifestPlaceholders.queryPkg=IDENTITYPROVIDER_PKG
             if (System.getenv("ANDROID_KEYSTORE") != null) {
                 signingConfig signingConfigs.config
+            }
+            externalNativeBuild {
+                cmake {
+                    arguments "-DANDROID_VARIANT=2"
+                }
             }
         }
         beta {
@@ -143,14 +159,13 @@ android {
             manifestPlaceholders.label='avocharts-beta'
             manifestPlaceholders.suffix='.beta'
             manifestPlaceholders.queryPkg=IDENTITYPROVIDER_PKG
+            externalNativeBuild {
+                cmake {
+                    arguments "-DANDROID_VARIANT=1"
+                }
+            }
         }
 
-    }
-    externalNativeBuild {
-        cmake {
-            path "../../provider/CMakeLists.txt"
-            version "3.18.1"
-        }
     }
     
     compileOptions {

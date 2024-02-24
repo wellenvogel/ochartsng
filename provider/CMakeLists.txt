@@ -187,6 +187,7 @@ if (NOT AVNAV_ANDROID)
     target_link_libraries(${TARGET} PRIVATE Threads::Threads)
 else()
     message("avnav android")
+    target_compile_definitions(${TARGET} PRIVATE ANDROID_VARIANT=${ANDROID_VARIANT})
 endif()
 
 #curl, openssl
@@ -244,6 +245,10 @@ if (NOT AVNAV_ANDROID)
     add_library(preload SHARED preload/preload.cpp)
     target_include_directories(preload PRIVATE include)
     target_link_libraries(preload PRIVATE dl Threads::Threads)
+else()
+    add_library(preloadAndroid SHARED preload/preload-android.cpp)
+    #target_include_directories(preload PRIVATE include)
+    target_link_libraries(preloadAndroid PRIVATE dl)
 endif()
 
 #coordinate converted

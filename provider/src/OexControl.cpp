@@ -150,8 +150,8 @@ class OexConfig{
     String exe;
     bool fprStdout;
     String preload;
-    String socketAddress;
     bool setLibPath;
+    String socketAddress;
     NameValueMap environment;
 };
 
@@ -159,17 +159,28 @@ class OexConfig{
     static OexConfig oexconfig={
         String("liboexserverd.so"),
         true,
-        String(""),
-        String("com.opencpn.ocharts_pi"),
-        false
+        String("libpreloadAndroid.so"),
+        false,
+#if ANDROID_VARIANT == 0
+        String("com.opencpn.avorel"),
+        {{String(TEST_PIPE_ENV),String("com.opencpn.avorel")}}
+#endif
+#if ANDROID_VARIANT == 2
+        String("com.opencpn.avodbg"),
+        {{String(TEST_PIPE_ENV),String("com.opencpn.avodbg")}}
+#endif
+#if ANDROID_VARIANT == 1
+        String("com.opencpn.avobeta"),
+        {{String(TEST_PIPE_ENV),String("com.opencpn.avobeta")}}
+#endif
     };
 #else
     static OexConfig oexconfig={
         String("oexserverd"),
         false,
         String("libpreload.so"),
-        String("com.opencpn.ocharts_pi"),
         true,
+        String("com.opencpn.ocharts_pi"),
         {{String(TEST_PIPE_ENV),String("LOCAL:com.opencpn.ocharts_pi")}}
     };
 #endif
