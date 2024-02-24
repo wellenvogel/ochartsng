@@ -318,8 +318,8 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
         }
     }
 
-    public String getOCPNuniqueID() {
-        SharedPreferences sharedPrefs = getSharedPreferences(Constants.PREF_UNIQUE_ID, Context.MODE_PRIVATE);
+    public static String getOCPNuniqueID(Context ctx) {
+        SharedPreferences sharedPrefs = ctx.getSharedPreferences(Constants.PREF_UNIQUE_ID, Context.MODE_PRIVATE);
         String OCPNuniqueID = sharedPrefs.getString(Constants.PREF_UNIQUE_ID, null);
         if (OCPNuniqueID == null) {
             OCPNuniqueID = UUID.randomUUID().toString();
@@ -334,12 +334,12 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
      * same code like in OpenCPN
      * @return
      */
-    private String getSystemName( ){
+    public static String getSystemName( Context ctx){
         String name = android.os.Build.DEVICE;
         if(name.length() > 11)
             name = name.substring(0, 10);
-        String UUID = getUUID(this);
-        String OCPNUUID = getOCPNuniqueID();
+        String UUID = getUUID(ctx);
+        String OCPNUUID = getOCPNuniqueID(ctx);
         String OCPNWVID = getOCPNWVID();
         String selID;
         if( (UUID != null) && (UUID.length() > 0) && ( Build.VERSION.SDK_INT < 29) )   // Strictly less than Android 10
@@ -462,7 +462,10 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
             if (settings.isAlternateKey() && ! pid.isEmpty()){
                 aParameter=pid;
             }
-            Log.i(Constants.PRFX,"starting provider, port="+port+", debug="+debugLevel+", testMode="+testMode);
+            else{
+                aParameter=null;
+            }
+            Log.i(Constants.PRFX,"starting provider, port="+port+", debug="+debugLevel+", testMode="+testMode+", alt key="+settings.isAlternateKey());
             if (BuildConfig.AVNAV_EXE){
                 h=new ProcessHandler(this,Constants.EXE,Constants.LOGDIR+"/"+Constants.POUT);
             }
@@ -479,7 +482,7 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
             }
             List<String> args=Arrays.asList("-l", getFilesDir().getAbsolutePath(),
                     "-a",getAParameter(),
-                    "-b", getSystemName(),
+                    "-b", getSystemName(this),
                     "-l", getFilesDir().getAbsolutePath()+"/"+Constants.LOGDIR,
                     "-d",Integer.toString(debugLevel),
                     "-x",Integer.toString(memPercent),

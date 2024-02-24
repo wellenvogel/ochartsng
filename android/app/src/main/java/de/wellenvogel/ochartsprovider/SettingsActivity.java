@@ -323,7 +323,7 @@ public class SettingsActivity extends AppCompatActivity {
                 if (! checkSettings()) return true;
                 return super.onOptionsItemSelected(item);
             case R.id.export:
-                saveKey.launch(Constants.KEY_FILE_NAME);
+                saveKey.launch(OchartsService.getSystemName(this)+"-"+BuildConfig.BUILD_TYPE+"-"+ Constants.KEY_FILE_NAME);
                 return true;
         }
         return super.onOptionsItemSelected(item);

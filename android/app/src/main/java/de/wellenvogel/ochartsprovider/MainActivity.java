@@ -96,7 +96,7 @@ public class MainActivity extends AppCompatActivity {
                 finish();
                 return null;
             }
-            PreferenceManager.getDefaultSharedPreferences(MainActivity.this).edit().putInt(Constants.PREF_LICENSE_ACCEPTED,1).commit();
+            PreferenceManager.getDefaultSharedPreferences(MainActivity.this).edit().putInt(Constants.PREF_LICENSE_ACCEPTED,Constants.LICENSE_VERSION).commit();
             return null;
         }
 
