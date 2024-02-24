@@ -15,7 +15,7 @@ public class Constants {
     static final String STARTPAGE="/static/index.html";
     static final String PREF_UNIQUE_ID = "uniqueId" ;
     static final String PREF_LICENSE_ACCEPTED="licenseAccepted";
-    static final int LICENSE_VERSION=1;
+    static final int LICENSE_VERSION=2;
 
     static final String EXTRA_TXT="permissionText";
     static final String EXTRA_PERMISSIONS="permissions";
