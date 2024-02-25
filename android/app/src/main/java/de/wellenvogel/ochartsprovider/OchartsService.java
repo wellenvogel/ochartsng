@@ -60,7 +60,6 @@ import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.regex.Matcher;
@@ -71,6 +70,7 @@ import androidx.preference.PreferenceManager;
 
 
 public class OchartsService extends Service implements ChartListFetcher.ResultHandler {
+    static String tprfx=(BuildConfig.BUILD_TYPE.equals("release"))?"":BuildConfig.BUILD_TYPE+":";
     static final String CHANNEL_ID = "ocharts";
     public static final int NOTIFY_ID = 1;
     private BroadcastReceiver broadCastReceiverStop;
@@ -94,7 +94,7 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
     private final Object chartListLock=new Object();
     ChartListFetcher fetcher=null;
 
-    ProcessHandler h;
+    ProcessHandler processHandler;
     private final IBinder binder = new LocalBinder();
     int port;
 
@@ -173,11 +173,13 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
         nv.setOnClickPendingIntent(R.id.button3, stopAppl);
         nv.setOnClickPendingIntent(R.id.notification, contentIntent);
         nv.setTextViewText(R.id.notificationText, "port " + Integer.toString(port));
-
         NotificationCompat.Builder notificationBuilder =
                 new NotificationCompat.Builder(this, CHANNEL_ID);
         notificationBuilder.setSmallIcon(R.mipmap.ic_launcher);
-        notificationBuilder.setContentTitle(getString(R.string.notifyTitle));
+        String nTitle=getString(R.string.notifyTitle);
+        if (BuildConfig.BUILD_TYPE.equals("debug")) nTitle+="-debug";
+        if (BuildConfig.BUILD_TYPE.equals("beta")) nTitle+="-beta";
+        nv.setTextViewText(R.id.notificationTitle,nTitle);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
             notificationBuilder.setContent(nv);
         }
@@ -226,7 +228,7 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
 
     public ProcessState getProcessState(){
         lastTrigger=SystemClock.uptimeMillis();
-        if (h != null) return h.getState();
+        if (processHandler != null) return processHandler.getState();
         return new ProcessState();
     }
 
@@ -257,8 +259,8 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (h != null){
-            h.stop();
+        if (processHandler != null){
+            processHandler.stop();
         }
         isRunning=false;
         unregisterReceiver(broadCastReceiverStop);
@@ -449,7 +451,7 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
             try{
                 copyAssets();
             }catch (Throwable t){
-                Toast.makeText(this,"unable to copy assets for ocharts: "+t.getMessage(),Toast.LENGTH_LONG).show();
+                Toast.makeText(this,tprfx+"unable to copy assets for ocharts: "+t.getMessage(),Toast.LENGTH_LONG).show();
                 return false;
             }
             checkPermissions(true);
@@ -468,17 +470,17 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
             }
             Log.i(Constants.PRFX,"starting provider, port="+port+", debug="+debugLevel+", testMode="+testMode+", alt key="+settings.isAlternateKey());
             if (BuildConfig.AVNAV_EXE){
-                h=new ProcessHandler(this,Constants.EXE,Constants.LOGDIR+"/"+Constants.POUT);
+                processHandler =new ProcessHandler(this,Constants.EXE,Constants.LOGDIR+"/"+Constants.POUT);
             }
             else{
-                h=new LibHandler(this,Constants.EXE,Constants.LOGDIR+"/"+Constants.POUT);
+                processHandler =new LibHandler(this,Constants.EXE,Constants.LOGDIR+"/"+Constants.POUT);
             }
             File logDir=new File(getFilesDir(),Constants.LOGDIR);
             if (! logDir.isDirectory()){
                 logDir.mkdirs();
             }
             if (!logDir.isDirectory()){
-                Toast.makeText(this, "cannot create logdir "+logDir.getAbsolutePath(),Toast.LENGTH_LONG).show();
+                Toast.makeText(this, tprfx+"cannot create logdir "+logDir.getAbsolutePath(),Toast.LENGTH_LONG).show();
                 return false;
             }
             ArrayList<String> args=new ArrayList<>();
@@ -498,22 +500,28 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
                     Integer.toString(port))
             );
             if (testMode){
-                h.setEnv("AVNAV_TEST_KEY","Decrypted");
+                processHandler.setEnv("AVNAV_TEST_KEY","Decrypted");
             }
             else{
-                h.unsetEnv("AVNAV_TEST_KEY");
+                processHandler.unsetEnv("AVNAV_TEST_KEY");
             }
-            h.start(args);
-            startNotification(true,port);
-            broadcastInfo();
-            lastTrigger=SystemClock.uptimeMillis();
-            preventShutdown=false;
-            fetcher=new ChartListFetcher(this,"http://127.0.0.1:"+port+"/list",3000);
+            processHandler.start(args);
+            ProcessState pstate=processHandler.getState();
+            if (pstate.isRunning) {
+                startNotification(true, port);
+                broadcastInfo();
+                lastTrigger = SystemClock.uptimeMillis();
+                preventShutdown = false;
+                fetcher = new ChartListFetcher(this, "http://127.0.0.1:" + port + "/list", 3000);
+            }
+            else{
+                throw new Exception(pstate.error);
+            }
         }catch (Throwable t){
             Log.e(Constants.PRFX,"unable to start up",t);
             ProcessState s=new ProcessState();
             s.error=t.getMessage();
-            Toast.makeText(this,"cannot start ocharts: "+s.error,Toast.LENGTH_LONG).show();
+            Toast.makeText(this,tprfx+"cannot start ocharts: "+s.error,Toast.LENGTH_LONG).show();
             return false;
         }
         return true;
@@ -521,7 +529,7 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
 
     void shutDown(){
         preventShutdown=false;
-        if (h!=null) h.stop();
+        if (processHandler !=null) processHandler.stop();
         timerSequence++;
         stopNotification();
         isRunning=false;
@@ -529,7 +537,13 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
         stopSelf();
     }
     private void broadcastInfo(){
+        ProcessState pstate=getProcessState();
         lastBroadcast=SystemClock.uptimeMillis();
+        //intentionally set lastBroadcaset before check to avoid error flood
+        if (!pstate.isRunning){
+            Log.i(Constants.PRFX,"provider is stopped in broadcastInfo");
+            return;
+        }
         try {
             String iconUrl="http://127.0.0.1:" + port+"/static/icon.png";
             Intent info = new Intent(Constants.BC_SEND);
@@ -555,16 +569,18 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
             o.put("userApps",userApps);
             info.putExtra("plugin.json", o.toString());
             sendBroadcast(info);
+            Log.i(Constants.PRFX,"broadcast");
         }catch (Throwable t){
             Log.e(Constants.PRFX,"error sending broadcast ",t);
         }
     }
     void timerAction() throws JSONException{
-        if (h == null) return;
-        ProcessState s=h.getState();
+        if (processHandler == null) return;
+        ProcessState s= processHandler.getState();
         if (! s.isRunning){
-            Toast.makeText(this,"ocharts provider stopped"+(s.error == null || s.error.isEmpty()?"":": "+s.error),Toast.LENGTH_LONG).show();
+            Toast.makeText(this,tprfx+"ocharts provider stopped"+(s.error == null || s.error.isEmpty()?"":": "+s.error),Toast.LENGTH_LONG).show();
             shutDown();
+            return;
         }
         startNotification(true,port);
         long now=SystemClock.uptimeMillis();
@@ -578,7 +594,7 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
             broadcastInfo();
         }
         if (! preventShutdown && shutdownInterval != 0 && now > (lastTrigger+shutdownInterval)){
-            Toast.makeText(this,"ochart provider auto shutdown",Toast.LENGTH_SHORT).show();
+            Toast.makeText(this,tprfx+"ochart provider auto shutdown",Toast.LENGTH_SHORT).show();
             shutDown();
         }
 
@@ -613,7 +629,7 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
             license= PreferenceManager.getDefaultSharedPreferences(this).getInt(Constants.PREF_LICENSE_ACCEPTED,0);
         }catch (Throwable t){}
         if (license != Constants.LICENSE_VERSION) {
-            Toast.makeText(this,"License not accepted",Toast.LENGTH_LONG).show();
+            Toast.makeText(this,tprfx+"License not accepted",Toast.LENGTH_LONG).show();
             stopSelf();
             return Service.START_NOT_STICKY;
         }
