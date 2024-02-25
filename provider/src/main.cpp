@@ -321,7 +321,8 @@ int mainFunction(int argc, char **argv,bool *stopFlag=NULL)
         settings->setAllowChanges(false);
     }
     else{
-        LOG_ERRORC("unable to start oexserverd");
+        LOG_ERRORC("unable to start oexserverd: %s",OexControl::Instance()->GetLastError());
+        OexControl::Instance()->writeLog();
         returnCode=-2;
     }
     LOG_INFOC("Done");

@@ -57,8 +57,10 @@
 #define OCHARTS_TEXT TOSTRING(OCHARTS_VERSION)
 #endif
 
+
 static const int STOPTIME=10;
 static const int QUERY_DONGLE_MS=5000; //minimal intervall to query the dongle state
+static const int MAX_LOG=10; //log lines from oexcontrol to store
 
 typedef std::function<void(const String &prefix,const char *)> WriteFunction;
 typedef std::function<bool(void)> StopFunction;
@@ -225,14 +227,14 @@ StartResult runOexServerd(const OexConfig &config,const String &progDir,const St
     StartResult rt;
     String exe=FileHelper::concatPath(progDir,oexconfig.exe);
     if (!FileHelper::exists(exe)){
-        rt.setError(FMT("oexserverd %s not found", exe.c_str()));
+        rt.setError(FMT("oexserverd %s not found", exe));
         LOG_ERROR("%s",rt.error.c_str());
         return rt;
     }
     pid_t parent=getpid();
     int rwfds[2];
     if (pipe(rwfds) != 0){
-        rt.setError(FMT("unable to create pipes for oexserverd: %s",SystemHelper::sysError().c_str()));
+        rt.setError(FMT("unable to create pipes for oexserverd: %s",SystemHelper::sysError()));
         LOG_ERROR("%s",rt.error.c_str());
         return rt;
     }
@@ -257,7 +259,7 @@ StartResult runOexServerd(const OexConfig &config,const String &progDir,const St
         }
         putenv(StringHelper::cloneData(StringHelper::format("%s=%d",ENV_AVNAV_PID,parent)));
         if (config.setLibPath){
-            LOG_DEBUG("setting LD_LIBRARY_PATH to %s",progDir);
+            std::cout << "setting LD_LIBRARY_PATH to " << progDir << std::endl;
             putenv(StringHelper::cloneData(StringHelper::format("LD_LIBRARY_PATH=%s",progDir)));
         }
         else{
@@ -395,6 +397,21 @@ bool OexControl::PingOex(long waitTime)
     }
     return false;
 }
+void OexControl::addLog(const String &le){
+    Synchronized l(mutex);
+    if (oexLog.size() >= MAX_LOG) return;
+    oexLog.push_back(le);
+}
+void OexControl::resetLog(){
+    Synchronized l(mutex);
+    oexLog.clear();
+}
+void OexControl::writeLog(){
+    Synchronized l(mutex);
+    for (auto &&le:oexLog){
+        std::cout << le << std::endl;
+    }
+}
 void OexControl::Supervisor::run()
 {
     static const std::map<OexState,int> waitTimes={
@@ -421,6 +438,7 @@ void OexControl::Supervisor::run()
             case RUNNING:
             {
                 LOG_INFO("oexserverd start requested");
+                control->resetLog();
                 StartResult res = runOexServerd(oexconfig, control->progDir, control->additionalParameters,true);
                 if (res.hasError)
                 {
@@ -431,7 +449,16 @@ void OexControl::Supervisor::run()
                 else
                 {
                     Thread reader([this, res]()
-                                  { pipeReader(res.readFd, FMT("OEXSERVER:%d",res.pid), logWrite); });
+                                  { 
+                                    int lc=0;
+                                    pipeReader(res.readFd, FMT("OEXSERVER:%d",res.pid), [this,&lc](const String &prefix, const char *text){
+                                        logWrite(prefix,text);
+                                        if (lc < MAX_LOG){
+                                            this->control->addLog(FMT("%s: %s",prefix,text));
+                                            lc++;
+                                        }
+                                    }); 
+                                   });
                     reader.start();
                     reader.detach();
                     pid=res.pid;

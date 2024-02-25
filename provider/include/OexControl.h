@@ -83,6 +83,9 @@ class OexControl : public ItemStatus{
         TESTVIRT StringVector GetAdditionalParameters(){return additionalParameters;}
         TESTVIRT String GetOchartsVersion() const;
         TESTVIRT bool CanHaveDongle() const;
+        String GetLastError();
+        //write saved log lines from oex to stdout
+        void writeLog();
     private:
         class Supervisor : public Thread{
             public:
@@ -109,13 +112,15 @@ class OexControl : public ItemStatus{
         bool SetRequestedState(OexState state);
         long getNextTempIdx();
         OexState GetRequestedState();
-        String GetLastError();
+        void addLog(const String &le);
+        void resetLog();
         Supervisor *supervisor=NULL;
         OexState _state=UNKNOWN;
         OexState _requestedState=UNKNOWN;
         static Ptr _instance;
         String progDir;
         String tempDir;
+        StringVector oexLog;
         std::mutex mutex;
         StringVector additionalParameters;
         String lastError;
