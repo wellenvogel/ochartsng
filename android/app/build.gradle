@@ -27,8 +27,6 @@ else{
     project.ext.avnavVersion=project.packageVersion
 }
 
-
-
 android {
     compileSdkVersion 33
     externalNativeBuild {

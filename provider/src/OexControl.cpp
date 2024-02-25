@@ -155,23 +155,28 @@ class OexConfig{
     NameValueMap environment;
 };
 
+
 #ifdef AVNAV_ANDROID
+    const String ANDROID_RELEASE_PIPE="com.opencpn.avorel";
+    const String ANDROID_BETA_PIPE="com.opencpn.avobeta";
+    const String ANDROID_DEBUG_PIPE="com.opencpn.avodbg";
+
     static OexConfig oexconfig={
         String("liboexserverd.so"),
         true,
         String("libpreloadAndroid.so"),
         false,
 #if ANDROID_VARIANT == 0
-        String("com.opencpn.avorel"),
-        {{String(TEST_PIPE_ENV),String("com.opencpn.avorel")}}
+        ANDROID_RELEASE_PIPE,
+        {{String(TEST_PIPE_ENV),ANDROID_RELEASE_PIPE}}
 #endif
 #if ANDROID_VARIANT == 2
-        String("com.opencpn.avodbg"),
-        {{String(TEST_PIPE_ENV),String("com.opencpn.avodbg")}}
+        ANDROID_DEBUG_PIPE,
+        {{String(TEST_PIPE_ENV),ANDROID_DEBUG_PIPE}}
 #endif
 #if ANDROID_VARIANT == 1
-        String("com.opencpn.avobeta"),
-        {{String(TEST_PIPE_ENV),String("com.opencpn.avobeta")}}
+        ANDROID_BETA_PIPE,
+        {{String(TEST_PIPE_ENV),ANDROID_BETA_PIPE}}
 #endif
     };
 #else
