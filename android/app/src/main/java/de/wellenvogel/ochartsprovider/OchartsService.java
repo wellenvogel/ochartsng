@@ -58,6 +58,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -480,7 +481,12 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
                 Toast.makeText(this, "cannot create logdir "+logDir.getAbsolutePath(),Toast.LENGTH_LONG).show();
                 return false;
             }
-            List<String> args=Arrays.asList("-l", getFilesDir().getAbsolutePath(),
+            ArrayList<String> args=new ArrayList<>();
+            if (BuildConfig.AVNAV_EXE){
+                args.add("-p");
+                args.add(Integer.toString(android.os.Process.myPid()));
+            }
+            args.addAll(Arrays.asList("-l", getFilesDir().getAbsolutePath(),
                     "-a",getAParameter(),
                     "-b", getSystemName(this),
                     "-l", getFilesDir().getAbsolutePath()+"/"+Constants.LOGDIR,
@@ -489,7 +495,8 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
                     "-g",getFilesDir().getAbsolutePath()+"/"+ Constants.ASSET_ROOT+"/"+BuildConfig.ASSETS_GUI,
                     "-t",getFilesDir().getAbsolutePath()+"/"+ Constants.ASSET_ROOT+"/"+BuildConfig.ASSETS_S57,
                     getFilesDir().getAbsolutePath(),
-                    Integer.toString(port));
+                    Integer.toString(port))
+            );
             if (testMode){
                 h.setEnv("AVNAV_TEST_KEY","Decrypted");
             }

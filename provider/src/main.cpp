@@ -304,11 +304,11 @@ int mainFunction(int argc, char **argv,bool *stopFlag=NULL)
             }
         }
         else if (monitorPid != 0){
-            LOG_INFOC("monitoring process %d",monitorPid);
+            LOG_INFOC("running until parent %d stops",monitorPid);
             while(true){
                 int res=kill(monitorPid,0);
                 if (res != 0){
-                    LOG_INFOC("process %d not running any more, stopping self",monitorPid);
+                    LOG_INFOC("parent %d not running any more, stopping self",monitorPid);
                     break;
                 }
                 Timer::microSleep(2000000);    
