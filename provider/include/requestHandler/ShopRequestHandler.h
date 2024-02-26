@@ -66,6 +66,11 @@ static size_t write_function(void *data, size_t size, size_t nmemb, void *userp)
     return size*nmemb;
 }
 
+static char fromHb(char in){
+    if (in < 'A') return in-'0';
+    in=in & 0x5f;
+    return in-'A'+10;
+}
 
 class ShopRequestHandler : public RequestHandler {
 public:
@@ -103,7 +108,11 @@ public:
             try{
                 OexControl::FPR fpr=OexControl::Instance()->GetFpr(SHOP_CONNECT_TIMEOUT*1000,forDongle,alternative);
                 if (forDownload){
-                    HTTPStringResponse *rt= new HTTPStringResponse("application/octet-stream",fpr.value);
+                    DataPtr data=std::make_shared<DataVector>();
+                    for (int i=0;i<fpr.value.size()-1;i+=2){
+                        data->push_back((fromHb(fpr.value[i])<<4)+fromHb(fpr.value[i+1]));
+                    }
+                    HTTPResponse *rt= new HTTPDataResponse("application/octet-stream",data);
                     rt->responseHeaders["Content-Disposition"]=FMT("attachment; filename=\"%s\"", StringHelper::SanitizeString(fpr.name));
                     return rt;
                 }
