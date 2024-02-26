@@ -57,6 +57,11 @@ android {
             // libraries Gradle should build and package with your app.
             abiFilters   'armeabi-v7a','arm64-v8a'
         }
+        packagingOptions{
+            jniLibs{
+                useLegacyPackaging true
+            }
+        }
         buildConfigField("Boolean","AVNAV_EXE","$RUN_EXE")
         buildConfigField("Boolean","SHOW_IMPORT_OPENCPN","$SHOW_IMPORT_OPENCPN")
         buildConfigField("String","ASSETS_GUI","\"$ASSETS_GUI\"");
