@@ -259,7 +259,6 @@ StartResult runOexServerd(const OexConfig &config,const String &progDir,const St
         }
         putenv(StringHelper::cloneData(StringHelper::format("%s=%d",ENV_AVNAV_PID,parent)));
         if (config.setLibPath){
-            std::cout << "setting LD_LIBRARY_PATH to " << progDir << std::endl;
             putenv(StringHelper::cloneData(StringHelper::format("LD_LIBRARY_PATH=%s",progDir)));
         }
         else{
