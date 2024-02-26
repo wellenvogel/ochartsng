@@ -60,29 +60,6 @@ const DisabledByDialog=(props)=>{
     );
 };
 
-
-const FPRDialog=(props)=>{
-    return (
-        <div className="dialog FPRDialog">
-            <h3>Fingerprint Created</h3>
-            <div className="dialogRow">
-                <span className="label">FileName</span>
-                <span className="value">{props.fileName}</span>
-            </div>
-            <div className="dialogRow dialogButtons">
-                <button className="button cancel" onClick={props.closeCallback}>Cancel</button>
-                <a
-                    className="button download"
-                    download={props.fileName}
-                    href={"data:application/octet-stream;base64,"+hexToBase64(props.data)}
-                    onClick={props.closeCallback}
-                    >
-                    Download</a>
-            </div>
-        </div>
-    );
-};
-
 const readyState=(ready)=>{
     return ready?"READY":"BUSY";
 };
@@ -180,27 +157,11 @@ class ChartsView extends Component {
     }
 
     getFPR(forDongle){
+        if (!this.downloadRef.current) return;
         resetError();
-        this.showSpinner();
-        let self=this;
-        let url=SHOPURL+"fpr";
-        if (forDongle) url+="?dongle=true";
-        fetchJson(url)
-            .then((jsonData) => {
-                if (!jsonData.data || !jsonData.data.name || !jsonData.data.value) throw new Error("no fpr returned");
-                let dialog = (props) => {
-                    return <FPRDialog
-                        {...props}
-                        data={jsonData.data.value}
-                        fileName={jsonData.data.name}
-                    />
-                };
-                self.dialog.setDialog(dialog);
-            })
-            .catch((error) => {
-                self.dialog.hideDialog();
-                setError(error);
-            })
+        let url=SHOPURL+"fpr?forDownload=true";
+        if (forDongle) url+="&dongle=true";
+        this.downloadRef.current.src=url;
 
     }
     uploadSet(){

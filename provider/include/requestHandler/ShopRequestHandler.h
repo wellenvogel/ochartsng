@@ -93,13 +93,20 @@ public:
             bool forDongle=StringHelper::toLower(forDongleP) == "true";
             String alternativeP=GetQueryValue(request,"alternative");
             bool alternative=StringHelper::toLower(alternativeP) == "true";
+            bool forDownload=StringHelper::toLower(GetQueryValue(request,"forDownload")) == "true";
             if (forDongle){
                 if (! OexControl::Instance()->DonglePresent()){
+                    if (forDownload) return new HTTPErrorResponse(500,"no dongle");
                     return new HTTPJsonErrorResponse("no dongle present");
                 }
             }
             try{
                 OexControl::FPR fpr=OexControl::Instance()->GetFpr(SHOP_CONNECT_TIMEOUT*1000,forDongle,alternative);
+                if (forDownload){
+                    HTTPStringResponse *rt= new HTTPStringResponse("application/octet-stream",fpr.value);
+                    rt->responseHeaders["Content-Disposition"]=FMT("attachment; filename=\"%s\"", StringHelper::SanitizeString(fpr.name));
+                    return rt;
+                }
                 json::JSON obj;
                 obj["name"]=fpr.name;
                 obj["value"]=fpr.value;
@@ -108,6 +115,7 @@ public:
                 return new HTTPJsonResponse(obj);
 
             }catch (Exception &e){
+                if (forDownload) return new HTTPErrorResponse(500,e.what());
                 return new HTTPJsonErrorResponse(e.what());
             }
         }
