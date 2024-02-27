@@ -57,7 +57,7 @@ def DEFAULT_DEPS = [
                 ['libstdc++6'],
                 ['libssl1.1'],
                 ['libcurl4'],
-                [primary:['python3-mapbox-earcut'], or:['base-files']],
+                [primary:['python3-mapbox-earcut'], or:['base-files','12',org.redline_rpm.header.Flags.LESS]],
                 ['gdal-bin'],
                 ['libusb-0.1-4']
         ]
