@@ -146,6 +146,7 @@ def VARIANTS=[
          tag: IMAGE_VERSION,
          dockerbase:'arm32v7/debian',
          dockerfile:'Dockerfile.all',
+         oexdir: 'linuxarm',
          dependencies:DEFAULT_DEPS
          ],
         [osline:'raspbian',
@@ -154,6 +155,7 @@ def VARIANTS=[
          tag: IMAGE_VERSION,
          dockerbase:'arm64v8/debian',
          dockerfile:'Dockerfile.all',
+         oexdir: 'linuxarm64',
          dependencies:DEFAULT_DEPS
          ],
         [osline:'debian',
@@ -162,6 +164,7 @@ def VARIANTS=[
          tag: IMAGE_VERSION,
          dockerbase:'amd64/debian',
          dockerfile:'Dockerfile.all',
+         oexdir: 'linux64',
          dependencies:DEFAULT_DEPS
          ]
 
