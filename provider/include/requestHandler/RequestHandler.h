@@ -86,7 +86,7 @@ class CallbackHTTPResponse : public HTTPResponse{
         return true;
     }
     virtual void SetContentLength(){}
-    static int writeChunk(int socket,const void *buf, int len, long timeout=0l){
+    static int writeChunk(int socket,const void *buf, int len, long timeout=-1l){
         char hbuf[20];
         snprintf(hbuf,19,"%X\r\n",len);
         hbuf[19]=0;
@@ -99,16 +99,16 @@ class CallbackHTTPResponse : public HTTPResponse{
         long remain=timeout>0?Timer::remainMillis(start,timeout):timeout;
         if (len > 0){
             rd=SocketHelper::WriteAll(socket,buf,len,remain);
-            if (rd != len) return rd;
+            if (rd != len) return -1;
         }
         hbuf[0]='\r';
         hbuf[1]='\n';
         remain=timeout>0?Timer::remainMillis(start,timeout):timeout;
-        rd=SocketHelper::WriteAll(socket,hbuf,2,timeout);
+        rd=SocketHelper::WriteAll(socket,hbuf,2,remain);
         if (rd != 2) return -1;
         return len;
     }
-    static int writeLastChunk(int socket, long timeout=0L){
+    static int writeLastChunk(int socket, long timeout=-1l){
         return writeChunk(socket,nullptr,0,timeout);
     }
 };

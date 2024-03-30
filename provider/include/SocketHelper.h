@@ -43,7 +43,12 @@ typedef struct sockaddr_storage SocketAddress; //will allow us to hide OS stuff
 
 class SocketHelper{
 private:
-    static bool WaitFor(int socket,long ms,bool read=true){
+/**
+ * wait for a socket to become readable/writable
+ * ms: timeout in ms, set -1 for infinite
+ * returns: 0 - timeout, -1 error, 1 ok
+*/
+    static int WaitFor(int socket,long ms,bool read=true){
         if (socket < 0) return false;
         fd_set fds;
         struct timeval tv;
@@ -53,13 +58,14 @@ private:
         tv.tv_sec=(int)(ms/1000);
         tv.tv_usec=(ms-tv.tv_sec*1000)*1000;
         if (read){
-            rt=select(socket+1,&fds,NULL,NULL,(ms != 0)?&tv:NULL);
+            rt=select(socket+1,&fds,NULL,NULL,(ms >= 0)?&tv:NULL);
         }
         else{
-            rt=select(socket+1,NULL,&fds,NULL,(ms != 0)?&tv:NULL);
+            rt=select(socket+1,NULL,&fds,NULL,(ms >= 0)?&tv:NULL);
         }
-        if (LogSysError(rt,"select",socket)) return false;
-        return FD_ISSET(socket,&fds);
+        if (rt == 0) return 0; //timeout
+        if (LogSysError(rt,"select",socket)) return -1;
+        return FD_ISSET(socket,&fds)?1:0;
     }
 public:
     static bool LogSysError(int res,const char *txt,const char *ip,int port){
@@ -269,44 +275,44 @@ public:
      * @return 
      */
     
-    static int Accept(int socket,long timeout=0){
-        if (timeout > 0){
-            if (! WaitFor(socket,timeout)) return -1;
+    static int Accept(int socket,long timeout=-1){
+        if (timeout != 0){
+            if (WaitFor(socket,timeout) <= 0) return -1;
         }
         int rt=accept(socket,NULL,NULL);
         if (LogSysError(rt,"accept",socket)) return -1;
         fcntl(rt,F_SETFD,FD_CLOEXEC);
         return rt;
     }
-    static int Read(int socket,char *buffer, int len,long timeout=0){
+    static int Read(int socket,char *buffer, int len,long timeout=-1){
         
-        if (! WaitFor(socket,timeout)) return -1;
+        int rt=WaitFor(socket,timeout);
+        if (rt <= 0) return rt;
         
-        int rt=read(socket,buffer,len);
+        rt=read(socket,buffer,len);
         if (LogSysError(rt,"read",socket)) return -1;
         return rt;
     }
-    static int Write(int socket,const void * buffer, int len, long timeout=0){
-        if (timeout > 0){
-            if (! WaitFor(socket,timeout,false)) return -1;
-        }
-        int rt=write(socket,buffer,len);
+    static int Write(int socket,const void * buffer, int len, long timeout=-1){
+        int rt=WaitFor(socket,timeout,false);
+        if (rt <= 0) return rt;
+        rt=write(socket,buffer,len);
         if (LogSysError(rt,"write",socket)) return -1;
         return rt;
     }
-    static int WriteAll(int socket,const void * buffer, int len, long timeout=0){
+    static int WriteAll(int socket,const void * buffer, int len, long timeout=-1){
         int offset=0;
         int remain=len;
         int wr;
         const char * bp=(const char *)buffer; //avoid warnings about pointer arithmetic
         Timer::SteadyTimePoint start=Timer::steadyNow();
-        while (remain > 0 &&(timeout == 0 || ! Timer::steadyPassedMillis(start,timeout))){
-            int wr=Write(socket,bp+offset,remain,(timeout == 0)?0: Timer::remainMillis(start,timeout));
+        while (remain > 0 &&(timeout < 0 || ! Timer::steadyPassedMillis(start,timeout))){
+            int wr=Write(socket,bp+offset,remain,(timeout < 0)?timeout: Timer::remainMillis(start,timeout));
             if (LogSysError(wr,"write",socket)) return -1;
             remain-=wr;
             offset+=wr;
         }
-        return len;
+        return len-remain;
     }
 };
 
