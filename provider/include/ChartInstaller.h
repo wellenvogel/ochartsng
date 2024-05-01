@@ -84,6 +84,7 @@ class ChartInstaller: public ItemStatus{
         Request StartRequest(const String &chartUrl, const String &keyUrl); //for shop download
         Request StartRequestForUpload(); 
         bool    DeleteChartSet(const String &key);
+        int     ParseChartDir(const String &name);    
         void FinishUpload(int requestId,const String &error=String());
         String GetTempDir() const {return tempDir;}
         ~ChartInstaller();

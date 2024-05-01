@@ -156,6 +156,18 @@ public:
                 return new HTTPJsonErrorResponse(e.what());
             }
         }
+        if (StringHelper::startsWith(url,"parseDir")){
+            String name;
+            GET_QUERY(name,"name");
+            try{
+                json::JSON rt;
+                int num=installer->ParseChartDir(name);
+                rt["num"]=num;
+                return new HTTPJsonResponse(rt);
+            }catch (Exception &e){
+                return new HTTPJsonErrorResponse(e.what());
+            }
+        }
         return new HTTPResponse();  
     }
     virtual String GetUrlPattern() {

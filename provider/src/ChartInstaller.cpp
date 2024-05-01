@@ -660,6 +660,16 @@ bool ChartInstaller::DeleteChartSet(const String &key){
     FileHelper::emptyDirectory(dirName,true);
     return true;
 }
+int ChartInstaller::ParseChartDir(const String &name){
+    for (auto && chartSubDir: FileHelper::listDir(chartDir)){
+        String fullName=FileHelper::realpath(FileHelper::concatPath(chartDir,chartSubDir));
+        if (fullName == FileHelper::realpath(GetTempDir())) continue;
+        if (chartSubDir == name){
+            return chartManager->ReadChartDirs({fullName},true);
+        }
+    }
+    return 0;
+}
 void ChartInstaller::Request::ToJson(StatusStream &stream){
     stream["chartUrl"]=chartUrl;
     stream["keyUrl"]=keyFileUrl;
