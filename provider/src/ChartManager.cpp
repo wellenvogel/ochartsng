@@ -28,7 +28,6 @@
 
 
 #include "ChartManager.h"
-//#include "CacheFiller.h"
 #include "SystemHelper.h"
 #include <algorithm>
 #include <unordered_set>
@@ -43,8 +42,7 @@ ChartManager::ChartManager( FontFileHolder::Ptr f, IBaseSettings::ConstPtr bs, R
     this->fontFile=f;        
     this->s57Dir=s57dataDir;
     this->baseSettings=bs;
-    this->numOpeners=numOpeners;
-    filler=NULL; 
+    this->numOpeners=numOpeners; 
     state=STATE_INIT;
     numRead=0;
     maxPrefillPerSet=0;
@@ -112,6 +110,27 @@ bool ChartManager::AddKnownDirectory(String dirname,String shortname){
     if (it != dirMappings.end()) return false;
     dirMappings[dirname]=shortname;
     return true;
+}
+
+ChartSet::Ptr ChartManager::CreateChartSet(const String &dir,bool canDelete){
+    String key=KeyFromChartDir(dir);
+    ChartSetInfo::Ptr info=ChartSetInfo::ParseChartInfo(dir,key);
+        if (! info->infoParsed){
+            LOG_INFO("unable to retrieve chart set info for %s, trying anyway with defaults",dir);
+        }
+        else{
+            LOG_INFO("created chart set with key %s for directory %s",key,dir);
+        }
+        if (info->title.empty()){
+            //seems that we did not find a chart info
+            //use our key without the prefixes
+            String title=key;
+            if (StringHelper::startsWith(title,"CSI_")) title=title.substr(4);
+            if (StringHelper::startsWith(title,"CS")) title=title.substr(2);
+            info->title=title;
+        }
+        ChartSet::Ptr newSet=std::make_shared<ChartSet>(info,canDelete);
+        return newSet;
 }
 
 ChartSet::Ptr ChartManager::findOrCreateChartSet(String chartFile,bool mustExist, bool canDelete, bool addToList){
@@ -185,7 +204,7 @@ ChartManager::TryResult ChartManager::TryOpenChart(const String &chartFile){
         throw FileException(chartFile,"unknown extension for chart file");
     }
     //create a temp set
-    rt.set=findOrCreateChartSet(chartFile,false,true,false);
+    rt.set=CreateChartSet(FileHelper::dirname(chartFile),true);
     rt.chart=chartCache->LoadChart(rt.set,chartFile,true);
     LOG_INFO("ChartManager: TryOpenChart %s OK",chartFile);
     return rt;
@@ -215,33 +234,27 @@ bool ChartManager::CloseChart(const String &setName, const String &chartName){
     return chartCache->CloseChart(setName,fileName) != 0;
 }
 
-bool ChartManager::HandleChart(const String &chartFile,bool setsOnly,bool canDeleteSet){
-    LOG_INFO("ChartManager: HandleChart %s, mode=%s",chartFile.c_str(),(setsOnly?"prepare":"read"));
+bool ChartManager::HandleChart(const String &chartFile,ChartSet::Ptr set){
+    LOG_INFO("ChartManager: HandleChart %s",chartFile);
     Chart::ChartType type=GetChartType(chartFile);
     if (type == Chart::UNKNOWN){
         LOG_DEBUG("unknown extension for chart file %s, skip",chartFile.c_str());
         return false;
     }
-    ChartSet::Ptr set=findOrCreateChartSet(chartFile,false,canDeleteSet);
-    if (! set) return false;
-    if (setsOnly) {
-        return true;
-    }
     ChartInfo::Ptr chartInfo=set->FindInfo(chartFile);
     if (chartInfo){
         bool verified=chartInfo->VerifyChartFileName(chartFile);
         if (verified){
-            LOG_INFO("skip reading chart %s as already in set",chartFile.c_str());
+            LOG_INFO("skip reading chart %s as already in set",chartFile);
             return false;
         }
-        LOG_INFO("fileHash changed for %s, reread",chartFile.c_str());
+        LOG_INFO("fileHash changed for %s, reread",chartFile);
     }
     if (!set->DisabledByErrors()) {
         Chart::Ptr chart;
         try{
             chart=chartCache->LoadChart(set,chartFile,true);
             if (chart) {
-                numRead++;
                 ChartInfo::Ptr info=std::make_shared<ChartInfo>(chart->GetType(), chartFile,
                         chart->GetNativeScale(), chart->GetChartExtent(), chart->SoftUnder(), chart->IsIgnored());
                 set->AddChart(info);
@@ -266,55 +279,68 @@ bool ChartManager::HandleChart(const String &chartFile,bool setsOnly,bool canDel
     return false;
     
 }
+ChartSet::Ptr ChartManager::ParseChartDir(const String &dir, bool canDelete)
+{
+    LOG_INFO("parsing chart dir %s", dir);
+    if (!FileHelper::exists(dir, true))
+    {
+        LOG_INFO("chart dir %s not found", dir);
+        return ChartSet::Ptr();
+    }
+    int rt = 0;
+    int all=0;
+    StringVector filesInDir = FileHelper::listDir(dir);
+    if (filesInDir.empty())
+    {
+        LOG_INFO("no files found in %s", dir);
+        return ChartSet::Ptr();
+    }
+    String key=KeyFromChartDir(dir);
+    ChartSet::Ptr chartSet=CreateChartSet(dir,canDelete);
+    for (auto && chartFile : FileHelper::listDir(dir)){
+        all++;
+        if(HandleChart(chartFile,chartSet)) rt++;
+    }
+    LOG_INFO("parsed %d/%d charts from %s",rt,all,dir);
+    return chartSet;
+}
 
-int ChartManager::HandleCharts(const StringVector &dirsAndFiles,bool setsOnly, bool canDelete ){
+int ChartManager::ReadChartDirs(const StringVector &dirsAndFiles,bool canDelete ){
     int numHandled=0;
-    std::set<String> chartDirs;
-    for (auto it=dirsAndFiles.begin();it!=dirsAndFiles.end();it++){
-        String chartFile=*it;
-        if (FileHelper::exists(chartFile,true)) {
+    std::vector<ChartSet::Ptr> parsedSets;
+    for (auto && chartDir : dirsAndFiles){
+        if (FileHelper::exists(chartDir,true)) {
             //directory
-            StringVector filesInDir=FileHelper::listDir(chartFile);
-            if (filesInDir.empty()) {
-                LOG_INFO("no files found in %s", chartFile.c_str());
-                continue;
+            ChartSet::Ptr chartSet=ParseChartDir(chartDir,canDelete);
+            int numInSet=chartSet->GetNumCharts();
+            if (numInSet < 1){
+                LOG_INFO("no charts found in %s, skipping",chartDir);
             }
-            for (auto fid=filesInDir.begin();fid!=filesInDir.end();fid++){
-                String localFile=*fid;
-                if (FileHelper::exists(localFile,true)) {
-                    LOG_INFO("skipping sub dir %s", localFile.c_str());
-                } else {
-                    if (HandleChart(localFile,setsOnly,canDelete)){
-                        chartDirs.insert(chartFile);
-                        numHandled++;
-                    }
-                }
-                
+            else{
+                numHandled+=numInSet;
+                parsedSets.push_back(chartSet);
             }
         } else {
-            if (!FileHelper::exists(chartFile)) {
-                LOG_INFO("skipping non existing file/dir %s", chartFile.c_str());
-                continue;
-            }
-            if(HandleChart(chartFile,setsOnly,canDelete)){
-                chartDirs.insert(FileHelper::dirname(chartFile));
-                numHandled++;
-            }
+            LOG_ERROR("can only handle chart directories, not files: %s",chartDir);
         }
-        
     }
-    StringVector setKeys;
-    for (auto it=chartDirs.begin();it!=chartDirs.end();it++){
-            String setKey=KeyFromChartDir(*it);
-            setKeys.push_back(setKey);
+    if (numHandled < 1){
+        LOG_INFO("ReadChartDirs: no charts found");
+        return numHandled;
     }
     {
         Synchronized l(lock);
-        for (auto it=setKeys.begin();it!=setKeys.end();it++){
-            auto cp=chartSets.find(*it);
-            if (cp == chartSets.end()) continue;
-            cp->second->SetReady();
+        int numCharts=numRead;
+        for (auto && chartSet : parsedSets){
+            chartSet->SetReady();
+            auto existing=chartSets.find(chartSet->GetKey());
+            if (existing != chartSets.end() ){
+                numCharts-=existing->second->GetNumCharts();
+                if (numCharts < 0) numCharts=0;
+            }
+            chartSets[chartSet->GetKey()]=chartSet;
         }
+        numRead=numCharts+numHandled;
         computeActiveSets();
     }    
     return numHandled;
@@ -456,80 +482,33 @@ int ChartManager::computeActiveSets(){
     return numEnabled;
 }
 
-
-void ChartManager::runWithStoppedFiller(RunFunction f)
+bool ChartManager::DeleteChartSet(const String &key)
 {
-    avnav::VoidGuard start([this]
-                           {
-                               // filler=new CacheFiller(maxPerSet,maxPrefillZoom,this);
-                               // AddItem("cacheFiller",filler);
-                               // filler->start();
-                           });
-    if (filler != NULL)
-    {
-        LOG_INFO("ChartManager: stopping cache filler");
-        RemoveItem("cacheFiller");
-        // filler->stop();
-        // filler->join();
-        // delete filler;
-        filler = NULL;
-    }
-    f();
-}
-
-bool ChartManager::DeleteChartSet(const String &key){
-    LOG_INFO("ChartManager::DeleteChartSet %s ",key);
+    LOG_INFO("ChartManager::DeleteChartSet %s ", key);
     Synchronized l(lock);
-    auto it=chartSets.find(key);
-    if (it == chartSets.end()){
-        LOG_ERROR("chart set %s not found for closing",key);
-        throw AvException(FMT("chart set %s not found",key));
+    auto it = chartSets.find(key);
+    if (it == chartSets.end())
+    {
+        LOG_ERROR("chart set %s not found for closing", key);
+        throw AvException(FMT("chart set %s not found", key));
     }
-    runWithStoppedFiller([this,&it,key](){
-        RemoveItem("chartSets",it->second);
-        chartSets.erase(it);
-        computeActiveSets();
-        chartCache->CloseBySet(key); 
-    });
-    if (setChanged) setChanged(key);
+    RemoveItem("chartSets", it->second);
+    chartSets.erase(it);
+    computeActiveSets();
+    chartCache->CloseBySet(key);
+    if (setChanged)
+        setChanged(key);
     return true;
 }
 
-int ChartManager::ReadCharts(const StringVector &dirs,bool canDelete){
+int ChartManager::ReadChartsInitial(const StringVector &dirs,bool canDelete){
     state=STATE_READING;
-    LOG_INFOC("ChartManager: ReadCharts");
+    LOG_INFOC("ChartManager: ReadChartsInitial");
     ChartSetMap::iterator it;
-    int rt=HandleCharts(dirs,false,canDelete);
-    LOG_INFOC("ChartManager: ReadCharts returned %d",rt);
+    int rt=ReadChartDirs(dirs,canDelete);
+    LOG_INFOC("ChartManager: ReadChartsInitial returned %d",rt);
     state=STATE_READY;
     return rt;
-}
-
-bool ChartManager::StartCaches(String dataDir,long maxCacheEntries,long maxFileEntries) {
-    if (chartSets.size() < 1) return false;
-    int numCharts = 0;
-    ChartSetMap::iterator it;
-    std::vector<ChartSet::Ptr> allSets; //get a copy of the list to avoid locks when starting caches
-    {
-        Synchronized l(lock);
-        for (it = chartSets.begin(); it != chartSets.end(); it++) {
-            numCharts += it->second->GetNumValidCharts();
-            allSets.push_back(it->second);
-        }
-        if (numCharts < 1) {
-            LOG_INFO("no charts found, do not start caches");
-            return false;
-        }
-    }
-
-    for (auto it = allSets.begin(); it != allSets.end(); it++) {
-        long maxCachePerSet = (maxCacheEntries * (*it)->GetNumValidCharts()) / numCharts;
-        LOG_INFO("creating cache for chart set %s with size %ld, file size %ld",
-                (*it)->GetKey().c_str(),
-                maxCachePerSet,maxFileEntries);
-        //TODO: start cache
-    }
-    return true;
 }
 
 
@@ -801,31 +780,6 @@ WeightedChartList ChartManager::FindChartsForTile(RenderSettings::ConstPtr rende
     return rt;
 }
 
-bool ChartManager::StartFiller(long maxPerSet,long maxPrefillZoom,bool waitReady){
-    this->maxPrefillPerSet=maxPerSet;
-    this->maxPrefillZoom=maxPrefillZoom;
-    ChartSetMap::iterator it;
-    if (waitReady){
-        LOG_INFO("waiting for caches to be ready");
-        bool isReady=false;
-        while (!isReady){
-            isReady=true;
-            {
-                Synchronized l(lock);
-                for (it=chartSets.begin();it != chartSets.end();it++){
-                    //TODO: check cache
-                }
-            }
-            if (! isReady){
-                Timer::microSleep(100000);
-            }
-        }
-    }
-    //filler=new CacheFiller(maxPerSet,maxPrefillZoom,this);
-    //AddItem("cacheFiller",filler);
-    //filler->start();
-    return true;
-}
 
 bool ChartManager::UpdateSettings(IBaseSettings::ConstPtr bs, RenderSettings::ConstPtr rs){
     bool changed=buildS52Data(rs);
@@ -835,9 +789,7 @@ bool ChartManager::UpdateSettings(IBaseSettings::ConstPtr bs, RenderSettings::Co
             changed=true;
             baseSettings=bs;
             LOG_INFO("changed base settings, recompute active chart sets");
-            runWithStoppedFiller([this](){
-                computeActiveSets();
-            });
+            computeActiveSets();
         }
     }
     return changed;
@@ -846,10 +798,6 @@ bool ChartManager::UpdateSettings(IBaseSettings::ConstPtr bs, RenderSettings::Co
 
 bool ChartManager::Stop(){
     LOG_INFO("stopping chart manager");
-    if (filler != NULL){
-        //filler->stop();
-        //filler->join();
-    }
     houseKeeper->stop();
     chartCache->CloseAllCharts();
     LOG_INFO("stopping chart manager done");
@@ -914,10 +862,6 @@ String ChartManager::GetCacheFileName(const String &fileName){
     return StringHelper::SanitizeString(fileName);
 }
 
-void ChartManager::PauseFiller(bool on){
-    if (! filler) return;
-    //filler->Pause(on);
-}
 
 bool ChartManager::WriteChartInfoCache(const String &configFile){
     LOG_INFO("writing chart info cache");   

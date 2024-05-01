@@ -45,9 +45,6 @@
 #include "ChartCache.h"
 #include "S52Data.h"
 
-class CacheFiller;
-
-
 typedef std::map<String,ChartSet::Ptr> ChartSetMap;
 typedef std::shared_ptr<ChartSetMap> ChartSetMapPtr;
 class ChartManager : public StatusCollector{
@@ -75,11 +72,9 @@ public:
      * @param memKb
      * @return 
      */   
-    int                 ReadCharts(const StringVector &dirs, bool canDelete=true);    
+    int                 ReadChartsInitial(const StringVector &dirs, bool canDelete=true);    
     virtual             ~ChartManager();
     int                 GetNumCharts();
-    bool                StartCaches(String dataDir,long maxCacheEntries,long maxFileEntries);
-    bool                StartFiller(long maxPerSet,long maxPrefillZoom,bool waitReady=true);
     /**
      * @return 
      */
@@ -110,7 +105,6 @@ public:
     unsigned long       GetCurrentCacheSizeKb();
     unsigned long       GetMaxCacheSizeKb();
     String              GetCacheFileName(const String &fileName);
-    void                PauseFiller(bool on);
     /**
      * write out extensions and native scale for all charts
      * @param config
@@ -129,7 +123,8 @@ public:
     Chart::ConstPtr     OpenChart(s52::S52Data::ConstPtr s52data, ChartInfo::Ptr info,bool doWait=true);
     Chart::ConstPtr     OpenChart(const String &setName, const String &chartName, bool doWait=true);
     bool                CloseChart(const String &setName, const String &chartName);
-    int                 HandleCharts(const StringVector &dirsAndFiles,bool setsOnly, bool canDelete=false);
+    ChartSet::Ptr       ParseChartDir(const String &dir,bool canDelete);
+    int                 ReadChartDirs(const StringVector &dirsAndFiles,bool canDelete=false);
     WeightedChartList   FindChartsForTile(RenderSettings::ConstPtr renderSettingsPtr,const TileInfo &tile, bool allLower=false);
     ChartSet::ExtentList  GetChartSetExtents(const String &chartSetKey,bool includeSet);
     /**
@@ -169,7 +164,6 @@ private:
      * @return 
      */
     int                 computeActiveSets();
-    void                runWithStoppedFiller(RunFunction f);
     bool                buildS52Data(RenderSettings::ConstPtr s);
     s52::S52Data::Ptr   s52data;
     IBaseSettings::ConstPtr baseSettings;
@@ -180,13 +174,13 @@ private:
     String              s57Dir;
     String              KeyFromChartDir(String chartDir);
     ChartSet::Ptr       findOrCreateChartSet(String chartFile,bool mustExist=false,bool canDelete=false,bool addToList=true);
-    bool                HandleChart(const String &chartFile,bool setsOnly,bool canDeleteSet);
+    bool                HandleChart(const String &chartFile,ChartSet::Ptr chartSet);
     /**
      * cleanup currently open charts from disabled chart sets
      * main thread only
      */
     void                CloseDisabled();
-    CacheFiller         *filler;
+    ChartSet::Ptr       CreateChartSet(const String &dir,bool canDelete);
     ManagerState        state;
     std::atomic<int>    numRead;
     long                maxPrefillPerSet;

@@ -218,7 +218,7 @@ class ChartInstaller::WorkerRunner : public Thread{
                         current.state=ST_PARSE;
                         current.progress=0;
                         installer->UpdateRequest(current);
-                        int numCharts=installer->chartManager->HandleCharts(StringVector{chartsTarget},false,true);
+                        int numCharts=installer->chartManager->ReadChartDirs(StringVector{chartsTarget},true);
                         if (numCharts < 1){
                             throw AvException(FMT("no charts parsed from %s",chartsTarget));
                         }

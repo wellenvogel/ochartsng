@@ -289,8 +289,8 @@ int mainFunction(int argc, char **argv,bool *stopFlag=NULL)
             toRead.push_back(*it);
         }
         //TODO: chartInfoCache
-        chartManager->ReadCharts(toRead,true);
-        chartManager->ReadCharts(additionalChartDirs,false);
+        chartManager->ReadChartsInitial(toRead,true);
+        chartManager->ReadChartsInitial(additionalChartDirs,false);
         chartManager->RemoveUnverified();
         int systemKb=0;
         int ourKb=0;
