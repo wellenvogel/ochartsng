@@ -35,6 +35,7 @@ import getopt
 import os
 import tempfile
 import zipfile
+import shutil
 
 import senc.sqlite2senc as sqlite2senc
 import senc.senc as senc
@@ -52,7 +53,7 @@ def convertGdal(ifile,ofile):
         raise Exception("converting %s to %s returned %d"%(ifile,ofile,proc.returncode))
 
 def usage():
-    print("usage: %s [-b basedir] [-d s57datadir] [-s scale] [-e none|ext|all] [-i] [-c setname] infileOrDir outfileOrDir"%sys.argv[0])
+    print("usage: %s [-b basedir] [-d s57datadir] [-s scale] [-e none|ext|all] [-i] [-c setname] [-f finalOut] infileOrDir outfileOrDir"%sys.argv[0])
 
 class Context:
     TMP_SUB="__tmp"
@@ -63,7 +64,8 @@ class Context:
     def __init__(self,tmpDir:tempfile.TemporaryDirectory=None,
                  zipFile: zipfile.ZipFile=None,
                  options:sqlite2senc.Options=None,
-                 setname:str=None
+                 setname:str=None,
+                 tempout: bool=False,
                  ):
         self.zipFile=zipFile
         if zipFile is not None:
@@ -76,6 +78,7 @@ class Context:
         self.ignoreErrors=self.options.ignoreErrors
         self.errors=[]
         self.numFiles=0
+        self.tempout=tempout
     def openZip(self,filename):
         self.zipName=filename
         tmpname=filename+".tmp"
@@ -152,9 +155,10 @@ if __name__ == '__main__':
     s57dir=os.path.join(os.path.dirname(__file__),"senc","s57static")
     basedir=None
     scale=None
-    optlist,args=getopt.getopt(sys.argv[1:],"b:d:s:e:ic:")
+    optlist,args=getopt.getopt(sys.argv[1:],"b:d:s:e:ic:f:")
     options=sqlite2senc.Options()
     setname=None
+    finalOut=None
     emodes={
         'none': senc.SencFile.EM_NONE,
         'ext': senc.SencFile.EM_EXT,
@@ -175,6 +179,8 @@ if __name__ == '__main__':
             options.ignoreErrors=True
         elif o == '-c':
             setname=a
+        elif o == '-f':
+            finalOut=a
         else:
             err("invalid option %s",o)
     if not os.path.isdir(s57dir):
@@ -182,6 +188,7 @@ if __name__ == '__main__':
     if len(args) < 2:
         usage()
         err("missing parameters")
+    log("running with args %s"," ".join(sys.argv[1:]))    
     baseDirArg=options.basedir is not None
     iname=args[0]
     if not os.path.exists(iname):
@@ -244,4 +251,19 @@ if __name__ == '__main__':
     context.finalize()
     context.printErrors()
     log("created %s with %d files",origOname,context.numFiles)
+    if finalOut is not None:
+        try:
+            if os.path.exists(finalOut) and os.path.isdir(finalOut):
+                shutil.rmtree(finalOut,ignore_errors=True)
+            os.replace(origOname,finalOut)
+            log("renamed %s to %s",origOname,finalOut)
+        except Exception as e:
+            log("WARNING: unable to rename %s to %s",origOname,finalOut,str(e))
+            try:
+                if os.path.isdir(origOname):
+                    shutil.rmtree(origOname,ignore_errors=True)
+                else:
+                    os.unlink(origOname)
+            except:
+                pass
     sys.exit(1 if len(context.errors)>0 else 0)

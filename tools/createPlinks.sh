@@ -29,4 +29,6 @@ do
   clink $f avnav-plugin/$f
 done
 clink s57data s57data
+clink tosenc.py tools/tosenc.py
+clink senc tools/senc
 
