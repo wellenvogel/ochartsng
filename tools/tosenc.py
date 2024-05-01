@@ -253,6 +253,9 @@ if __name__ == '__main__':
     log("created %s with %d files",origOname,context.numFiles)
     if finalOut is not None:
         try:
+            fodir=os.path.dirname(finalOut)
+            if fodir != "" and not os.path.exists(fodir):
+                os.makedirs(fodir)
             if os.path.exists(finalOut) and os.path.isdir(finalOut):
                 shutil.rmtree(finalOut,ignore_errors=True)
             os.replace(origOname,finalOut)
