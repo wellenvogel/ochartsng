@@ -7,7 +7,7 @@
  ***************************************************************************
  The MIT License (MIT)
 
- Copyright (c) 2020,2022 Andreas Vogel (andreas@wellenvogel.net)
+ Copyright (c) 2020,2024 Andreas Vogel (andreas@wellenvogel.net)
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -375,6 +375,48 @@ ospackage {
         }
     }
 }
+
+def markerFile=new File(project.buildDir,"__avnav_software_archive__")
+task zipMarker{
+    doLast{
+        if (!markerFile.getParentFile().isDirectory()) markerFile.getParentFile().mkdirs();
+        markerFile.withWriter{ wr->
+            wr.println(project.avnavVersion)
+        }
+    }
+}
+
+
+task buildWZip(type: Zip){
+    dependsOn zipMarker
+    archiveVersion=project.avnavVersion
+    group=AVNAV_GROUP
+    includeEmptyDirs=false
+    into('plugins/ochartsng'){
+        from('avnav-plugin'){
+            include("converter.py")
+            include("miniplugin.py")
+            rename("miniplugin.py","plugin.py")
+        }
+        from('tools'){
+            include "tosenc.py"
+            include "collectS57.sh"
+            fileMode 0755
+        }
+        from('tools/senc'){
+            include "*.py"
+            into "senc"    
+        } 
+        from('tools/senc/s57static'){
+            into "senc/s57static"    
+        } 
+    }
+    into("/"){
+        from(markerFile.getParentFile()){
+            include markerFile.getName()
+        }
+    }
+}
 def imageExists(name){
     def id="docker images -q \"$name\"".execute().text.replaceAll("[\r\n]*","")
 }
@@ -638,18 +680,21 @@ task uploadAccessRelease(type: UploadHtAccess){
 def packageList=fileTree("build/distributions",{
     include "*${project.avnavVersion}*.deb"
 })
+def zipList=fileTree("build/distributions",{
+    include "*${project.avnavVersion}*.zip"
+})
 
 task uploadDailyPackages(type: UploadTask){
     group "upload"
-    dependsOn cleanGui,packages, uploadAccessDaily
-    inputFiles=packageList
+    dependsOn cleanGui,packages, uploadAccessDaily, buildWZip
+    inputFiles=packageList+zipList
     baseDir="${uploadDailyDir}/${project.avnavVersion}"
 
 }
 task uploadReleasePackages(type: UploadTask){
     group "upload"
-    dependsOn testGit, cleanGui,packages, uploadAccessRelease
-    inputFiles=packageList
+    dependsOn testGit, cleanGui,packages, uploadAccessRelease, buildWZip
+    inputFiles=packageList+zipList
     baseDir="$uploadReleaseDir/${project.avnavVersion}"
 }
 
