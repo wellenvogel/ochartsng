@@ -37,6 +37,8 @@
 #include <set>
 #include <numeric>
 
+#define CS_INFOKEY "chartSets"
+#define S52_INFOKEY "s52data"
 ChartManager::ChartManager( FontFileHolder::Ptr f, IBaseSettings::ConstPtr bs, RenderSettings::ConstPtr rs,IChartFactory::Ptr chartFactory, 
         String s57dataDir, unsigned int memLimitKb,int numOpeners) {
     this->fontFile=f;        
@@ -133,65 +135,6 @@ ChartSet::Ptr ChartManager::CreateChartSet(const String &dir,bool canDelete){
         return newSet;
 }
 
-ChartSet::Ptr ChartManager::findOrCreateChartSet(String chartFile,bool mustExist, bool canDelete, bool addToList){
-        String chartDir=FileHelper::dirname(chartFile);
-        String key=KeyFromChartDir(chartDir);
-        ChartSetMap::iterator it;
-        {
-            Synchronized locker(lock);
-            it=chartSets.find(key);
-            if (it != chartSets.end()){
-                if (it->second->info->dirname != chartDir){
-                    LOG_ERROR("found a chart dir %s that has the same short name like %s, cannot handle this",
-                        chartDir.c_str(),it->second->info->dirname.c_str());
-                    return NULL;
-                }
-                if (mustExist && ! it->second->IsEnabled()){
-                    LOG_INFO("chart set %s is disabled, do not load charts",
-                            it->second->GetKey().c_str());
-                    return ChartSet::Ptr();
-                }
-                return it->second;
-            }
-        }
-        if (mustExist){
-            LOG_ERROR("no chart info created for file %s",chartFile.c_str());
-            return ChartSet::Ptr();
-        }
-        ChartSetInfo::Ptr info=ChartSetInfo::ParseChartInfo(chartDir,key);
-        if (! info->infoParsed){
-            LOG_INFO("unable to retrieve chart set info for %s, trying anyway with defaults",chartDir.c_str());
-        }
-        else{
-            LOG_INFO("created chart set with key %s for directory %s",key.c_str(),chartDir.c_str());
-        }
-        if (info->title.empty()){
-            //seems that we did not find a chart info
-            //use our key without the prefixes
-            String title=key;
-            if (StringHelper::startsWith(title,"CSI_")) title=title.substr(4);
-            if (StringHelper::startsWith(title,"CS")) title=title.substr(2);
-            info->title=title;
-        }
-        {
-            Synchronized locker(lock);
-            //check again - should normally not happen...
-            ChartSetMap::iterator it=chartSets.find(key);
-            if (it != chartSets.end()){
-                return it->second;
-            }
-            ChartSet::Ptr newSet=std::make_shared<ChartSet>(info,canDelete);
-            if (addToList){
-                IBaseSettings::EnabledState state=baseSettings->IsChartSetEnabled(newSet->GetKey());
-                if (state == IBaseSettings::EnabledState::DISABLED){
-                    newSet->SetEnabled(state,false);
-                }
-                chartSets[key]=newSet;
-                AddItem("chartSets",newSet,true);
-            }
-            return newSet;     
-        }
-    }
 
 Chart::ChartType ChartManager::GetChartType(const String &fileName) const{
     return chartFactory->GetChartType(fileName);
@@ -289,12 +232,6 @@ ChartSet::Ptr ChartManager::ParseChartDir(const String &dir, bool canDelete)
     }
     int rt = 0;
     int all=0;
-    StringVector filesInDir = FileHelper::listDir(dir);
-    if (filesInDir.empty())
-    {
-        LOG_INFO("no files found in %s", dir);
-        return ChartSet::Ptr();
-    }
     String key=KeyFromChartDir(dir);
     ChartSet::Ptr chartSet=CreateChartSet(dir,canDelete);
     for (auto && chartFile : FileHelper::listDir(dir)){
@@ -312,21 +249,17 @@ int ChartManager::ReadChartDirs(const StringVector &dirsAndFiles,bool canDelete 
         if (FileHelper::exists(chartDir,true)) {
             //directory
             ChartSet::Ptr chartSet=ParseChartDir(chartDir,canDelete);
+            if (! chartSet){
+                LOG_INFOC("unable to parse %s, skipping",chartDir);
+                continue;
+            }
             int numInSet=chartSet->GetNumCharts();
-            if (numInSet < 1){
-                LOG_INFO("no charts found in %s, skipping",chartDir);
-            }
-            else{
-                numHandled+=numInSet;
-                parsedSets.push_back(chartSet);
-            }
+            numHandled+=numInSet;
+            parsedSets.push_back(chartSet);
+            
         } else {
             LOG_ERROR("can only handle chart directories, not files: %s",chartDir);
         }
-    }
-    if (numHandled < 1){
-        LOG_INFO("ReadChartDirs: no charts found");
-        return numHandled;
     }
     {
         Synchronized l(lock);
@@ -337,8 +270,11 @@ int ChartManager::ReadChartDirs(const StringVector &dirsAndFiles,bool canDelete 
             if (existing != chartSets.end() ){
                 numCharts-=existing->second->GetNumCharts();
                 if (numCharts < 0) numCharts=0;
+                RemoveItem(CS_INFOKEY,existing->second);
             }
             chartSets[chartSet->GetKey()]=chartSet;
+            AddItem(CS_INFOKEY,chartSet,true);
+
         }
         numRead=numCharts+numHandled;
         computeActiveSets();
@@ -492,7 +428,7 @@ bool ChartManager::DeleteChartSet(const String &key)
         LOG_ERROR("chart set %s not found for closing", key);
         throw AvException(FMT("chart set %s not found", key));
     }
-    RemoveItem("chartSets", it->second);
+    RemoveItem(CS_INFOKEY, it->second);
     chartSets.erase(it);
     computeActiveSets();
     chartCache->CloseBySet(key);
@@ -504,7 +440,6 @@ bool ChartManager::DeleteChartSet(const String &key)
 int ChartManager::ReadChartsInitial(const StringVector &dirs,bool canDelete){
     state=STATE_READING;
     LOG_INFOC("ChartManager: ReadChartsInitial");
-    ChartSetMap::iterator it;
     int rt=ReadChartDirs(dirs,canDelete);
     LOG_INFOC("ChartManager: ReadChartsInitial returned %d",rt);
     state=STATE_READY;
@@ -1103,13 +1038,13 @@ bool ChartManager::buildS52Data(RenderSettings::ConstPtr s){
             hasOld=true;
             oldMd5=s52data->getMD5();
             sequence=s52data->getSequence()+1;
-            RemoveItem("s52data");
+            RemoveItem(S52_INFOKEY);
         }
         s52::S52Data::Ptr newS52Data=std::make_shared<s52::S52Data>(s,fontFile,sequence); 
         LOG_INFO("building s52 data with dir %s",s57Dir);
         newS52Data->init(s57Dir);
         s52data=newS52Data;
-        AddItem("s52data",s52data);
+        AddItem(S52_INFOKEY,s52data);
     }
     if (hasOld && chartCache) chartCache->CloseByMD5(oldMd5);
     if (settingsChanged){

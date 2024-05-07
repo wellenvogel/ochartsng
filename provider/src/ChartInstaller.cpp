@@ -661,7 +661,7 @@ bool ChartInstaller::DeleteChartSet(const String &key){
     return true;
 }
 int ChartInstaller::ParseChartDir(const String &name){
-    for (auto && chartSubDir: FileHelper::listDir(chartDir)){
+    for (auto && chartSubDir: FileHelper::listDir(chartDir,"",false)){
         String fullName=FileHelper::realpath(FileHelper::concatPath(chartDir,chartSubDir));
         if (fullName == FileHelper::realpath(GetTempDir())) continue;
         if (chartSubDir == name){

@@ -49,6 +49,7 @@ typedef std::map<String,ChartSet::Ptr> ChartSetMap;
 typedef std::shared_ptr<ChartSetMap> ChartSetMapPtr;
 class ChartManager : public StatusCollector{
 public:
+    static constexpr const char * CHART_TEMP_DIR="_TMP";
     using Ptr=std::shared_ptr<ChartManager>;
     using ManagerState= enum{
             STATE_INIT,
@@ -173,7 +174,6 @@ private:
     std::mutex          s52lock; //lock for building/updating the s52data
     String              s57Dir;
     String              KeyFromChartDir(String chartDir);
-    ChartSet::Ptr       findOrCreateChartSet(String chartFile,bool mustExist=false,bool canDelete=false,bool addToList=true);
     bool                HandleChart(const String &chartFile,ChartSet::Ptr chartSet);
     /**
      * cleanup currently open charts from disabled chart sets

@@ -56,7 +56,6 @@
 #include "SystemHelper.h"
 #include "TileCache.h"
 
-#define CHART_TEMP_DIR "_TMP"
 using std::cout;
 using std::endl;
 void usage (const char *name){
@@ -170,8 +169,8 @@ int mainFunction(int argc, char **argv,bool *stopFlag=NULL)
     }
     configDir=FileHelper::realpath(configDir);
     chartDir=FileHelper::realpath(chartDir);
-    String chartTempDir=FileHelper::concatPath(chartDir,CHART_TEMP_DIR);
-    LOG_INFO("configDir=%s, chartDir=%s",configDir.c_str(),chartDir.c_str());
+    String chartTempDir=FileHelper::concatPath(chartDir,ChartManager::CHART_TEMP_DIR);
+    LOG_INFO("configDir=%s, chartDir=%s, chartTempDir=%s",configDir,chartDir,chartTempDir);
     StringVector dirs({configDir,chartDir});
     for (auto it=dirs.begin();it != dirs.end();it++){
         if (! FileHelper::exists(*it,true)){
@@ -295,7 +294,7 @@ int mainFunction(int argc, char **argv,bool *stopFlag=NULL)
         int systemKb=0;
         int ourKb=0;
         SystemHelper::GetMemInfo(&systemKb,&ourKb);
-        LOG_INFO("Memory after startUp system %d kb, our %d kb",systemKb,ourKb);
+        LOG_INFOC("Memory after startUp system %d kb, our %d kb",systemKb,ourKb);
         settings->setAllowChanges(true);
         if (stopFlag != NULL){
             LOG_INFOC("Server started at port %d, waiting for stop flag", port);
