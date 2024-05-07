@@ -31,19 +31,20 @@ import os
 import sqlite3
 from . import senc
 from  .s57 import  S57Mappings
+from datetime import datetime
 
 
 
 
-
-
+def ts(sfx):
+    return datetime.now().strftime('%Y-%m-%d-%H:%M:%S')+"-"+sfx
 def warn(txt,*args):
-    print(("WARNING: "+txt)%args)
+    print((ts("WARNING: ")+txt)%args)
 def err(txt,*args):
-    print(("ERROR: "+txt)%args)
+    print((ts("ERROR: ")+txt)%args)
     raise Exception(txt%args)
 def log(txt,*args):
-    print(("LOG: "+txt)%args)
+    print((ts("LOG: ")+txt)%args)
 
 class GVReader:
     def __init__(self,gv,txt,start=0):
