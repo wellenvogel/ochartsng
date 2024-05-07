@@ -44,6 +44,7 @@ import psutil
 import zipfile
 import hashlib
 import glob
+import urllib.parse
 
 class ConfigParam:
   def __init__(self,name,type='STRING',description='',default=None,mandatory=False,rangeOrList=None):
@@ -104,11 +105,12 @@ class ConfigParam:
     return True          
 
 class S57Converter:
-  def __init__(self,api,chartbase):
+  def __init__(self,api,chartbase,doneUrl):
     self.api=api
     self.chartbase=chartbase
     self.pattern=re.compile(r'.*\.[0-9][0-9][0-9]$')
     self.converter=os.path.join(os.path.dirname(__file__),"tosenc.py")
+    self.doneUrl=doneUrl
   def _canHandle(self,fn):
     return self.pattern.match(fn) is not None
   def _handleZipFile(self,md5,fn):
@@ -161,7 +163,8 @@ class S57Converter:
     #as this is just called before a new conversion we clean up the tmp dir
     self._cleanupTmp()
     tmpout=self._tmpBase()+outname
-    cmd=[sys.executable,self.converter,"-i","-f",self.getOutFileOrDir(outname),input,tmpout]
+    finUrl=self.doneUrl+"?"+urllib.parse.urlencode({'name':outname})
+    cmd=[sys.executable,self.converter,"-i","-f",self.getOutFileOrDir(outname),'-u',finUrl,input,tmpout]
     self.api.log("converter command for %s: %s",input," ".join(cmd))
     return cmd
   def getOutFileOrDir(self,outname):
@@ -468,11 +471,12 @@ class Plugin:
     return v
   DATADIRS=['log','charts']  
   
-  def registerConverter(self,dataDir):
+  def registerConverter(self,dataDir,baseUrl):
     if not hasattr(self.api,'registerConverter'):
       return
     chartDir=os.path.join(dataDir,"charts")
-    converter=S57Converter(self.api,chartDir)
+    notifyUrl=baseUrl+"/upload/parseDir"
+    converter=S57Converter(self.api,chartDir,notifyUrl)
     self.api.log("register chart converter, chartdir=%s",chartDir)
     self.api.registerConverter(converter)
 
@@ -506,7 +510,10 @@ class Plugin:
         os.makedirs(mdir)
       if not os.path.isdir(mdir):  
         raise Exception("unable to create directory %s"%mdir)
-    self.registerConverter(dataBaseDir)  
+    host='localhost'
+    baseUrl="http://%s:%d"%(host,port)
+    self.baseUrl=baseUrl+'/list'
+    self.registerConverter(dataBaseDir,baseUrl)  
     processes=self.findProcessByPattern(self.EXENAME)
     own=self.filterProcessList(processes,True)
     alreadyRunning=False
@@ -531,8 +538,6 @@ class Plugin:
       except Exception as e:
         raise Exception("unable to start provider %s"%e)
     self.api.log("started with port %d"%port)
-    host='localhost'
-    self.baseUrl="http://%s:%d/list"%(host,port)
     self.api.registerChartProvider(self.listCharts)
     self.api.registerUserApp("http://$HOST:%d/static/%s"%(port,self.STARTPAGE),"gui/icon.png")
     reported=False
@@ -588,11 +593,3 @@ class Plugin:
         self.api.setStatus("NMEA","provider (%d) sucessfully connected at %s"%(self.providerPid,self.baseUrl))
         reported=True
       time.sleep(1)
-
-
-
-
-
-
-
-
