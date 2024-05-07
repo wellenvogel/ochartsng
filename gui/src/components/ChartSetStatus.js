@@ -34,7 +34,7 @@ const ChartSetStatus=(props)=>{
     let cache=props.cache;
     let writer=props.cacheWriter;
     let status=props.status;
-    if (!props.active && status !== "DELETED"){
+    if (!props.active && status !== "DELETED" && status !== 'ERROR'){
         status="INACTIVE";
     }
     if (props.numValidCharts === 0 && props.errors > 0 && status === "READY"){
