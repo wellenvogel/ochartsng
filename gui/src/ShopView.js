@@ -50,26 +50,29 @@ import OverlayDisplay from "./components/OverlayDialog.js";
  * @return 0-equal, 1-candidate is newer, 2 - candidate is older
  */
 const compareEdition=(existing,candidate)=>{
-    let nve=existing.split("/");
-    let nvc=candidate.split("/");
-    if (nve.length !== 2) return 1; //assume newer if unknown format
-    if (nvc.length !== 2) {
-        if (nve === nvc) return 0;
-        return 2;
-    }
-    if (nve[0] === nvc[0]){
-        let se=nve[1].split("-");
-        let sc=nvc[1].split("-");
-        if (se.length !== 2 || sc.length !== 2){
-            return (nvc[1] === nve[1])?0:1;
+    try {
+        let nve = existing.split("/");
+        let nvc = candidate.split("/");
+        if (nve.length !== 2) return 1; //assume newer if unknown format
+        if (nvc.length !== 2) {
+            if (nve === nvc) return 0;
+            return 2;
         }
-        if (se[0] === sc[0]){
-            if (se[1] == sc[1]) return 0;
-            return (se[1] < sc[1])?1:2;
+        if (nve[0] === nvc[0]) {
+            let se = nve[1].split("-");
+            let sc = nvc[1].split("-");
+            if (se.length !== 2 || sc.length !== 2) {
+                return (parseInt(nvc[1]) === parseInt(nve[1])) ? 0 : 1;
+            }
+            if (se[0] === sc[0]) {
+                if (se[1] == sc[1]) return 0;
+                return (parseInt(se[1]) < parseInt(sc[1])) ? 1 : 2;
+            }
+            return (parseInt(se[0]) < parseInt(sc[0])) ? 1 : 2;
         }
-        return (se[0] < sc[0])?1:2;
-    }
-    return (nve[0] < nvc[0])?1:2;
+        return (parseInt(nve[0]) < parseInt(nvc[0])) ? 1 : 2;
+    }catch (e){}
+    return 1;
 };
 
 const DL_MODES={
