@@ -63,6 +63,7 @@ class Context:
     SQL_EXT="sqlite"
     OUT_EXT="senc"
     CNV_EXT=['000','geojson']
+    CHARTINFO="Chartinfo.txt"
     def __init__(self,tmpDir:tempfile.TemporaryDirectory=None,
                  zipFile: zipfile.ZipFile=None,
                  options:sqlite2senc.Options=None,
@@ -104,9 +105,11 @@ class Context:
             raise Exception("need a setname for creating zipfiles")
         arcname=self.setname+"/"+arcname
         self.zipFile.write(fileName,arcname)
+    def getChartInfoStr(self):
+        return "ChartInfo:%s\n"%self.setname
     def finalize(self):
         if self.zipFile is not None:
-            self.zipFile.writestr(self.setname+"/Chartinfo.txt","ChartInfo:%s\n"%self.setname)
+            self.zipFile.writestr(self.setname+"/"+self.CHARTINFO,self.getChartInfoStr())
             tmpname=self.zipFile.filename
             self.zipFile.close()
             os.replace(tmpname,self.zipName)
@@ -203,6 +206,8 @@ if __name__ == '__main__':
     oname=args[1]
     origOname=oname
     mode=M_FILES
+    if setname is None:
+        setname,ext=os.path.splitext(os.path.basename(oname))    
     context=Context(options=options,setname=setname)
     if os.path.isdir(iname):
         mode=M_DIR
@@ -218,9 +223,6 @@ if __name__ == '__main__':
     if ext.upper()==".ZIP":
         if os.path.isdir(oname):
             err("zip outfile %s exists as an directory",oname)
-        if setname is None:
-            setname,ext=os.path.splitext(os.path.basename(oname))
-            context.setname=setname
         context.openZip(oname)
         if mode == M_DIR:
             oname=context.getTmpDir(Context.TMP_SUB)
@@ -255,6 +257,9 @@ if __name__ == '__main__':
             if ext in KNOWN_EXT:
                 log("handling file %s",file)
                 handleSingleFile(context,file,ofile)
+        cifile=os.path.join(oname,context.CHARTINFO)
+        with open(cifile,"w") as cih:
+            cih.write(context.getChartInfoStr());
     context.finalize()
     log("created %s with %d files",origOname,context.numFiles)
     if finalOut is not None:
@@ -279,20 +284,20 @@ if __name__ == '__main__':
                 pass
     if doneUrl is not None and not context.hasErrors():
         log("calling %s",doneUrl)
-    try:
-        with urllib.request.urlopen(doneUrl) as response:
-            rdata=json.load(response)
-            st=rdata.get('status')
-            if st is None:
-                st="no status"
-            if st != 'OK':
-                context.addError("error calling %s: %s"%(doneUrl,st))
-            else:
-                if 'data' in rdata:
-                    log("parsed %s charts",rdata['data'].get('num') or '')
+        try:
+            with urllib.request.urlopen(doneUrl) as response:
+                rdata=json.load(response)
+                st=rdata.get('status')
+                if st is None:
+                    st="no status"
+                if st != 'OK':
+                    context.addError("error calling %s: %s"%(doneUrl,st))
                 else:
-                    log("doneUrl %s: ok but no charts parsed",doneUrl)
-    except Exception as e:
-        context.addError("error calling %s:%s"%(doneUrl,str(e)))    
+                    if 'data' in rdata:
+                        log("parsed %s charts",rdata['data'].get('num') or '')
+                    else:
+                        log("doneUrl %s: ok but no charts parsed",doneUrl)
+        except Exception as e:
+            context.addError("error calling %s:%s"%(doneUrl,str(e)))    
     context.printErrors()    
     sys.exit(1 if context.hasErrors() else 0)

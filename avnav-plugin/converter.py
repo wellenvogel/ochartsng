@@ -90,7 +90,7 @@ class S57Converter:
     #as this is just called before a new conversion we clean up the tmp dir
     self._cleanupTmp()
     tmpout=self._tmpBase()+outname
-    cmd=[sys.executable,self.converter,"-i","-f",self.getOutFileOrDir(outname)]
+    cmd=[sys.executable,self.converter,"-i","-f",self.getOutFileOrDir(outname),"-c",outname]
     if self.doneUrl is not None:
       finUrl=self.doneUrl+"?"+urllib.parse.urlencode({'name':outname})
       cmd.append('-u')
