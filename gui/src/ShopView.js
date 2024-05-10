@@ -535,6 +535,27 @@ class ShopView extends Component {
                                             url+="&passwd="+encodeURIComponent(ShopLogin.getPassword());
                                             url+="&back=my-account&";
                                             url+="SubmitLogin=1";
+                                            let system=ShopLogin.getIdentifiedSystem();
+                                            let sname=undefined;
+                                            if (system !== undefined && system.name !== undefined){
+                                                sname=system.name;
+                                            }
+                                            this.showDialog((props)=>{
+                                                return <ConfirmDialog
+                                                    {...props}
+                                                    title="O-Charts Shop"
+                                                    html={<div>
+                                                        You will be redirected to the o-charts shop.
+                                                        <br/>
+                                                        {(sname === undefined) &&<span>You need to register your system before you can assign charts to it.</span>}
+                                                        {(sname !== undefined) &&<span>Your system is known as <b>{sname}</b> in the shop.</span>}
+                                                        <br/>
+                                                        Please check if you have been checked in with the correct account on the shop page.
+                                                    </div>}
+                                                    okCallback={()=>window.open(url,"shop")}
+                                                />
+                                            })
+                                            return;
                                         }
                                         window.open(url,"shop");
                                     }}

@@ -120,6 +120,7 @@ export const ConfirmDialog=(props)=>{
         <div className="dialog confirm">
             {props.title && <h3>{props.title}</h3>}
             <div>{props.text}</div>
+            {props.html && props.html}
             <div className="dialogRow dialogButtons">
                 <button className="button cancel" onClick={props.closeCallback}>Cancel</button>
                 <button
