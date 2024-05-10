@@ -44,7 +44,7 @@ public class Settings {
         return testMode;
     }
 
-    public int getShutdownSec() {
+    public long getShutdownSec() {
         return shutdownSec;
     }
 

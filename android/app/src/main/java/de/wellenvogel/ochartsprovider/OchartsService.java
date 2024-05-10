@@ -278,7 +278,7 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
         } catch (Exception e) {
             return rv;
         }
-        byte[] deviceUniqueIdArray = mediaDrm.getPropertyByteArray("deviceUniqueId");
+        byte[] deviceUniqueIdArray = mediaDrm.getPropertyByteArray(MediaDrm.PROPERTY_DEVICE_UNIQUE_ID);
         StringBuilder sb = new StringBuilder();
         for (byte b : deviceUniqueIdArray) {
             sb.append(String.format("%02X", b));
