@@ -168,6 +168,7 @@ class RegisterDialog extends React.Component{
                             <input type="text"
                                    className={nameClass}
                                    value={this.state.name}
+                                   disabled={this.props.predefinedSystemName}
                                    onChange={(ev) => this.setState({name: ev.target.value})}/>
                         </div>
                     }
@@ -580,6 +581,7 @@ class ShopView extends Component {
                                             <RegisterDialog {...props}
                                                 forDongle={false}
                                                 name={this.state.predefinedSystemName||""}
+                                                predefinedSystemName={this.state.predefinedSystemName !== undefined && this.state.predefinedSystemName !== ""}
                                                 onChange={(name)=>this.register(false,name)}/>
                                         )
                                     })

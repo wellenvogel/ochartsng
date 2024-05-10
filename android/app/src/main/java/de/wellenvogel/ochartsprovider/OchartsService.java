@@ -339,8 +339,8 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
      */
     public static String getSystemName( Context ctx){
         String name = android.os.Build.DEVICE;
-        if(name.length() > 11)
-            name = name.substring(0, 10);
+        if(name.length() > 10)
+            name = name.substring(0, 9);
         String UUID = getUUID(ctx);
         String OCPNUUID = getOCPNuniqueID(ctx);
         String OCPNWVID = getOCPNWVID();
@@ -362,7 +362,7 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
         name = matcher2.replaceAll("0");
 
         name = name.toLowerCase(Locale.ROOT);
-        return name;
+        return name+"a";
 
     }
 
