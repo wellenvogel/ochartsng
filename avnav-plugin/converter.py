@@ -104,4 +104,4 @@ class S57Converter:
   def handledExtensions(self):
     return ['zip']
   def getName(self):
-    return 'ochartsng'
+    return 'ochartsng-s57'
