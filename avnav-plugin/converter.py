@@ -39,7 +39,7 @@ class S57Converter:
     self.converter=os.path.join(os.path.dirname(__file__),"tosenc.py")
     self.doneUrl=doneUrl
   def _canHandle(self,fn):
-    return self.pattern.match(fn) is not None
+    return self.pattern.match(fn) is not None or fn.endswith('.sqlite')
   def _handleZipFile(self,md5,fn):
     rt=0
     try:
