@@ -102,6 +102,6 @@ class S57Converter:
   def getOutFileOrDir(self,outname):
     return os.path.join(self.chartbase,outname)
   def handledExtensions(self):
-    return ['zip']
+    return ['.ZIP']
   def getName(self):
     return 'ochartsng-s57'
