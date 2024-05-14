@@ -70,15 +70,7 @@ def VARIANTS=[
          dockerfile: 'Dockerfile.all',
          oexdir: 'linux64',
          dependencies: DEFAULT_DEPS
-        ],
-        [osline:'ubuntu',
-         osversion:'jammy',
-         arch: 'amd64',
-         tag: IMAGE_VERSION,
-         dockerfile:'Dockerfile.all',
-         oexdir: 'linux64',
-         dependencies: DEFAULT_DEPS
-        ],
+         ],
         [osline:'ubuntu',
          osversion:'focal',
          arch: 'amd64',
@@ -86,15 +78,23 @@ def VARIANTS=[
          dockerfile:'Dockerfile.all',
          oexdir: 'linux64',
          dependencies: DEFAULT_DEPS
-        ],
-        [osline:'debian',
-         osversion:'bullseye',
+         ],
+        [osline:'ubuntu',
+         osversion:'jammy',
          arch: 'amd64',
          tag: IMAGE_VERSION,
          dockerfile:'Dockerfile.all',
          oexdir: 'linux64',
          dependencies: DEFAULT_DEPS
-        ],
+         ],
+        [osline:'ubuntu',
+         osversion:'noble',
+         arch: 'amd64',
+         tag: IMAGE_VERSION,
+         dockerfile:'Dockerfile.all',
+         oexdir: 'linux64',
+         dependencies: DEFAULT_DEPS
+         ],
         [osline:'debian',
          osversion:'buster',
          arch: 'amd64',
@@ -122,6 +122,14 @@ def VARIANTS=[
          oexdir: 'linuxarm',
          dependencies: DEFAULT_DEPS
          ],
+        [osline:'debian',
+         osversion:'bullseye',
+         arch: 'amd64',
+         tag: IMAGE_VERSION,
+         dockerfile:'Dockerfile.all',
+         oexdir: 'linux64',
+         dependencies: DEFAULT_DEPS
+        ],
          [osline:'raspbian',
          osversion:'bullseye',
          arch: 'armhf',
@@ -139,24 +147,6 @@ def VARIANTS=[
          dockerfile:'Dockerfile.all',
          oexdir: 'linuxarm64',
          dependencies: DEFAULT_DEPS
-         ],
-         [osline:'raspbian',
-         osversion:'bookworm',
-         arch: 'armhf',
-         tag: IMAGE_VERSION,
-         dockerbase:'arm32v7/debian',
-         dockerfile:'Dockerfile.all',
-         oexdir: 'linuxarm',
-         dependencies:DEFAULT_DEPS
-         ],
-        [osline:'raspbian',
-         osversion:'bookworm',
-         arch: 'arm64',
-         tag: IMAGE_VERSION,
-         dockerbase:'arm64v8/debian',
-         dockerfile:'Dockerfile.all',
-         oexdir: 'linuxarm64',
-         dependencies:DEFAULT_DEPS
          ],
         [osline:'debian',
          osversion:'bookworm',
@@ -166,8 +156,25 @@ def VARIANTS=[
          dockerfile:'Dockerfile.all',
          oexdir: 'linux64',
          dependencies:DEFAULT_DEPS
+         ],
+        [osline:'raspbian',
+         osversion:'bookworm',
+         arch: 'armhf',
+         tag: IMAGE_VERSION,
+         dockerbase:'arm32v7/debian',
+         dockerfile:'Dockerfile.all',
+         oexdir: 'linuxarm',
+         dependencies:DEFAULT_DEPS
+         ],
+        [osline:'raspbian',
+         osversion:'bookworm',
+         arch: 'arm64',
+         tag: IMAGE_VERSION,
+         dockerbase:'arm64v8/debian',
+         dockerfile:'Dockerfile.all',
+         oexdir: 'linuxarm64',
+         dependencies:DEFAULT_DEPS
          ]
-
 ]
 
 
