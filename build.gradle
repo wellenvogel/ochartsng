@@ -397,6 +397,7 @@ task buildWZip(type: Zip){
             include("converter.py")
             include("miniplugin.py")
             rename("miniplugin.py","plugin.py")
+            include("postinstall.ps1")
         }
         from('tools'){
             include "tosenc.py"
