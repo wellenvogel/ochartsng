@@ -50,7 +50,9 @@ def err(txt,*args):
 
 def convertGdal(ifile,ofile):
     log("converting %s to %s",ifile,ofile)
-    proc=subprocess.run(["ogr2ogr","-f","SQLite",ofile,ifile])
+    #workaround with LIST_AS_STRING for https://github.com/OSGeo/gdal/commit/ea0251e6cc3b1f5698a7ed4e2343aa5d894ae6d3
+    #that would only be available from 3.3.1
+    proc=subprocess.run(["ogr2ogr","-f","SQLite",ofile,ifile,"-oo","LIST_AS_STRING=ON"])
     if proc.returncode != 0:
         raise Exception("converting %s to %s returned %d"%(ifile,ofile,proc.returncode))
 
