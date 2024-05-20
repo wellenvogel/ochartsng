@@ -226,8 +226,10 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
     }
 
 
-    public ProcessState getProcessState(){
-        lastTrigger=SystemClock.uptimeMillis();
+    public ProcessState getProcessState(boolean trigger){
+        if (trigger) {
+            lastTrigger = SystemClock.uptimeMillis();
+        }
         if (processHandler != null) return processHandler.getState();
         return new ProcessState();
     }
@@ -537,7 +539,7 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
         stopSelf();
     }
     private void broadcastInfo(){
-        ProcessState pstate=getProcessState();
+        ProcessState pstate=getProcessState(false);
         lastBroadcast=SystemClock.uptimeMillis();
         //intentionally set lastBroadcaset before check to avoid error flood
         if (!pstate.isRunning){

@@ -9,7 +9,7 @@
     <string name="s_shutdown">shutdown</string>
     <integer name="s_shutdown_default">30</integer>
     <integer name="s_shutdown_min">0</integer>
-    <integer name="s_shutdown_max">3600</integer>
+    <integer name="s_shutdown_max">600</integer>
     <string name="s_memory">memory</string>
     <integer name="s_memory_min">10</integer>
     <integer name="s_memory_default">30</integer>

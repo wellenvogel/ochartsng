@@ -121,7 +121,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
             else{
-                state=service.getProcessState();
+                state=service.getProcessState(true);
             }
             if (state.isRunning){
                 pid.setText("running");
