@@ -35,8 +35,11 @@ namespace extthick{
     //based on http://kt8216.unixcab.org/murphy/index.html
     #include <math.h>
     using pbuffer_t=DrawingContext;
-    void pixel(pbuffer_t *ctx,int x, int y, unsigned int color){
-        ctx->setPix(x,y,color);
+    inline void pixel(pbuffer_t *ctx,int x, int y, unsigned int color){
+        DrawingContext::ColorAndAlpha *p=ctx->pixel(x,y);
+        if (!p) return;
+        *p=color;
+        ctx->resetDrawn(true);
     }
 /***********************************************************************
  *                                                                     *

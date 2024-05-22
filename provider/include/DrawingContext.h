@@ -327,7 +327,7 @@ public:
     int getHeight() { return height; }
     int getBpp() { return sizeof(ColorAndAlpha); }
     bool getDrawn() { return hasDrawn; }
-    void resetDrawn(){ hasDrawn=false;}
+    void resetDrawn(bool value=false){ hasDrawn=value;}
     void setCheckOnly(bool v){checkOnly=v;}
     virtual void reset(ColorAndAlpha pattern = 0);
     virtual String getStatistics() const;
