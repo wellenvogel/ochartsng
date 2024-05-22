@@ -687,7 +687,8 @@ class S57ObjectDescription : public ObjectDescription
     void buildFull(const S57BaseObject* o);
 public:
     String expandedText;
-    S57ObjectDescription(const S57BaseObject* o,bool overview, const NameValueMap &addons=NameValueMap());
+    S57ObjectDescription(const S57BaseObject* o, const NameValueMap &addons=NameValueMap());
+    void buildJson(const S57BaseObject* o,bool overview);
     virtual ~S57ObjectDescription(){}
     virtual bool isPoint() const{ return hasPoint;};
     virtual double computeDistance(const Coord::WorldXy &wp);
@@ -700,7 +701,7 @@ public:
 //we ignore a couple of attributes if when checking for equality
 //to avoid getting the same object twice from different charts
 std::unordered_set<uint16_t> IGNORED_ATTRIBUTES={S57AttrIds::SCAMIN,S57AttrIds::SORIND,S57AttrIds::SORDAT,S57AttrIds::SIGSEQ,S57AttrIds::catgeo};
-S57ObjectDescription::S57ObjectDescription(const S57BaseObject* cobject,bool overview, const NameValueMap &ad){
+S57ObjectDescription::S57ObjectDescription(const S57BaseObject* cobject, const NameValueMap &ad){
         type=T_OBJECT;
         point=cobject->point;
         hasPoint=cobject->geoPrimitive==s52::GEO_POINT && !cobject->isMultipoint();
@@ -732,8 +733,11 @@ S57ObjectDescription::S57ObjectDescription(const S57BaseObject* cobject,bool ove
         //we do not add addOns to MD5 for equality checks
         //so they will not be considered...
         md5.fromChar(builder.GetValue());
-        if (overview) buildOverview(cobject);
-        else buildFull(cobject);
+}
+
+void S57ObjectDescription::buildJson(const S57BaseObject* cobject,bool overview){
+    if (overview) buildOverview(cobject);
+    else buildFull(cobject);
 }
 
 double S57ObjectDescription::computeDistance(const Coord::WorldXy &wpt){
@@ -1081,7 +1085,7 @@ ObjectDescription::Ptr S57Object::RenderObject::getObjectDescription(
             addOns["DEPTH"]=s52::Attribute::doubleToStr(nearest.depth);
         }   
     }
-    S57ObjectDescription *rt=new S57ObjectDescription(object.get(),overview,addOns);
+    S57ObjectDescription *rt=new S57ObjectDescription(object.get(),addOns);
     if (hasSounding){
         rt->point=nearest; //it will not be considered in the MD5
                            //but this is ok as we only check the 
@@ -1094,7 +1098,7 @@ ObjectDescription::Ptr S57Object::RenderObject::getObjectDescription(
     if (object->attributes.hasAttr(S57AttrIds::TXTDSC)){
         rt->expandedText=translator(object->attributes.getString(S57AttrIds::TXTDSC,true));
     }
-    
+    rt->buildJson(object.get(),overview);
     return ObjectDescription::Ptr(rt);
 }
 
