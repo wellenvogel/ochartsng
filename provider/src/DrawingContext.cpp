@@ -31,6 +31,295 @@
 #include <cmath>
 #include <cstdlib>
 #include "Logger.h"
+namespace extthick{
+    #include <math.h>
+    using pbuffer_t=DrawingContext;
+    void pixel(pbuffer_t *ctx,int x, int y, unsigned int color){
+        ctx->setPix(x,y,color);
+    }
+/***********************************************************************
+ *                                                                     *
+ *                            X BASED LINES                            *
+ *                                                                     *
+ ***********************************************************************/
+
+static void x_perpendicular(pbuffer_t *B, unsigned int color,
+                            int x0,int y0,int dx,int dy,int xstep, int ystep,
+                            int einit,int w_left, int w_right,int winit)
+{
+    if (dx <= 0) return;
+  int x,y,threshold,E_diag,E_square;
+  int tk;
+  int error;
+  int p,q;
+
+  threshold = dx - 2*dy;
+  E_diag= -2*dx;
+  E_square= 2*dy;
+  p=q=0;
+
+  y= y0;
+  x= x0;
+  error= einit;
+  tk= dx+dy-winit; 
+
+  while(tk<=w_left)
+  {
+     pixel(B,x,y, color);
+     if (error>=threshold)
+     {
+       x= x + xstep;
+       error = error + E_diag;
+       tk= tk + 2*dy;
+     }
+     error = error + E_square;
+     y= y + ystep;
+     tk= tk + 2*dx;
+     q++;
+  }
+
+  y= y0;
+  x= x0;
+  error= -einit;
+  tk= dx+dy+winit;
+
+  while(tk<=w_right)
+  {
+     if (p)
+       pixel(B,x,y, color);
+     if (error>threshold)
+     {
+       x= x - xstep;
+       error = error + E_diag;
+       tk= tk + 2*dy;
+     }
+     error = error + E_square;
+     y= y - ystep;
+     tk= tk + 2*dx;
+     p++;
+  }
+
+  if (q==0 && p<2) pixel(B,x0,y0,color); // we need this for very thin lines
+}
+
+
+static void x_varthick_line
+   (pbuffer_t *B, unsigned int color,
+    int x0,int y0,int dx,int dy,int xstep, int ystep,
+    double (*left)(void *,int ,int), void *argL,
+    double (*right)(void *,int ,int),void *argR, int pxstep,int pystep)
+{
+  int p_error, error, x,y, threshold, E_diag, E_square, length, p;
+  int w_left, w_right;
+  double D;
+
+
+  p_error= 0;
+  error= 0;
+  y= y0;
+  x= x0;
+  threshold = dx - 2*dy;
+  E_diag= -2*dx;
+  E_square= 2*dy;
+  length = dx+1;
+  D= sqrt(dx*dx+dy*dy);
+
+  for(p=0;p<length;p++)
+  {
+    w_left=  (*left)(argL, p, length)*2*D;
+    w_right= (*right)(argR,p, length)*2*D;
+    x_perpendicular(B,color,x,y, dx, dy, pxstep, pystep,
+                                      p_error,w_left,w_right,error);
+    if (error>=threshold)
+    {
+      y= y + ystep;
+      error = error + E_diag;
+      if (p_error>=threshold) 
+      {
+        x_perpendicular(B,color,x,y, dx, dy, pxstep, pystep,
+                                    (p_error+E_diag+E_square), 
+                                     w_left,w_right,error);
+        p_error= p_error + E_diag;
+      }
+      p_error= p_error + E_square;
+    }
+    error = error + E_square;
+    x= x + xstep;
+  }
+}
+
+/***********************************************************************
+ *                                                                     *
+ *                            Y BASED LINES                            *
+ *                                                                     *
+ ***********************************************************************/
+
+static void y_perpendicular(pbuffer_t *B, unsigned int color,
+                            int x0,int y0,int dx,int dy,int xstep, int ystep,
+                            int einit,int w_left, int w_right,int winit)
+{
+  if (dy <=  0) return;
+  int x,y,threshold,E_diag,E_square;
+  int tk;
+  int error;
+  int p,q;
+
+  p=q= 0;
+  threshold = dy - 2*dx;
+  E_diag= -2*dy;
+  E_square= 2*dx;
+
+  y= y0;
+  x= x0;
+  error= -einit;
+  tk= dx+dy+winit; 
+
+  while(tk<=w_left)
+  {
+     pixel(B,x,y, color);
+     if (error>threshold)
+     {
+       y= y + ystep;
+       error = error + E_diag;
+       tk= tk + 2*dx;
+     }
+     error = error + E_square;
+     x= x + xstep;
+     tk= tk + 2*dy;
+     q++;
+  }
+
+
+  y= y0;
+  x= x0;
+  error= einit;
+  tk= dx+dy-winit; 
+
+  while(tk<=w_right)
+  {
+     if (p)
+       pixel(B,x,y, color);
+     if (error>=threshold)
+     {
+       y= y - ystep;
+       error = error + E_diag;
+       tk= tk + 2*dx;
+     }
+     error = error + E_square;
+     x= x - xstep;
+     tk= tk + 2*dy;
+     p++;
+  }
+
+  if (q==0 && p<2) pixel(B,x0,y0,color); // we need this for very thin lines
+}
+
+
+static void y_varthick_line
+   (pbuffer_t *B, unsigned int color,
+    int x0,int y0,int dx,int dy,int xstep, int ystep,
+    double (*left)(void *,int ,int), void *argL,
+    double (*right)(void *,int ,int),void *argR,int pxstep,int pystep)
+{
+  int p_error, error, x,y, threshold, E_diag, E_square, length, p;
+  int w_left, w_right;
+  double D;
+
+  p_error= 0;
+  error= 0;
+  y= y0;
+  x= x0;
+  threshold = dy - 2*dx;
+  E_diag= -2*dy;
+  E_square= 2*dx;
+  length = dy+1;
+  D= sqrt(dx*dx+dy*dy);
+
+  for(p=0;p<length;p++)
+  {
+    w_left=  (*left)(argL, p, length)*2*D;
+    w_right= (*right)(argR,p, length)*2*D;
+    y_perpendicular(B,color,x,y, dx, dy, pxstep, pystep,
+                                      p_error,w_left,w_right,error);
+    if (error>=threshold)
+    {
+      x= x + xstep;
+      error = error + E_diag;
+      if (p_error>=threshold)
+      {
+        y_perpendicular(B,color,x,y, dx, dy, pxstep, pystep,
+                                     p_error+E_diag+E_square,
+                                     w_left,w_right,error);
+        p_error= p_error + E_diag;
+      }
+      p_error= p_error + E_square;
+    }
+    error = error + E_square;
+    y= y + ystep;
+  }
+}
+
+
+/***********************************************************************
+ *                                                                     *
+ *                                ENTRY                                *
+ *                                                                     *
+ ***********************************************************************/
+
+pbuffer_t* draw_varthick_line
+      (pbuffer_t *B, unsigned int color,
+       int x0,int y0,int x1, int y1,
+       double (*left)(void *,int ,int), void *argL,
+       double (*right)(void *,int ,int), void *argR)
+{
+  int dx,dy,xstep,ystep;
+  int pxstep, pystep;
+  int xch; // whether left and right get switched.
+
+  dx= x1-x0;
+  dy= y1-y0;
+  xstep= ystep= 1;
+
+  if (dx<0) { dx= -dx; xstep= -1; }
+  if (dy<0) { dy= -dy; ystep= -1; }
+
+  if (dx==0) xstep= 0;
+  if (dy==0) ystep= 0;
+
+
+  xch= 0;
+  switch(xstep + ystep*4)
+  {
+    case -1 + -1*4 :  pystep= -1; pxstep= 1; xch= 1; break;   // -5
+    case -1 +  0*4 :  pystep= -1; pxstep= 0; xch= 1; break;   // -1
+    case -1 +  1*4 :  pystep=  1; pxstep= 1; break;   // 3
+    case  0 + -1*4 :  pystep=  0; pxstep= -1; break;  // -4
+    case  0 +  0*4 :  pystep=  0; pxstep= 0; break;   // 0
+    case  0 +  1*4 :  pystep=  0; pxstep= 1; break;   // 4
+    case  1 + -1*4 :  pystep= -1; pxstep= -1; break;  // -3
+    case  1 +  0*4 :  pystep= -1; pxstep= 0;  break;  // 1
+    case  1 +  1*4 :  pystep=  1; pxstep= -1; xch=1; break;  // 5
+  }
+
+  if (xch) { 
+    std::swap(argL,argR);
+    std::swap(left,right);
+    }
+
+  if (dx>dy) x_varthick_line(B,color,x0,y0,dx,dy,xstep,ystep,
+                                                left,argL,right,argR,
+                                                pxstep,pystep);
+        else y_varthick_line(B,color,x0,y0,dx,dy,xstep,ystep,
+                                                left,argL,right,argR,
+                                                pxstep,pystep);
+  return B;
+}
+
+double thick(void *p,int x, int y){
+    return *((double *)p);
+}
+
+};
 
 DrawingContext::ColorAndAlpha DrawingContext::alphaImpl(DrawingContext::ColorAndAlpha dst, const DrawingContext::ColorAndAlpha &src){
     // A over B (A: src, B: dst)
@@ -526,7 +815,7 @@ void DrawingContext::drawArc(const Coord::PixelXy &center, const DrawingContext:
 }
 
 
-void DrawingContext::drawLine(const Coord::PixelXy &p0, const Coord::PixelXy &p1, const DrawingContext::ColorAndAlpha &color, bool useAlpha, const DrawingContext::Dash *dash, bool overlapMajor){
+void DrawingContext::drawLine(const Coord::PixelXy &p0, const Coord::PixelXy &p1, const DrawingContext::ColorAndAlpha &color, bool useAlpha, const DrawingContext::Dash *dash, bool overlap){
     //see https://stackoverflow.com/questions/40884680/how-to-use-bresenhams-line-drawing-algorithm-with-clipping
     //sort by y
     Coord::Pixel x1=p0.x;
@@ -654,24 +943,25 @@ void DrawingContext::drawLine(const Coord::PixelXy &p0, const Coord::PixelXy &p1
             y += 1;
             dst += linelen;
         }
-        if (overlapMajor && lastx != x && lasty != y ){
-            //we just draw the pixel with the minor value before the step
+        if (overlap && lastx != x && lasty != y ){
+            //we just draw the pixel with the minor and major value before the step
+            //this could draw pixels twice and will this way not correctly work with alpha!
             ColorAndAlpha *md=dst;
-            if (majorX){
-                md -= linelen;
-            }
-            else{
-                md -= sign_x;
-            }
-            if (md >= start & md < end)
+            int offsets[]={linelen,sign_x};
+            for (int i = 0; i < 2; i++)
             {
-                if (useAlpha)
+                ColorAndAlpha *md2 = dst;
+                md -= offsets[i];
+                if (md >= start & md < end)
                 {
-                    *md = alpha(*md, color);
-                }
-                else
-                {
-                    *md = color;
+                    if (useAlpha)
+                    {
+                        *md = alpha(*md, color);
+                    }
+                    else
+                    {
+                        *md = color;
+                    }
                 }
             }
         }
@@ -679,6 +969,7 @@ void DrawingContext::drawLine(const Coord::PixelXy &p0, const Coord::PixelXy &p1
 }
 /**
  * taken from https://github.com/ArminJo/STMF3-Discovery-Demos/blob/master/lib/graphics/src/thickLine.cpp.
+ *            https://github.com/ArminJo/STMF3-Discovery-Demos/blob/master/lib/BlueDisplay/LocalGUI/ThickLine.hpp
  * GPL
  * Bresenham with thickness
  * No pixel missed and every pixel only drawn once!
@@ -687,6 +978,11 @@ void DrawingContext::drawLine(const Coord::PixelXy &p0, const Coord::PixelXy &p1
  */
 void DrawingContext::drawThickLine(const Coord::PixelXy &p0, const Coord::PixelXy &p1, const DrawingContext::ColorAndAlpha &color, bool useAlpha, const DrawingContext::Dash *dash, unsigned int aThickness,
         DrawingContext::ThicknessMode aThicknessMode) {
+    double thickness=(double)aThickness;
+    extthick::draw_varthick_line(this,color,p0.x,p0.y,p1.x,p1.y,
+        extthick::thick,&thickness,extthick::thick,&thickness
+        );
+    return;        
     Coord::Pixel i, tDeltaX, tDeltaY, tDeltaXTimes2, tDeltaYTimes2, tError, tStepX, tStepY;
     Coord::PixelXy pstart=p0;
     Coord::PixelXy pend=p1;
@@ -724,11 +1020,13 @@ void DrawingContext::drawThickLine(const Coord::PixelXy &p0, const Coord::PixelX
     bool tOverlap;
     // adjust for right direction of thickness from line origin
     int tDrawStartAdjustCount = aThickness / 2;
+    /*
     if (aThicknessMode == LINE_THICKNESS_DRAW_COUNTERCLOCKWISE) {
         tDrawStartAdjustCount = aThickness - 1;
     } else if (aThicknessMode == LINE_THICKNESS_DRAW_CLOCKWISE) {
         tDrawStartAdjustCount = 0;
     }
+    */
 
     /*
      * Now tDelta* are positive and tStep* define the direction
