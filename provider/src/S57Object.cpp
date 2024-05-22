@@ -443,11 +443,28 @@ bool S57Object::RenderObject::Intersects(const Coord::PixelBox &pixelBox,Coord::
     switch (object->geoPrimitive){
         case s52::GEO_AREA:
         case s52::GEO_LINE:
-            return object->extent.intersects(tile);
-            break;
+        {
+            bool rt = object->extent.intersects(tile);
+            if (rt)
+                return rt;
+            // areas could have some text that is larger then the area itself
+            // so just also consider the pixelExtent
+            if (object->geoPrimitive == s52::GEO_AREA)
+            {
+                Coord::PixelXy drawPoint = tile.worldToPixel(object->point);
+                if (pixelExtent.Valid())
+                {
+                    return pixelBox.intersects(pixelExtent.getShifted(drawPoint));
+                }
+                return pixelBox.intersects(drawPoint);
+            }
+            return false;
+        }
+        break;
         case s52::GEO_POINT:
             if (object->soundigs.size() > 0){
                 Coord::PixelBox etx=Coord::worldExtentToPixel(object->extent,tile);
+                etx.expand(xmargin,ymargin);
                 return pixelBox.intersects(etx);
             }
             else{
