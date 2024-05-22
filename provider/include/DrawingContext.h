@@ -39,6 +39,7 @@ public:
     uint64_t numTriangles = 0;
     uint64_t triHitCount = 0;
     uint64_t triUnhitCount = 0;
+    bool extThickLine=true;
     typedef struct
     {
         int draw = 0;

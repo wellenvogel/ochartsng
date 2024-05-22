@@ -32,6 +32,7 @@
 #include <cstdlib>
 #include "Logger.h"
 namespace extthick{
+    //based on http://kt8216.unixcab.org/murphy/index.html
     #include <math.h>
     using pbuffer_t=DrawingContext;
     void pixel(pbuffer_t *ctx,int x, int y, unsigned int color){
@@ -106,14 +107,10 @@ static void x_perpendicular(pbuffer_t *B, unsigned int color,
 static void x_varthick_line
    (pbuffer_t *B, unsigned int color,
     int x0,int y0,int dx,int dy,int xstep, int ystep,
-    double (*left)(void *,int ,int), void *argL,
-    double (*right)(void *,int ,int),void *argR, int pxstep,int pystep)
+    int thick, int pxstep,int pystep)
 {
   int p_error, error, x,y, threshold, E_diag, E_square, length, p;
   int w_left, w_right;
-  double D;
-
-
   p_error= 0;
   error= 0;
   y= y0;
@@ -122,12 +119,10 @@ static void x_varthick_line
   E_diag= -2*dx;
   E_square= 2*dy;
   length = dx+1;
-  D= sqrt(dx*dx+dy*dy);
-
   for(p=0;p<length;p++)
   {
-    w_left=  (*left)(argL, p, length)*2*D;
-    w_right= (*right)(argR,p, length)*2*D;
+    w_left=  thick;
+    w_right= thick;
     x_perpendicular(B,color,x,y, dx, dy, pxstep, pystep,
                                       p_error,w_left,w_right,error);
     if (error>=threshold)
@@ -218,13 +213,10 @@ static void y_perpendicular(pbuffer_t *B, unsigned int color,
 static void y_varthick_line
    (pbuffer_t *B, unsigned int color,
     int x0,int y0,int dx,int dy,int xstep, int ystep,
-    double (*left)(void *,int ,int), void *argL,
-    double (*right)(void *,int ,int),void *argR,int pxstep,int pystep)
+    int thick,int pxstep,int pystep)
 {
   int p_error, error, x,y, threshold, E_diag, E_square, length, p;
   int w_left, w_right;
-  double D;
-
   p_error= 0;
   error= 0;
   y= y0;
@@ -233,12 +225,10 @@ static void y_varthick_line
   E_diag= -2*dy;
   E_square= 2*dx;
   length = dy+1;
-  D= sqrt(dx*dx+dy*dy);
-
   for(p=0;p<length;p++)
   {
-    w_left=  (*left)(argL, p, length)*2*D;
-    w_right= (*right)(argR,p, length)*2*D;
+    w_left=  thick;
+    w_right= thick;
     y_perpendicular(B,color,x,y, dx, dy, pxstep, pystep,
                                       p_error,w_left,w_right,error);
     if (error>=threshold)
@@ -269,8 +259,7 @@ static void y_varthick_line
 pbuffer_t* draw_varthick_line
       (pbuffer_t *B, unsigned int color,
        int x0,int y0,int x1, int y1,
-       double (*left)(void *,int ,int), void *argL,
-       double (*right)(void *,int ,int), void *argR)
+       int thickness)
 {
   int dx,dy,xstep,ystep;
   int pxstep, pystep;
@@ -301,22 +290,15 @@ pbuffer_t* draw_varthick_line
     case  1 +  1*4 :  pystep=  1; pxstep= -1; xch=1; break;  // 5
   }
 
-  if (xch) { 
-    std::swap(argL,argR);
-    std::swap(left,right);
-    }
-
+  double D= sqrt(dx*dx+dy*dy)*1.2;
+  int precompThickness=thickness*D;  
   if (dx>dy) x_varthick_line(B,color,x0,y0,dx,dy,xstep,ystep,
-                                                left,argL,right,argR,
+                                                precompThickness,
                                                 pxstep,pystep);
         else y_varthick_line(B,color,x0,y0,dx,dy,xstep,ystep,
-                                                left,argL,right,argR,
+                                                precompThickness,
                                                 pxstep,pystep);
   return B;
-}
-
-double thick(void *p,int x, int y){
-    return *((double *)p);
 }
 
 };
@@ -977,12 +959,7 @@ void DrawingContext::drawLine(const Coord::PixelXy &p0, const Coord::PixelXy &p1
  * aThicknessMode can be one of LINE_THICKNESS_MIDDLE, LINE_THICKNESS_DRAW_CLOCKWISE, LINE_THICKNESS_DRAW_COUNTERCLOCKWISE
  */
 void DrawingContext::drawThickLine(const Coord::PixelXy &p0, const Coord::PixelXy &p1, const DrawingContext::ColorAndAlpha &color, bool useAlpha, const DrawingContext::Dash *dash, unsigned int aThickness,
-        DrawingContext::ThicknessMode aThicknessMode) {
-    double thickness=(double)aThickness;
-    extthick::draw_varthick_line(this,color,p0.x,p0.y,p1.x,p1.y,
-        extthick::thick,&thickness,extthick::thick,&thickness
-        );
-    return;        
+        DrawingContext::ThicknessMode aThicknessMode) {       
     Coord::Pixel i, tDeltaX, tDeltaY, tDeltaXTimes2, tDeltaYTimes2, tError, tStepX, tStepY;
     Coord::PixelXy pstart=p0;
     Coord::PixelXy pend=p1;
@@ -990,6 +967,10 @@ void DrawingContext::drawThickLine(const Coord::PixelXy &p0, const Coord::PixelX
     if (aThickness <= 1) {
         drawLine(p0,p1,color,useAlpha,dash);
         return;
+    }
+    if (extThickLine){
+        extthick::draw_varthick_line(this,color,p0.x,p0.y,p1.x,p1.y,aThickness);
+        return; 
     }
     /**
      * For coordinate system with 0.0 top left

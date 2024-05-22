@@ -102,6 +102,7 @@ public:
         std::unique_ptr<DrawingContext> drawing(DrawingContext::create(Coord::TILE_SIZE, Coord::TILE_SIZE));
         std::unique_ptr<PngEncoder> encoder(PngEncoder::createEncoder(info.pngType));
         timer.add("create");
+        drawing->extThickLine=GetQueryValue(request,"exthick") != "0";
         int numItems=0;
         for (int r=0;r<repeat;r++){
             if (StringHelper::startsWith(type,"line")){
