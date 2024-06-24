@@ -1087,10 +1087,20 @@ namespace s52
         double sectr2=-9;
         bool isFlare=false;
         bool flare45=false;
+        bool isFog=false;
+        int exclitv=0;
+        if (conditions->attributes->getInt(S57AttrIds::EXCLIT,exclitv)){
+            if (exclitv == 3){
+                isFog=true;
+            }
+        }
         double arc_radius = 75.59; //ps -> ~20 mm with 96dpi
-                    arc_radius *= s52data->getSettings()->symbolScale;
-                    double sector_radius = 94.48; //px ->25 mm with 96dpi
-                    sector_radius *= s52data->getSettings()->symbolScale;
+        arc_radius *= s52data->getSettings()->symbolScale;
+        if (isFog){
+            arc_radius-=8; //outlinewidth(4) + some spare
+        }
+        double sector_radius = 94.48; //px ->25 mm with 96dpi
+        sector_radius *= s52data->getSettings()->symbolScale;
         if (! conditions->attributes->getDouble(S57AttrIds::SECTR1,sectr1)
             || ! conditions->attributes->getDouble(S57AttrIds::SECTR2,sectr2)){
                 String sym;
