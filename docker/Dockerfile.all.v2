@@ -11,7 +11,7 @@ RUN apt-get update
 #&& apt-get upgrade
 
 
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential cmake gettext git-core libbz2-dev libarchive-dev libcurl4-openssl-dev lsb-release libssl-dev zlib1g-dev
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential python3 gettext git-core libbz2-dev libarchive-dev libcurl4-openssl-dev lsb-release libssl-dev zlib1g-dev
 
 #cmake
 #bootstrap CXXFLAGS=-D_FILE_OFFSET_BITS=64 -- -DBUILD_TESTING=OFF
