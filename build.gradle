@@ -55,12 +55,23 @@ def DEFAULT_DEPS = [
                 ['libc6'],
                 ['libgcc1'],
                 ['libstdc++6'],
-		[primary:['libssl1.1'], or:['libssl3']],
+		[primary:['libssl1.1'], or:['libssl3'], or:['libssl3t64']],
                 ['libcurl4'],
                 [primary:['python3-mapbox-earcut'], or:['base-files','13',org.redline_rpm.header.Flags.EQUAL|org.redline_rpm.header.Flags.LESS]],
                 ['gdal-bin'],
                 ['libusb-0.1-4']
         ]
+def DEPS_V2 = [
+                ['libc6'],
+                ['libgcc1'],
+                ['libstdc++6'],
+                ['libssl3t64'],
+                ['libcurl4'],
+                ['python3-mapbox-earcut'],
+                ['gdal-bin'],
+                ['libusb-0.1-4']
+        ]
+
 def IMAGE_VERSION = "A1"        
 def VARIANTS=[
         [osline:'ubuntu',
@@ -93,7 +104,7 @@ def VARIANTS=[
          tag: IMAGE_VERSION,
          dockerfile:'Dockerfile.all',
          oexdir: 'linux64',
-         dependencies: DEFAULT_DEPS
+         dependencies: DEPS_V2
          ],
         [osline:'debian',
          osversion:'buster',
@@ -174,6 +185,33 @@ def VARIANTS=[
          dockerfile:'Dockerfile.all',
          oexdir: 'linuxarm64',
          dependencies:DEFAULT_DEPS
+         ],
+        [osline:'debian',
+         osversion:'trixie',
+         arch: 'amd64',
+         tag: IMAGE_VERSION,
+         dockerbase:'amd64/debian',
+         dockerfile:'Dockerfile.all.v2',
+         oexdir: 'linux64',
+         dependencies:DEPS_V2
+         ],
+        [osline:'raspbian',
+         osversion:'trixie',
+         arch: 'armhf',
+         tag: IMAGE_VERSION,
+         dockerbase:'arm32v7/debian',
+         dockerfile:'Dockerfile.all.v2',
+         oexdir: 'linuxarm',
+         dependencies:DEPS_V2
+         ],
+        [osline:'raspbian',
+         osversion:'trixie',
+         arch: 'arm64',
+         tag: IMAGE_VERSION,
+         dockerbase:'arm64v8/debian',
+         dockerfile:'Dockerfile.all.v2',
+         oexdir: 'linuxarm64',
+         dependencies:DEPS_V2
          ]
 ]
 
