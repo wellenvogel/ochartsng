@@ -200,7 +200,8 @@ def VARIANTS=[
          arch: 'armhf',
          tag: IMAGE_VERSION,
          dockerbase:'arm32v7/debian',
-         dockerfile:'Dockerfile.all.v2',
+         dockerfile:'Dockerfile.platform.v2',
+         platform: 'linux/armhf',
          oexdir: 'linuxarm',
          dependencies:DEPS_V2
          ],
@@ -208,8 +209,9 @@ def VARIANTS=[
          osversion:'trixie',
          arch: 'arm64',
          tag: IMAGE_VERSION,
+         platform: 'linux/arm64',
          dockerbase:'arm64v8/debian',
-         dockerfile:'Dockerfile.all.v2',
+         dockerfile:'Dockerfile.platform.v2',
          oexdir: 'linuxarm64',
          dependencies:DEPS_V2
          ]
@@ -484,8 +486,10 @@ class DockerTask extends Exec{
     @Internal
     def dockerFile
     @Internal
+    def platform
+    @Internal
     def tag=1
-    def getCommandArgs(dockerBase,osversion,uid,gid,uname,dockerFile,imageName){
+    def getCommandArgs(uid,gid,uname,imageName){
         return []
     }
 
@@ -515,7 +519,7 @@ class DockerTask extends Exec{
         if (dockerBase == null) dockerBase=osline
         executable "docker"
         workingDir project.file("docker")
-        args(getCommandArgs(dockerBase,osversion,uid,gid,uname,dockerFile,imageName))
+        args(getCommandArgs(uid,gid,uname,imageName))
         super.exec()
     }
 }
@@ -524,11 +528,15 @@ class DockerBuild extends DockerTask{
     DockerBuild(){
         onlyIf{ !imageExists()}
     }
-    def getCommandArgs(dockerBase,osversion,uid,gid,uname,dockerFile,imageName){
-       return ['build', '--build-arg',"OSLINE=$dockerBase",
-               '--build-arg',"OSVERSION=$osversion",
-               '-f', dockerFile,
+    def getCommandArgs(uid,gid,uname,imageName){
+        def rt=['build', '--build-arg',"OSLINE=$dockerBase",
+               '--build-arg',"OSVERSION=$osversion"]
+        if (platform != null) rt+=['--build-arg',"PLATFORMARG=$platform"]
+        rt+=['-f', dockerFile,
                '-t', imageName,'.']
+        println("buildargs: $rt")
+        return rt
+
     }
 }
 class DockerPush extends DockerTask{
@@ -543,7 +551,7 @@ class DockerPush extends DockerTask{
     DockerPush(){
         onlyIf{ !checkRemote()}
     }
-    def getCommandArgs(dockerBase,osversion,uid,gid,uname,dockerFile,imageName){
+    def getCommandArgs(uid,gid,uname,imageName){
         return [
                 "push",
                 imageName
@@ -556,7 +564,7 @@ class DockerPull extends DockerTask{
         ignoreExitValue=true
         onlyIf {!imageExists()}
     }
-    def getCommandArgs(dockerBase,osversion,uid,gid,uname,dockerFile,imageName){
+    def getCommandArgs(uid,gid,uname,imageName){
         return [
                 "pull",
                 imageName
@@ -605,6 +613,7 @@ VARIANTS.each { variant ->
         e.osversion=variant.osversion
         e.arch=variant.arch
         e.tag=variant.tag
+        e.platform=variant.platform
         e.dependsOn(dp)
         e.group="docker"
     }
