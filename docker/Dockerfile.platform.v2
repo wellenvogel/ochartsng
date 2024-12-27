@@ -1,0 +1,21 @@
+#arm32v7/debian,arm64v8/debian,ubuntu
+ARG OSLINE=
+#buster,bionic
+ARG OSVERSION=
+ARG PLATFORMARG=
+FROM --platform=${PLATFORMARG} ${OSLINE}:${OSVERSION}
+
+
+
+
+RUN apt-get update 
+#&& apt-get upgrade
+
+
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential python3 gettext git-core libbz2-dev libarchive-dev libcurl4-openssl-dev lsb-release libssl-dev zlib1g-dev
+
+#cmake
+#bootstrap CXXFLAGS=-D_FILE_OFFSET_BITS=64 -- -DBUILD_TESTING=OFF
+RUN cd / && curl -k https://cmake.org/files/v3.18/cmake-3.18.5.tar.gz | tar -xvzf - && cd cmake-3.18.5 && ./bootstrap CXXFLAGS=-D_FILE_OFFSET_BITS=64 -- -DBUILD_TESTING=OFF && make && make install 
+
+CMD /bin/bash
