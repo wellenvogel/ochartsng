@@ -223,12 +223,21 @@ target_sources(${TARGET} PRIVATE lib/simplejson/json.cpp)
 
 #add oexserverd
 if (AVNAV_ANDROID)
+    if (${ANDROID_ABI} STREQUAL "armeabi-v7a" )
+        add_custom_command(
+            TARGET ${TARGET} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_LIST_DIR}/external/o-charts_pi/libs/oeserverd/oeserverda_android/oexserverd
+            ${CMAKE_CURRENT_LIST_DIR}/../android/app/src/main/jniLibs/${CMAKE_ANDROID_ARCH_ABI}/liboexserverd.so
+            )
+    else()
     add_custom_command(
         TARGET ${TARGET} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_LIST_DIR}/external/o-charts_pi/libs/oeserverd/oeserverda_android/oexserverd
+        ${CMAKE_CURRENT_LIST_DIR}/binaries/android-arm64/oexserverd
         ${CMAKE_CURRENT_LIST_DIR}/../android/app/src/main/jniLibs/${CMAKE_ANDROID_ARCH_ABI}/liboexserverd.so
         )
+    endif()
 else()
     #testing only
     #TODO: use CMAKE_HOST_SYSTEM_PROCESSOR to determine the best oexserverd
@@ -246,27 +255,10 @@ if (NOT AVNAV_ANDROID)
     target_include_directories(preload PRIVATE include)
     target_link_libraries(preload PRIVATE dl Threads::Threads)
 else()
-    #oexserverd on Android is always 32 Bit
-    #so we only compile the preload lib in 32 Bit
-    #and copy it into the 64Bit lib dir to be packaged
-    #this could slightly confuse Android Studio
-    #so to recompile just run build clean/build
-    #the automatic recompilation when running debug will only compile the arch
-    #for your target device - so this will most probably not work
-    if (${ANDROID_ABI} STREQUAL "armeabi-v7a" )
-        add_library(preloadAndroid SHARED preload/preload-android.c)
-        target_include_directories(preloadAndroid PRIVATE include)
-        target_link_libraries(preloadAndroid PRIVATE dl)
-        target_compile_definitions(preloadAndroid PRIVATE ANDROID_VARIANT=${ANDROID_VARIANT})
-        add_custom_command(
-        TARGET ${TARGET} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-        $<TARGET_FILE:preloadAndroid>
-        ${CMAKE_CURRENT_LIST_DIR}/../android/app/src/main/jniLibs/arm64-v8a/libpreloadAndroid.so
-        )
-    else()
-        message("no preload action for ${ANDROID_ABI}")
-    endif()
+    add_library(preloadAndroid SHARED preload/preload-android.c)
+    target_include_directories(preloadAndroid PRIVATE include)
+    target_link_libraries(preloadAndroid PRIVATE dl)
+    target_compile_definitions(preloadAndroid PRIVATE ANDROID_VARIANT=${ANDROID_VARIANT})
 endif()
 
 #coordinate converted

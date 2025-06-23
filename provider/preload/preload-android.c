@@ -54,10 +54,7 @@ typedef struct sockaddr_un daddr;
             fflush(stdout);           \
         }                             \
     }
-__attribute__((constructor)) void init()
-{
-    printf("preload running\n");
-}
+
 int bind(int socket, const struct sockaddr *addr,
          socklen_t addrlen)
 {

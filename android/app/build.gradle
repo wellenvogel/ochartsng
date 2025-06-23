@@ -127,6 +127,9 @@ android {
                     arguments "-DANDROID_VARIANT=0"
                 }
             }
+            packagingOptions{
+                doNotStrip '**/*oex*.so'
+            }
         }
         debug{
             applicationIdSuffix ".debug"
