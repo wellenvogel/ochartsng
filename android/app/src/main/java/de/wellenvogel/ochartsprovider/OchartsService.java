@@ -37,6 +37,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.pm.ServiceInfo;
 import android.media.MediaDrm;
 import android.os.Binder;
 import android.os.Build;
@@ -65,7 +66,9 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
 
@@ -169,31 +172,32 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
         Intent broadcastIntentStop = new Intent();
         broadcastIntentStop.setAction(Constants.BC_STOPAPPL);
         PendingIntent stopAppl = PendingIntent.getBroadcast(this, 1, broadcastIntentStop, buildPiFlags(PendingIntent.FLAG_CANCEL_CURRENT,true));
-        RemoteViews nv = new RemoteViews(getPackageName(), R.layout.notification);
-        nv.setOnClickPendingIntent(R.id.button3, stopAppl);
-        nv.setOnClickPendingIntent(R.id.notification, contentIntent);
-        nv.setTextViewText(R.id.notificationText, "port " + Integer.toString(port));
-        NotificationCompat.Builder notificationBuilder =
-                new NotificationCompat.Builder(this, CHANNEL_ID);
-        notificationBuilder.setSmallIcon(R.mipmap.ic_launcher);
         String nTitle=getString(R.string.notifyTitle);
         if (BuildConfig.BUILD_TYPE.equals("debug")) nTitle+="-debug";
         if (BuildConfig.BUILD_TYPE.equals("beta")) nTitle+="-beta";
-        nv.setTextViewText(R.id.notificationTitle,nTitle);
+        NotificationCompat.Builder notificationBuilder =
+                new NotificationCompat.Builder(this, CHANNEL_ID);
+        notificationBuilder.setSmallIcon(R.mipmap.ic_launcher);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-            notificationBuilder.setContent(nv);
+            notificationBuilder.setContentTitle(nTitle);
+            notificationBuilder.setContentText("port " + Integer.toString(port));
         }
-        //notificationBuilder.addAction(R.drawable.alarm256red,"alarm",stopAlarmPi);
         notificationBuilder.setContentIntent(contentIntent);
         notificationBuilder.setOngoing(true);
         notificationBuilder.setAutoCancel(false);
+        notificationBuilder.addAction(R.drawable.close_black48,"Close",stopAppl);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             notificationBuilder.setVisibility(NotificationCompat.VISIBILITY_PUBLIC);
         }
         NotificationManager mNotificationManager =
                 (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         if (startForeground) {
-            startForeground(NOTIFY_ID, notificationBuilder.build());
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE){
+                startForeground(NOTIFY_ID,notificationBuilder.build(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+            }
+            else {
+                startForeground(NOTIFY_ID, notificationBuilder.build());
+            }
         } else {
             mNotificationManager.notify(NOTIFY_ID, notificationBuilder.build());
         }
@@ -245,7 +249,12 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
                 shutDown();
             }
         };
-        registerReceiver(broadCastReceiverStop,filter);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(broadCastReceiverStop,filter, RECEIVER_EXPORTED);
+        }
+        else{
+            registerReceiver(broadCastReceiverStop,filter);
+        }
         IntentFilter filterAvNav=new IntentFilter(Constants.BC_HEARTBEAT);
         broadCastReceiverAvNav =new BroadcastReceiver() {
             @Override
@@ -254,7 +263,12 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
                 lastTrigger= SystemClock.uptimeMillis();
             }
         };
-        registerReceiver(broadCastReceiverAvNav,filterAvNav);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(broadCastReceiverAvNav, filterAvNav,RECEIVER_EXPORTED);
+        }
+        else{
+            registerReceiver(broadCastReceiverAvNav, filterAvNav);
+        }
         isRunning=false;
     }
 

@@ -28,7 +28,7 @@ else{
 }
 
 android {
-    compileSdkVersion 33
+    compileSdkVersion 34
     externalNativeBuild {
         cmake {
             path "../../provider/CMakeLists.txt"
@@ -40,7 +40,7 @@ android {
         versionName "avnavocharts-$avnavVersion"
         versionCode Integer.parseInt(project.avnavVersion)
         minSdkVersion 24
-        targetSdkVersion 33
+        targetSdkVersion 34
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
