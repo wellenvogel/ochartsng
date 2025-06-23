@@ -95,7 +95,12 @@ public class Settings {
         checkMinMax("port",port,1024, ((1 << 16) - 1));
         debugLevel=Integer.parseInt(getter.getString(ctx.getString(R.string.s_debug),ctx.getString(R.string.s_debug_default)));
         checkMinMax("debugLevel",debugLevel,0,2);
-        testMode=getter.getBool(ctx.getString(R.string.s_testmode),ctx.getResources().getBoolean(R.bool.s_testmode_default));
+        if ("debug".equals(BuildConfig.BUILD_TYPE)) {
+            testMode = getter.getBool(ctx.getString(R.string.s_testmode), ctx.getResources().getBoolean(R.bool.s_testmode_default));
+        }
+        else{
+            testMode=false;
+        }
         memoryPercent=getter.getInt(ctx.getString(R.string.s_memory),ctx.getResources().getInteger(R.integer.s_memory_default));
         checkMinMax("memory",ctx,memoryPercent,R.integer.s_memory_min,R.integer.s_memory_max);
         shutdownSec=getter.getInt(ctx.getString(R.string.s_shutdown),ctx.getResources().getInteger(R.integer.s_shutdown_default));

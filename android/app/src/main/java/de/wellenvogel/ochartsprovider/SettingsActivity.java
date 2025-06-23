@@ -78,22 +78,27 @@ public class SettingsActivity extends AppCompatActivity {
         byte [] decrypted=cipher.doFinal(key,0,len);
         return new String(decrypted,StandardCharsets.UTF_8);
     }
-    ActivityResultLauncher<String> saveKey = registerForActivityResult(new ActivityResultContracts.CreateDocument(getKeyMimeType()),
-            new ActivityResultCallback<Uri>() {
-                @Override
-                public void onActivityResult(Uri uri) {
-                    if (uri == null) return;
-                    try {
-                        OutputStream os=SettingsActivity.this.getContentResolver().openOutputStream(uri);
-                        os.write(encryptKey(OchartsService.getDefaultAParameter(SettingsActivity.this)));
-                        os.close();
-                    } catch (Exception e){
-                        Toast.makeText(SettingsActivity.this,"unable to write key file "+uri.toString()+": "+e.getMessage(),Toast.LENGTH_LONG).show();
-                    }
-                    // Handle the returned Uri
-                }
-            });
-
+    class SaveKeyResultCallback implements ActivityResultCallback<Uri>{
+        private String key="";
+        public void setKey(String k){
+            key=k;
+        }
+        @Override
+        public void onActivityResult(Uri uri) {
+            if (uri == null) return;
+            if (key == null || key.isEmpty()) return;
+            try {
+                OutputStream os=SettingsActivity.this.getContentResolver().openOutputStream(uri);
+                os.write(encryptKey(key));
+                os.close();
+            } catch (Exception e){
+                Toast.makeText(SettingsActivity.this,"unable to write key file "+uri.toString()+": "+e.getMessage(),Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+    SaveKeyResultCallback saveKeyResult=new SaveKeyResultCallback();
+    ActivityResultLauncher<String> saveKey =registerForActivityResult(new ActivityResultContracts.CreateDocument(getKeyMimeType()),
+            saveKeyResult);
     static class GetKeyContent extends ActivityResultContracts.GetContent{
         @SuppressLint("MissingSuperCall")
         @NonNull
@@ -247,6 +252,12 @@ public class SettingsActivity extends AppCompatActivity {
                     return false;
                 }
             });
+            Preference testmode=findPreference(getString(R.string.s_testmode));
+            if (testmode != null){
+                if (!"debug".equals(BuildConfig.BUILD_TYPE)) {
+                    testmode.setVisible(false);
+                }
+            }
         }
         @Override
         public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
@@ -269,13 +280,13 @@ public class SettingsActivity extends AppCompatActivity {
             return false;
         }
     }
-    private boolean checkSettings(){
+    private Settings checkSettings(){
         Fragment f=getSupportFragmentManager().findFragmentByTag(FTAG);
         if (f != null && f.isVisible() && f instanceof SettingsFragment) {
             SettingsFragment fragment=(SettingsFragment) f;
             try {
                 //check our settings
-                Settings.getSettings(new Settings.Getter() {
+                return Settings.getSettings(new Settings.Getter() {
                     @Override
                     public String getString(String id, String defv) {
                         Preference p=fragment.findPreference(id);
@@ -310,20 +321,33 @@ public class SettingsActivity extends AppCompatActivity {
                 },this);
             } catch (Throwable r) {
                 Toast.makeText(this, "invalid settings: " + r.getMessage(), Toast.LENGTH_LONG).show();
-                return false;
+                return null;
             }
         }
-        return true;
+        return Settings.getSettings(this,false);
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch(item.getItemId()){
             case android.R.id.home:
-                if (! checkSettings()) return true;
+                if (checkSettings() == null) return true;
                 return super.onOptionsItemSelected(item);
             case R.id.export:
-                saveKey.launch(OchartsService.getSystemName(this)+"-"+BuildConfig.BUILD_TYPE+"-"+ Constants.KEY_FILE_NAME);
+                Settings settings=checkSettings();
+                if (settings == null) return true;
+                final String key;
+                final String sfx;
+                if (settings.isAlternateKey() && ! settings.getExternalKey().isEmpty()){
+                    sfx="alt-";
+                    key=settings.getExternalKey();
+                }
+                else{
+                    key=OchartsService.getDefaultAParameter(this);
+                    sfx="";
+                }
+                saveKeyResult.setKey(key);
+                saveKey.launch(OchartsService.getSystemName(this)+"-"+BuildConfig.BUILD_TYPE+"-"+ sfx+ Constants.KEY_FILE_NAME);
                 return true;
         }
         return super.onOptionsItemSelected(item);

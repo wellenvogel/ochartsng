@@ -171,7 +171,12 @@ public class MainActivity extends AppCompatActivity {
         private Settings settings;
         @Override
         public int getCount() {
-            return 4;
+            if ("debug".equals(BuildConfig.BUILD_TYPE)) {
+                return 4;
+            }
+            else{
+                return 3;
+            }
         }
 
         @Override
@@ -182,9 +187,9 @@ public class MainActivity extends AppCompatActivity {
                 case 1:
                     return new InfoItem("LogLevel",getResources().getStringArray(R.array.debugEntries)[settings.getDebugLevel()]);
                 case 2:
-                    return new InfoItem("Testmode",settings.isTestMode()?"On":"Off");
-                case 3:
                     return new InfoItem("Alt Key",settings.isAlternateKey()?"On":"Off");
+                case 3:
+                    return new InfoItem("Testmode",settings.isTestMode()?"On":"Off");
             }
             return null;
         }
@@ -315,7 +320,7 @@ public class MainActivity extends AppCompatActivity {
     }
     @Override
     public void onResume() {
-        loadSettings();
+        updateFromSettings();
         super.onResume();
     }
     @Override
@@ -333,6 +338,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showSettings(){
+        if (bound){
+            service.shutDown();
+        }
         Intent s=new Intent(MainActivity.this,SettingsActivity.class);
         startActivity(s);
     }
