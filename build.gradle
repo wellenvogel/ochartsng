@@ -573,6 +573,21 @@ class DockerPull extends DockerTask{
 
 
 }
+
+class DockerRmi extends DockerTask{
+    DockerRmi(){
+        ignoreExitValue=true
+        onlyIf {imageExists()}
+    }
+    def getCommandArgs(uid,gid,uname,imageName){
+        return [
+                "rmi",
+                imageName
+        ]
+    }
+
+
+}
 task buildImages {
     group "docker"
     doLast{
@@ -627,6 +642,15 @@ VARIANTS.each { variant ->
         e.arch=variant.arch
         e.tag=variant.tag
         e.dependsOn(dt)
+        e.group="docker"
+    }
+    def dclean=tasks.create(name: "dockerclean-${nameBase}",type: DockerRmi){ DockerRmi e->
+        e.dockerFile=variant.dockerfile
+        e.dockerBase=variant.dockerbase
+        e.osline=variant.osline
+        e.osversion=variant.osversion
+        e.arch=variant.arch
+        e.tag=variant.tag
         e.group="docker"
     }
     logger.lifecycle("created docker push task ${du.name}")
@@ -710,6 +734,9 @@ VARIANTS.each { variant ->
         delete buildOutput
     }
     tasks.clean.dependsOn(cleanTask)
+    if (project.hasProperty("cleanAfterBuild")){
+        debBuild.finalizedBy(dclean,cleanTask)
+    }
 }
 
 def uploadDailyDir="daily-ochartsng"

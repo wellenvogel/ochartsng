@@ -85,7 +85,7 @@ jobs:
           ANDROID_KEYALIAS: "wellenvogel"
           ANDROID_KEYPASS: ${{ secrets.ANDROID_KEYPASS }}
 
-        run: ./gradlew uploadDaily uploadRepoDaily
+        run: ./gradlew -PcleanAfterBuild=1 uploadDaily uploadRepoDaily
 
 
         
