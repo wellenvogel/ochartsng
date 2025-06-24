@@ -9,7 +9,7 @@ endif()
 if (NOT OCHARTS_VERSION)
     set(OCHARTS_VERSION "1.0.29.0")
 endif()   
-
+set(OCHARTS_VERSION_BUILD ${OCHARTS_VERSION})
 # set the project name
 project(AvNavOchartsProvider)
 #target name
@@ -147,8 +147,39 @@ else()
         set_target_properties(${TARGET} PROPERTIES OUTPUT_NAME "${ANDROID_EXE}")
     endif()
 endif()
+#add oexserverd
+if (AVNAV_ANDROID)
+    if (${ANDROID_ABI} STREQUAL "armeabi-v7a" )
+        add_custom_command(
+            TARGET ${TARGET} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_LIST_DIR}/external/o-charts_pi/libs/oeserverd/oeserverda_android/oexserverd
+            ${CMAKE_CURRENT_LIST_DIR}/../android/app/src/main/jniLibs/${CMAKE_ANDROID_ARCH_ABI}/liboexserverd.so
+            )
+    else()
+    add_custom_command(
+        TARGET ${TARGET} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_CURRENT_LIST_DIR}/binaries/android-arm64/oexserverd
+        ${CMAKE_CURRENT_LIST_DIR}/../android/app/src/main/jniLibs/${CMAKE_ANDROID_ARCH_ABI}/liboexserverd.so
+        )
+    #temp as we pick up the binary directly from our repo
+    set(OCHARTS_VERSION_BUILD "2.0.35")
+    endif()
+else()
+    #testing only
+    #TODO: use CMAKE_HOST_SYSTEM_PROCESSOR to determine the best oexserverd
+    add_custom_command(
+        TARGET ${TARGET} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_CURRENT_LIST_DIR}/external/o-charts_pi/libs/oeserverd/linux64/oexserverd
+        ${CMAKE_CURRENT_BINARY_DIR}
+    )
+endif()
+
+
 target_compile_definitions(${TARGET} PUBLIC AVNAV_VERSION=${AVNAV_VERSION})
-target_compile_definitions(${TARGET} PUBLIC OCHARTS_VERSION=${OCHARTS_VERSION})
+target_compile_definitions(${TARGET} PUBLIC OCHARTS_VERSION=${OCHARTS_VERSION_BUILD})
 target_include_directories(${TARGET} PRIVATE include include/requestHandler include/s52 src/HTTPd include/generated)
 if (CMAKE_BUILD_TYPE MATCHES "Debug")
     message("debug build")
@@ -221,33 +252,6 @@ target_include_directories(${TARGET} PRIVATE lib/simplejson)
 target_sources(${TARGET} PRIVATE lib/simplejson/json.cpp)
 
 
-#add oexserverd
-if (AVNAV_ANDROID)
-    if (${ANDROID_ABI} STREQUAL "armeabi-v7a" )
-        add_custom_command(
-            TARGET ${TARGET} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy
-            ${CMAKE_CURRENT_LIST_DIR}/external/o-charts_pi/libs/oeserverd/oeserverda_android/oexserverd
-            ${CMAKE_CURRENT_LIST_DIR}/../android/app/src/main/jniLibs/${CMAKE_ANDROID_ARCH_ABI}/liboexserverd.so
-            )
-    else()
-    add_custom_command(
-        TARGET ${TARGET} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_LIST_DIR}/binaries/android-arm64/oexserverd
-        ${CMAKE_CURRENT_LIST_DIR}/../android/app/src/main/jniLibs/${CMAKE_ANDROID_ARCH_ABI}/liboexserverd.so
-        )
-    endif()
-else()
-    #testing only
-    #TODO: use CMAKE_HOST_SYSTEM_PROCESSOR to determine the best oexserverd
-    add_custom_command(
-        TARGET ${TARGET} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_LIST_DIR}/external/o-charts_pi/libs/oeserverd/linux64/oexserverd
-        ${CMAKE_CURRENT_BINARY_DIR}
-    )
-endif()
 
 #preload
 if (NOT AVNAV_ANDROID)
