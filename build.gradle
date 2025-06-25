@@ -55,13 +55,31 @@ def DEFAULT_DEPS = [
                 ['libc6'],
                 ['libgcc1'],
                 ['libstdc++6'],
-		[primary:['libssl1.1'], or:['libssl3'], or:['libssl3t64']],
+		['libssl1.1'],
                 ['libcurl4'],
-                [primary:['python3-mapbox-earcut'], or:['base-files','13',org.redline_rpm.header.Flags.EQUAL|org.redline_rpm.header.Flags.LESS]],
                 ['gdal-bin'],
                 ['libusb-0.1-4']
         ]
-def DEPS_V2 = [
+def DEPS_V12u = [
+                ['libc6'],
+                ['libgcc1'],
+                ['libstdc++6'],
+                ['libssl3'],
+                ['libcurl4'],
+                ['gdal-bin'],
+                ['libusb-0.1-4']
+        ]
+def DEPS_V12d = [
+                ['libc6'],
+                ['libgcc1'],
+                ['libstdc++6'],
+                ['libssl3'],
+                ['libcurl4'],
+                ['python3-mapbox-earcut'],
+                ['gdal-bin'],
+                ['libusb-0.1-4']
+        ]
+def DEPS_V13 = [
                 ['libc6'],
                 ['libgcc1'],
                 ['libstdc++6'],
@@ -96,7 +114,7 @@ def VARIANTS=[
          tag: IMAGE_VERSION,
          dockerfile:'Dockerfile.all',
          oexdir: 'linux64',
-         dependencies: DEFAULT_DEPS
+         dependencies: DEPS_V12u
          ],
         [osline:'ubuntu',
          osversion:'noble',
@@ -104,7 +122,7 @@ def VARIANTS=[
          tag: IMAGE_VERSION,
          dockerfile:'Dockerfile.all',
          oexdir: 'linux64',
-         dependencies: DEPS_V2
+         dependencies: DEPS_V13
          ],
         [osline:'debian',
          osversion:'buster',
@@ -166,7 +184,7 @@ def VARIANTS=[
          dockerbase:'amd64/debian',
          dockerfile:'Dockerfile.all',
          oexdir: 'linux64',
-         dependencies:DEFAULT_DEPS
+         dependencies:DEPS_V12d
          ],
         [osline:'raspbian',
          osversion:'bookworm',
@@ -175,7 +193,7 @@ def VARIANTS=[
          dockerbase:'arm32v7/debian',
          dockerfile:'Dockerfile.all',
          oexdir: 'linuxarm',
-         dependencies:DEFAULT_DEPS
+         dependencies:DEPS_V12d
          ],
         [osline:'raspbian',
          osversion:'bookworm',
@@ -184,7 +202,7 @@ def VARIANTS=[
          dockerbase:'arm64v8/debian',
          dockerfile:'Dockerfile.all',
          oexdir: 'linuxarm64',
-         dependencies:DEFAULT_DEPS
+         dependencies:DEPS_V12d
          ],
         [osline:'debian',
          osversion:'trixie',
@@ -193,7 +211,7 @@ def VARIANTS=[
          dockerbase:'amd64/debian',
          dockerfile:'Dockerfile.all.v2',
          oexdir: 'linux64',
-         dependencies:DEPS_V2
+         dependencies:DEPS_V13
          ],
         [osline:'raspbian',
          osversion:'trixie',
@@ -203,7 +221,7 @@ def VARIANTS=[
          dockerfile:'Dockerfile.platform.v2',
          platform: 'linux/armhf',
          oexdir: 'linuxarm',
-         dependencies:DEPS_V2
+         dependencies:DEPS_V13
          ],
         [osline:'raspbian',
          osversion:'trixie',
@@ -213,7 +231,7 @@ def VARIANTS=[
          dockerbase:'arm64v8/debian',
          dockerfile:'Dockerfile.platform.v2',
          oexdir: 'linuxarm64',
-         dependencies:DEPS_V2
+         dependencies:DEPS_V13
          ]
 ]
 
