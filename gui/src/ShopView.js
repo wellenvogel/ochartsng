@@ -440,16 +440,8 @@ class ShopView extends Component {
         ShopLogin.register(forDongle,name)
             .then(()=>{
                 if (forDongle){
-                    this.showSpinner("chartlist")
-                    return ShopLogin.getCurrentChartList()
-                        .then((x)=>{
-                            this.showSpinner();
-                            return x;
-                        })
-                        .catch((err)=>{
-                            this.showSpinner();
-                            setError(err);
-                        })
+                    this.showSpinner()
+                    return;
                 }
                 else{
                     return this.identifyAndChartList(true);
