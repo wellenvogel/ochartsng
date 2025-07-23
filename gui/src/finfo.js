@@ -210,8 +210,15 @@ const showOverlay=(callback)=>{
 const chartList={};
 const showCharts=()=>{
     const charts=[]
+    let renderedOnly=false;
+    forEachEl('#renderedOnly',(el)=>{
+        renderedOnly=el.checked;
+    })
     for (let k in chartList){
-        charts.push(chartList[k]);
+        const info=chartList[k];
+        if (info.Mode !== 'UNUSED' || ! renderedOnly) {
+            charts.push(info);
+        }
         charts.sort((a,b)=>{
             if (a.Scale !== undefined && b.Scale !== undefined){
                 return a.Scale - b.Scale
@@ -226,52 +233,55 @@ const showCharts=()=>{
         }
     })
 }
-const showObjects=(parent,features)=>{
+const showObjects=(parent,features,renderedOnly)=>{
+    parent.textContent='';
     features.forEach((feature)=> {
         if (feature.type != T_CHART) return;
         chartList[feature.Chart] = feature;
     });
     features.forEach((feature)=>{
         if (feature.type != T_OBJECT) return;
-        let frame=addEl('div',"frame",parent);
-        let hdl=addEl('div','heading',frame);
-        addEl('div','title',hdl,feature.s57featureName);
-        if (feature.lat !== undefined && feature.lon !== undefined){
-            let prow=row(frame);
-            addEl('div','aname',prow,'Position');
-            addEl('div','avalue',prow,formatPosition(feature.lon,feature.lat));
-        }
-        if (feature.chart){
-            let crow=row(frame);
-            addEl('div','aname',crow,'Chart');
-            let ce=addEl('div','avalue link',crow,feature.chart);
-            ce.addEventListener('click',()=>{
-                showOverlay((el)=>{
-                    let chartInfo=chartList[feature.chart];
-                    if (chartInfo){
-                        el.textContent='';
-                        showChart(el,chartInfo);
-                    }
-                    else {
-                        el.textContent = `no info for ${feature.chart}`;
+        let chartInfo=chartList[feature.chart];
+        if (! renderedOnly|| !chartInfo || chartInfo.Mode !== 'UNUSED' ) {
+            let frame = addEl('div', "frame", parent);
+            let hdl = addEl('div', 'heading', frame);
+            addEl('div', 'title', hdl, feature.s57featureName);
+            if (feature.lat !== undefined && feature.lon !== undefined) {
+                let prow = row(frame);
+                addEl('div', 'aname', prow, 'Position');
+                addEl('div', 'avalue', prow, formatPosition(feature.lon, feature.lat));
+            }
+            if (feature.chart) {
+                let crow = row(frame);
+                addEl('div', 'aname', crow, 'Chart');
+                let ce = addEl('div', 'avalue link', crow, feature.chart);
+                ce.addEventListener('click', () => {
+                    showOverlay((el) => {
+                        let chartInfo = chartList[feature.chart];
+                        if (chartInfo) {
+                            el.textContent = '';
+                            showChart(el, chartInfo);
+                        } else {
+                            el.textContent = `no info for ${feature.chart}`;
+                        }
+                    })
+
+                })
+            }
+            let aframe = addEl('div', 'aframe', frame);
+            if (feature.attributes) {
+                feature.attributes.forEach((attribute) => {
+                    let arow = row(aframe);
+                    addEl('div', 'aname', arow, attribute.acronym)
+                    let avalue = addEl('div', 'avalue', arow, attribute.value);
+                    if (attribute.value != attribute.rawValue) {
+                        addEl('div', 'arawvalue', arow, `(${attribute.rawValue})`);
                     }
                 })
-
-            })
-        }
-        let aframe=addEl('div','aframe',frame);
-        if (feature.attributes){
-            feature.attributes.forEach((attribute)=>{
-                let arow=row(aframe);
-                addEl('div','aname',arow,attribute.acronym)
-                let avalue=addEl('div','avalue',arow,attribute.value);
-                if (attribute.value != attribute.rawValue){
-                    addEl('div','arawvalue',arow,`(${attribute.rawValue})`);
-                }
-            })
-        }
-        if (feature.expandedText){
-            addEl('div','atext',frame,feature.expandedText);
+            }
+            if (feature.expandedText) {
+                addEl('div', 'atext', frame, feature.expandedText);
+            }
         }
     })
 }
@@ -283,6 +293,7 @@ const buttonConfigs={
         showCharts();
     }
 }
+let features={};
 document.addEventListener('DOMContentLoaded',()=>{
     setButtons(buttonConfigs);
     forEachEl('.overlayFrame',(el)=>{
@@ -290,6 +301,13 @@ document.addEventListener('DOMContentLoaded',()=>{
     })
     forEachEl('.overlay',(el)=>{
         el.addEventListener('click',(ev)=>ev.stopPropagation());
+    })
+    let renderedOnly=false;
+    forEachEl('#renderedOnly',(el)=>{
+        renderedOnly=el.checked;
+        el.addEventListener('change',(ev)=>{
+            showObjects(mainContainer,features,ev.target.checked);
+        })
     })
     let mainContainer=document.getElementById("fcontent");
     let url=getParam("data");
@@ -302,8 +320,8 @@ document.addEventListener('DOMContentLoaded',()=>{
         .then((res)=>res.json())
         .then((json)=>{
             if (json.data && json.data.features){
-                mainContainer.textContent='';
-                showObjects(mainContainer,json.data.features);
+                features=json.data.features;
+                showObjects(mainContainer,features,renderedOnly);
             }
             else{
                 mainContainer.textContent="Error: no features found";
