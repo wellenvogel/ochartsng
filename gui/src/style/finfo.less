@@ -36,17 +36,26 @@ body{
   cursor: pointer;
 }
 
+.frameClass{
+  margin-left: 1em;
+  margin-right: 1em;
+  border-bottom: 1px solid grey;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  padding-bottom: 0.5em;
+}
+
 #fcontent {
   overflow-y: auto;
   height: 100%;
 
   .frame {
-    margin-left: 1em;
-    margin-right: 1em;
-    border-bottom: 1px solid grey;
-    margin-top: 0.5em;
-    margin-bottom: 0.5em;
-    padding-bottom: 0.5em;
+    .frameClass();
+  }
+}
+.chartFrame{
+  .frame{
+    .frameClass();
   }
 }
 
@@ -88,6 +97,9 @@ body{
   }
 button {
   .button();
+  &.charts{
+    max-width: 6em;
+  }
 }
 
 .overlayFrame{

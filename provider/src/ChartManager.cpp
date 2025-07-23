@@ -630,13 +630,9 @@ WeightedChartList ChartManager::FindChartsForTile(RenderSettings::ConstPtr rende
         if (it.scale >= maxzScale) return true;
         return false;
     });
-    if (allLower){
-        //for feature info requests we do not check any coverages
-        return rt;
-    }
     for (auto && c:rt){
         if (c.scale < minuScale){
-            c.softUnder=true;
+            c.kind=ChartInfoWithScale::KIND::SOFT;
         }
     }
     //now we look at the coverage
@@ -677,12 +673,12 @@ WeightedChartList ChartManager::FindChartsForTile(RenderSettings::ConstPtr rende
         //meaning scale > scales[requestedZoom+1] && scale <= scales[coverZoom]
         double maxScale=scales.GetScaleForZoom(coverZoom); //including
         double minScale=scales.GetScaleForZoom(requestedZoom+1); //excluding
-        avnav::erase_if(rt, [minScale,maxScale](const ChartInfoWithScale &it)
-                        { 
-                            if (it.info->IsOverlay()) return false;
-                            if (it.scale < minScale) return true;
-                            if (it.scale >= maxScale) return true;
-                            return false; });
+        for (auto && it : rt ){
+            if (! it.info->IsOverlay()){
+                if (it.scale < minScale) it.kind=ChartInfoWithScale::KIND::COVER;
+                if (it.scale >= maxScale) it.kind=ChartInfoWithScale::KIND::COVER;
+            }
+        }
     }
     else{
         //second try - now go to higher zoom levels
@@ -704,12 +700,17 @@ WeightedChartList ChartManager::FindChartsForTile(RenderSettings::ConstPtr rende
             //we now keep all charts between minZoom ... requestedZoom ...coverZoom
             double minScale=scales.GetScaleForZoom(coverZoom+1); //excluding
             //maxScale would be maxzScale - but they have been removed any way
-            avnav::erase_if(rt, [minScale](const ChartInfoWithScale &it)
-                        { 
-                            if (it.info->IsOverlay()) return false;
-                            if (it.scale <= minScale) return true;
-                            return false; });
+            for (auto && it : rt ){
+                if (! it.info->IsOverlay()){
+                    if (it.scale <= minScale) it.kind=ChartInfoWithScale::KIND::COVER;
+                }    
+            }
         }
+    }
+    if (! allLower){
+        avnav::erase_if(rt,[](const auto &it){
+            return it.kind == ChartInfoWithScale::KIND::COVER;
+        });
     }
     LOG_DEBUG("returning %d charts",rt.size());
     return rt;

@@ -198,8 +198,35 @@ const showChart=(parent,chartInfo)=>{
         .catch((e)=>console.log(e));
 }
 
+const showOverlay=(callback)=>{
+    forEachEl('#dialog .overlayContent',(el)=>{
+        el.textContent='';
+        callback(el);
+    })
+    showHideOverlay('dialog',true);
+}
+
+
+const chartList={};
+const showCharts=()=>{
+    const charts=[]
+    for (let k in chartList){
+        charts.push(chartList[k]);
+        charts.sort((a,b)=>{
+            if (a.Scale !== undefined && b.Scale !== undefined){
+                return a.Scale - b.Scale
+            }
+            return 0;
+        })
+    }
+    showOverlay((el)=>{
+        const frame=addEl('div','chartFrame',el);
+        for (let k in charts){
+            showChart(frame,charts[k]);
+        }
+    })
+}
 const showObjects=(parent,features)=>{
-    let chartList={};
     features.forEach((feature)=> {
         if (feature.type != T_CHART) return;
         chartList[feature.Chart] = feature;
@@ -219,7 +246,7 @@ const showObjects=(parent,features)=>{
             addEl('div','aname',crow,'Chart');
             let ce=addEl('div','avalue link',crow,feature.chart);
             ce.addEventListener('click',()=>{
-                forEachEl('#dialog .overlayContent',(el)=>{
+                showOverlay((el)=>{
                     let chartInfo=chartList[feature.chart];
                     if (chartInfo){
                         el.textContent='';
@@ -229,7 +256,6 @@ const showObjects=(parent,features)=>{
                         el.textContent = `no info for ${feature.chart}`;
                     }
                 })
-                showHideOverlay('dialog',true);
 
             })
         }
@@ -252,6 +278,9 @@ const showObjects=(parent,features)=>{
 const buttonConfigs={
     closeOverlay: (ev)=>{
         closeOverlayFromButton(ev);
+    },
+    chartList: (ev)=>{
+        showCharts();
     }
 }
 document.addEventListener('DOMContentLoaded',()=>{

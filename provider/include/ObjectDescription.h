@@ -73,6 +73,7 @@ class ChartDescription : public ObjectDescription{
     protected:
     String setName;
     String chartName;
+    json::JSON add;
     public:
     ChartDescription(const String &n, const String &setn):setName(setn){
         distance=0;
@@ -89,11 +90,17 @@ class ChartDescription : public ObjectDescription{
         ObjectDescription::toJson(js);
         js["Chart"]=chartName;
         js["ChartSet"]=setName;
+        for (const auto  &[k,v]:add.ObjectRange()){
+            js[k]=v;
+        }  
     }
     virtual void jsonOverview(json::JSON &js) const{
         ObjectDescription::jsonOverview(js);
         js["Chart"]=chartName;
         js["ChartSet"]=setName;
+    }
+    virtual void addValue(const String &k, const String &v){
+        add[k]=v;
     }
 };
 

@@ -138,7 +138,7 @@ void Renderer::renderTile(const TileInfo &tile, const RenderInfo &info, RenderRe
                     {
                         int currentIdx=idx;
                         idx++; //go to the next chart in case of errors
-                        bool isSoft=renderCharts[currentIdx].softUnder;
+                        bool isSoft=renderCharts[currentIdx].kind == ChartInfoWithScale::KIND::SOFT;
                         if ((round == 0 && isSoft) || (round != 0 && ! isSoft) ){
                             Chart::ConstPtr chart;
                             auto cit = openCharts.find(currentIdx);
@@ -175,7 +175,7 @@ void Renderer::renderTile(const TileInfo &tile, const RenderInfo &info, RenderRe
                     for (auto scaleChart = scaleCharts.begin(); scaleChart != scaleCharts.end(); scaleChart++)
                     {
                         context.chartContext = chartContexts[scaleChart->idx];
-                        if (pass == 0 || ! renderCharts[scaleChart->idx].softUnder){
+                        if (pass == 0 || renderCharts[scaleChart->idx].kind != ChartInfoWithScale::KIND::SOFT){
                             //for "soft under" charts we only render areas
                             scaleChart->chart->Render(pass, context, *drawing,  renderCharts[scaleChart->idx].tile);
                             hasRendered = true;
@@ -258,6 +258,10 @@ ObjectList Renderer::featureInfo( const TileInfo &info, const Coord::TileBox &bo
             drawing->resetDrawn();
             ObjectList objects=chart->FeatureInfo(context,*drawing,box,overview);
             if (objects.size() > 0){
+                //we assume the first entry to be the chart
+                objects[0]->addValue("Mode",it->kindStr());
+                objects[0]->addValue("Zoom",StringHelper::format("%d",info.zoom));
+                objects[0]->addValue("ZoomScale",StringHelper::format("%d",context.scale));
                 rt.insert(rt.end(),objects.begin(),objects.end());
             }
         }

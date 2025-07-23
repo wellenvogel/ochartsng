@@ -125,14 +125,30 @@ public:
 
 class ChartInfoWithScale{
 public:
+    using KIND=enum{
+        USED=1, //normal use for render
+        SOFT=2, //only used for area under
+        COVER=3 //removed as covered by lower
+    };
     ChartInfo::Ptr info;
     int scale;
-    bool softUnder=false;
+    KIND kind=KIND::USED;
     ChartInfoWithScale(int weight, ChartInfo::Ptr info){
         this->scale=weight;
         this->info=info;
     }
     Coord::TileBox tile;
+    const String kindStr() const{
+        switch (kind){
+            case USED:
+                return "USED";
+            case SOFT:
+                return "SOFT_UNDER";
+            case COVER:
+                return "UNUSED";
+        }
+        return "UNKNOWN";
+    }
 };
 
 class WeightedChartList : public std::vector<ChartInfoWithScale> {
