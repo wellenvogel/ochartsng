@@ -64,7 +64,13 @@
         "map": "cpp",
         "memory_resource": "cpp",
         "set": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "bit": "cpp",
+        "compare": "cpp",
+        "concepts": "cpp",
+        "numbers": "cpp",
+        "semaphore": "cpp",
+        "stop_token": "cpp"
     },
     "java.configuration.updateBuildConfiguration": "automatic"
 }

@@ -290,6 +290,7 @@ namespace Coord
         T ymin = 0; // upper left y
         T ymax = 0; // lower right y
         Box() {}
+        Box(T cxmin,T cxmax,T cymin,T cymax):xmin(cxmin),xmax(cxmax),ymin(cymin),ymax(cymax){}
         bool intersects(const Box<T> &other) const{
             if (! other.valid) return false;
             if (xmax < other.xmin || ymax < other.ymin) return false;
@@ -298,6 +299,10 @@ namespace Coord
         }
         bool intersects(const Point<T> &other) const{
             if (other.x >= xmin && other.x <= xmax && other.y >= ymin && other.y <=ymax) return true;
+            return false;
+        }
+        bool intersects(const T &x, const T &y) const{
+            if (x >= xmin && x <= xmax && y >= ymin && y <=ymax) return true;
             return false;
         }
         //do we include other completely?

@@ -67,6 +67,7 @@ public:
         if (StringHelper::startsWith(url,"/")){
             url=url.substr(1);
         }
+        String noborder=GetQueryValue(request,"noborder");
         String type=GetQueryValue(request,"type");
         String spoint=GetQueryValue(request,"points");
         std::vector<Coord::PixelXy> points;
@@ -185,11 +186,13 @@ public:
             }
             //TODO: render drawings
         }
-        DrawingContext::ColorAndAlpha c = DrawingContext::convertColor(255, 0, 0);
-        drawing->drawHLine(0, 0, Coord::TILE_SIZE - 1, c);
-        drawing->drawHLine(Coord::TILE_SIZE - 1, 0, Coord::TILE_SIZE - 1, c);
-        drawing->drawVLine(0, 0, Coord::TILE_SIZE - 1, c);
-        drawing->drawVLine(Coord::TILE_SIZE - 1, 0, Coord::TILE_SIZE - 1, c);
+        if (noborder.empty()){
+            DrawingContext::ColorAndAlpha c = DrawingContext::convertColor(255, 0, 0);
+            drawing->drawHLine(0, 0, Coord::TILE_SIZE - 1, c);
+            drawing->drawHLine(Coord::TILE_SIZE - 1, 0, Coord::TILE_SIZE - 1, c);
+            drawing->drawVLine(0, 0, Coord::TILE_SIZE - 1, c);
+            drawing->drawVLine(Coord::TILE_SIZE - 1, 0, Coord::TILE_SIZE - 1, c);
+        }
         timer.add("draw");
         encoder->setContext(drawing.get());
         DataPtr png=std::make_shared<DataVector>();
