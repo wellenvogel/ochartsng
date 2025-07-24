@@ -597,6 +597,7 @@ WeightedChartList ChartManager::FindChartsForTile(RenderSettings::ConstPtr rende
     //find the wanted zoom levels
     //min zoom gives us the zoom we use to display bigger scale charts (i.e. charts belonging to lower zoom levels)
     int minZoom=allLower?-1:tile.zoom-renderSettings->overZoom;
+    if (minZoom < -1) minZoom=-1;
     int requestedZoom=tile.zoom;
     if (requestedZoom > MAX_ZOOM) requestedZoom=MAX_ZOOM;
     //maxUnder gives the zoom we used to display better (higher zoom, smaller scale charts)
@@ -630,19 +631,30 @@ WeightedChartList ChartManager::FindChartsForTile(RenderSettings::ConstPtr rende
         if (it.scale >= maxzScale) return true;
         return false;
     });
+    //mark all the charts that we only picked for featureInfo
+    int origMinZoom=tile.zoom-renderSettings->overZoom;
+    if (origMinZoom < 0) origMinZoom=0;
+    double origMaxScale=scales.GetScaleForZoom(origMinZoom);
     for (auto && c:rt){
         if (c.scale < minuScale){
             c.kind=ChartInfoWithScale::KIND::SOFT;
         }
+        if (origMaxScale < maxzScale &&  c.scale > origMaxScale){
+            c.kind=ChartInfoWithScale::KIND::OVER;
+        }
     }
+    
+
     //now we look at the coverage
+    //Phase(1)
     //we start with our requested zoom level and the go down (i.e. larger scale charts)
     //if we have covered in this phase we are done.
     //we always go down to the min zoom as our coverage is currently rather heuristic
     //as we only use the chart extent. It could easily happen that a chart report a bigger 
     //extent then it really covers
+    //Phase(2)
     //for this phase we have to go backward through the list
-    //Afterwards we start with the charts with hiher zoom level (i.e. lower scales)
+    //Afterwards we start with the charts with higher zoom level (i.e. lower scales)
     //this time we need to iterate forward
     //smallest scales (highest zoom levels) are at the end
     //but we need to ensure to still have all charts of a particular
@@ -650,8 +662,10 @@ WeightedChartList ChartManager::FindChartsForTile(RenderSettings::ConstPtr rende
     //we then delete all charts with a zoom that is one above our cover zoom
     Coverage coverage(Coord::TILE_SIZE,Coord::TILE_SIZE);
     int coverZoom=-2; //not set, -1 could be the min zoom
+    //Phase(1)
     for (auto it=rt.rbegin();it != rt.rend();it++){
-        if (it->scale > startScaleLower && ! it->info->IsOverlay()){
+        //we never consider chart sthat we only picked for featureInfo (kind OVER)
+        if (it->kind != ChartInfoWithScale::KIND::OVER &&  it->scale > startScaleLower && ! it->info->IsOverlay()){
             //add to coverage (if the chart is no overlay)
             Coord::PixelBox pex=Coord::worldExtentToPixel(it->info->GetExtent(),it->tile);
             coverage.setArea(pex);
@@ -681,10 +695,10 @@ WeightedChartList ChartManager::FindChartsForTile(RenderSettings::ConstPtr rende
         }
     }
     else{
-        //second try - now go to higher zoom levels
+        //Phase (2) second try - now go to higher zoom levels
         for (auto it=rt.begin();it != rt.end();it++){
             //we don't nee our own zoom again
-            if (it->scale <= startScaleLower && ! it->info->IsOverlay()){
+            if (it->kind != ChartInfoWithScale::KIND::OVER && it->scale <= startScaleLower && ! it->info->IsOverlay()){
                 //add to coverage (if the chart is no overlay)
                 Coord::PixelBox pex=Coord::worldExtentToPixel(it->info->GetExtent(),it->tile);
                 coverage.setArea(pex);
@@ -709,10 +723,16 @@ WeightedChartList ChartManager::FindChartsForTile(RenderSettings::ConstPtr rende
     }
     if (! allLower){
         avnav::erase_if(rt,[](const auto &it){
-            return it.kind == ChartInfoWithScale::KIND::COVER;
+            return it.kind == ChartInfoWithScale::KIND::COVER || it.kind == ChartInfoWithScale::KIND::OVER;
         });
     }
-    LOG_DEBUG("returning %d charts",rt.size());
+    LOG_DEBUGS([&rt](auto &logs)
+               {
+                logs << "findChartsForTile: returning " << rt.size() << " charts ";
+                for (auto &&it: rt){
+                    logs << FileHelper::fileName(it.info->GetFileName(),true) << ',';
+                } 
+                });
     return rt;
 }
 

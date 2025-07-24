@@ -128,7 +128,8 @@ public:
     using KIND=enum{
         USED=1, //normal use for render
         SOFT=2, //only used for area under
-        COVER=3 //removed as covered by lower
+        COVER=3, //removed as covered by lower
+        OVER=4  //only listed for featureInfo - not used for render
     };
     ChartInfo::Ptr info;
     int scale;
@@ -144,6 +145,8 @@ public:
                 return "USED";
             case SOFT:
                 return "SOFT_UNDER";
+            case OVER:
+                return "OVER";
             case COVER:
                 return "UNUSED";
         }

@@ -39,8 +39,10 @@
 #define LOG_LEVEL_DEBUG 2
 
 #define LOG_INFO(...) if(Logger::instance()->HasLevel(LOG_LEVEL_INFO)) Logger::instance()->Log(LOG_LEVEL_INFO,"INFO",__VA_ARGS__);
+#define LOG_INFOS(callback) Logger::instance()->Log(LOG_LEVEL_INFO,"INFO",callback);
 #define LOG_INFOC(...) {StringHelper::StreamFormat(std::cout,__VA_ARGS__);std::cout << std::endl;if(Logger::instance()->HasLevel(LOG_LEVEL_INFO)) Logger::instance()->Log(LOG_LEVEL_INFO,"INFO",__VA_ARGS__);}
 #define LOG_DEBUG(...) if(Logger::instance()->HasLevel(LOG_LEVEL_DEBUG)) Logger::instance()->Log(LOG_LEVEL_DEBUG,"DEBUG",__VA_ARGS__)
+#define LOG_DEBUGS(callback) Logger::instance()->Log(LOG_LEVEL_DEBUG,"DEBUG",callback);
 #define LOG_ERROR(...) if(Logger::instance()->HasLevel(LOG_LEVEL_ERROR)) Logger::instance()->Log(LOG_LEVEL_ERROR,"ERROR",__VA_ARGS__)
 #define LOG_ERRORC(...) {StringHelper::StreamFormat(std::cout,__VA_ARGS__);std::cout << std::endl;if(Logger::instance()->HasLevel(LOG_LEVEL_ERROR)) Logger::instance()->Log(LOG_LEVEL_ERROR,"ERROR", __VA_ARGS__);}
 class MStreamBuf;
@@ -75,6 +77,19 @@ public:
         if (!this->HasLevel(level)) return;
         WriteHeader(cat);
         StringHelper::StreamFormat(*logStream,fmt,std::forward<Args>(args)...);
+        *logStream << std::endl;
+        currentLines++;
+        }
+        HouseKeeping();
+    }
+    void Log(int level, const char *cat, std::function<void(std::ostream &)> cb){
+        if (! initialized || ! cb) return;
+        {
+        Synchronized l(mutex);
+        if (! logStream) return;
+        if (!this->HasLevel(level)) return;
+        WriteHeader(cat);
+        cb(*logStream);
         *logStream << std::endl;
         currentLines++;
         }

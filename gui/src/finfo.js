@@ -206,6 +206,9 @@ const showOverlay=(callback)=>{
     showHideOverlay('dialog',true);
 }
 
+const usedForRender=(chartInfo)=>{
+    return chartInfo.Mode !== 'UNUSED' && chartInfo.Mode !== 'OVER'
+}
 
 const chartList={};
 const showCharts=()=>{
@@ -216,7 +219,7 @@ const showCharts=()=>{
     })
     for (let k in chartList){
         const info=chartList[k];
-        if (info.Mode !== 'UNUSED' || ! renderedOnly) {
+        if (usedForRender(info) || ! renderedOnly) {
             charts.push(info);
         }
         charts.sort((a,b)=>{
@@ -242,7 +245,7 @@ const showObjects=(parent,features,renderedOnly)=>{
     features.forEach((feature)=>{
         if (feature.type != T_OBJECT) return;
         let chartInfo=chartList[feature.chart];
-        if (! renderedOnly|| !chartInfo || chartInfo.Mode !== 'UNUSED' ) {
+        if (! renderedOnly|| !chartInfo || usedForRender(chartInfo) ) {
             let frame = addEl('div', "frame", parent);
             let hdl = addEl('div', 'heading', frame);
             addEl('div', 'title', hdl, feature.s57featureName);
