@@ -813,6 +813,7 @@ private:
     DrawingContext::ColorAndAlpha* buffer;
     size_t lineLen;
     DrawingContext::ColorAndAlpha pixelValue;
+    bool checkOnly;
 
     // Calculates number of steps until clipping boundary
     int stepsToClipEntry(Coord::Pixel x0, Coord::Pixel y0, Coord::Pixel x1, Coord::Pixel y1, int sx, int sy) {
@@ -952,24 +953,29 @@ private:
     }
 
 public:
-    EfficientLineRenderer(const Coord::Box<Coord::Pixel>& rect, DrawingContext::ColorAndAlpha* buf, size_t lineLength, DrawingContext::ColorAndAlpha value) 
-        : clipRect(rect), buffer(buf), lineLen(lineLength), pixelValue(value) {}
+    EfficientLineRenderer(const Coord::Box<Coord::Pixel>& rect, DrawingContext::ColorAndAlpha* buf, size_t lineLength, DrawingContext::ColorAndAlpha value, bool ccheckOnly) 
+        : clipRect(rect), buffer(buf), lineLen(lineLength), pixelValue(value),checkOnly(ccheckOnly) {}
 
-    void drawLine(Coord::Pixel x0, Coord::Pixel y0, Coord::Pixel x1, Coord::Pixel y1) {
-        
+    bool drawLine(Coord::Pixel x0, Coord::Pixel y0, Coord::Pixel x1, Coord::Pixel y1, bool thick,const DrawingContext::Dash *dash ) {
+    #define writePixel( x,  y) {\
+        if (buffer && clipRect.intersects(x, y)) {\
+            buffer[y * lineLen + x] = pixelValue;\
+        }\
+    }
         int dx = abs(x1 - x0);
         int dy = abs(y1 - y0);
         int sx = (x0 < x1) ? 1 : -1;
         int sy = (y0 < y1) ? 1 : -1;
         int err = dx - dy;
-
+        bool hasDrawn=false;
         Coord::Pixel x = x0, y = y0;
         
         // Phase 1: Jump analytically to clipping region
         if (!clipRect.intersects(x, y)) {
             fastForwardToClipRegion(x, y, err, x1, y1, dx, dy, sx, sy);
         }
-        
+        DrawingContext::DashHandler dh(dash);
+        dh.shouldDraw(x,y);
         // Phase 2: Normal Bresenham iteration in/around clipping region
         bool hasLeftClipRegion = false;
         
@@ -977,9 +983,49 @@ public:
             bool inClip = clipRect.intersects(x, y);
             
             if (inClip) {
-                // Write pixel to buffer at position y * lineLen + x
-                if (buffer) {
-                    buffer[y * lineLen + x] = pixelValue;
+                hasDrawn=true;
+                if (checkOnly) return true;
+                if (dh.shouldDraw(x, y))
+                {
+                    // Write pixel to buffer at position y * lineLen + x
+                    if (buffer)
+                    {
+                        buffer[y * lineLen + x] = pixelValue;
+                    }
+                    if (thick)
+                    {
+                        // Determine which direction we're moving and add overlapping pixel
+                        bool willMoveX = false;
+                        bool willMoveY = false;
+
+                        // Check next Bresenham step to predict movement
+                        if (x != x1 || y != y1)
+                        { // Not at endpoint
+                            int e2 = 2 * err;
+                            if (e2 > -dy)
+                                willMoveX = true;
+                            if (e2 < dx)
+                                willMoveY = true;
+                        }
+
+                        // Add overlapping pixels based on movement direction
+                        if (willMoveX && willMoveY)
+                        {
+                            // Diagonal step - add both adjacent pixels
+                            writePixel(x + sx, y); // Horizontal overlap
+                            writePixel(x, y + sy); // Vertical overlap
+                        }
+                        else if (willMoveX && !willMoveY)
+                        {
+                            // Pure horizontal step - add vertical overlap
+                            writePixel(x, y + ((sy > 0) ? 1 : -1));
+                        }
+                        else if (!willMoveX && willMoveY)
+                        {
+                            // Pure vertical step - add horizontal overlap
+                            writePixel(x + ((sx > 0) ? 1 : -1), y);
+                        }
+                    }
                 }
                 hasLeftClipRegion = false; // Back in region
             } else if (hasLeftClipRegion) {
@@ -1007,7 +1053,9 @@ public:
                 y += sy;
             }
         }
+        return hasDrawn;
     }
+
 
 
 };
@@ -1017,9 +1065,10 @@ void DrawingContext::drawLine(const Coord::PixelXy &p0, const Coord::PixelXy &p1
         Coord::PixelBox(0,255,0,255),
         buffer.get(),
         linelen,
-        color
+        color,
+        checkOnly
         );
-    lrender.drawLine(p0.x,p0.y,p1.x,p1.y);
+    hasDrawn=lrender.drawLine(p0.x,p0.y,p1.x,p1.y,overlap,dash);
 }
 #else
 void DrawingContext::drawLine(const Coord::PixelXy &p0, const Coord::PixelXy &p1, const DrawingContext::ColorAndAlpha &color, bool useAlpha, const DrawingContext::Dash *dash, bool overlap){

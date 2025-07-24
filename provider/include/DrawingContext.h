@@ -51,7 +51,7 @@ public:
         LINE_THICKNESS_DRAW_CLOCKWISE
     }ThicknessMode;
 
-protected:
+public:
     class DashHandler
     {
         const Dash *dash;
