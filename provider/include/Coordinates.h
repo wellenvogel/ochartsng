@@ -301,7 +301,7 @@ namespace Coord
             if (other.x >= xmin && other.x <= xmax && other.y >= ymin && other.y <=ymax) return true;
             return false;
         }
-        bool intersects(const T &x, const T &y) const{
+        bool contains(const T &x, const T &y) const{
             if (x >= xmin && x <= xmax && y >= ymin && y <=ymax) return true;
             return false;
         }

@@ -806,8 +806,283 @@ void DrawingContext::drawArc(const Coord::PixelXy &center, const DrawingContext:
 #include <cmath>
 #include <algorithm>
 
-
+using Rectangle=Coord::PixelBox;
+using PixelValue=DrawingContext::ColorAndAlpha;
 class EfficientLineRenderer {
+private:
+    Rectangle clipRect;
+    PixelValue* buffer;
+    size_t lineLen;
+    PixelValue pixelValue;
+
+    // Calculates number of steps until clipping boundary
+    int stepsToClipEntry(Coord::Pixel x0, Coord::Pixel y0, Coord::Pixel x1, Coord::Pixel y1, int sx, int sy) {
+        int steps = 0;
+        
+        // Calculate steps to next relevant boundary
+        if (sx > 0 && x0 < clipRect.xmin) {
+            steps = std::max(steps, clipRect.xmin - x0);
+        } else if (sx < 0 && x0 > clipRect.xmax) {
+            steps = std::max(steps, x0 - clipRect.xmax);
+        }
+        
+        if (sy > 0 && y0 < clipRect.ymin) {
+            steps = std::max(steps, clipRect.ymin - y0);
+        } else if (sy < 0 && y0 > clipRect.ymax) {
+            steps = std::max(steps, y0 - clipRect.ymax);
+        }
+        
+        return steps;
+    }
+
+    // Calculates correct Bresenham error after n steps
+    int calculateErrorAfterSteps(int dx, int dy, int steps, int majorAxisSteps, int minorAxisSteps) {
+        int initialError = dx - dy;
+        
+        // Simulate error accumulation
+        int err = initialError;
+        for (int i = 0; i < steps; i++) {
+            int e2 = 2 * err;
+            if (e2 > -dy) {
+                err -= dy;
+            }
+            if (e2 < dx) {
+                err += dx;
+            }
+        }
+        return err;
+    }
+
+    // Analytical calculation of position after n Bresenham steps
+    void advanceBresenhamBySteps(Coord::Pixel& x, Coord::Pixel& y, int& err, int dx, int dy, int sx, int sy, int steps) {
+        if (steps <= 0) return;
+        
+        // For large jumps: analytical calculation
+        if (dx >= dy) {
+            // X is the major axis
+            int majorSteps = steps;
+            int minorSteps = 0;
+            
+            // Calculate how many Y-steps are made
+            int tempErr = err;
+            for (int i = 0; i < steps; i++) {
+                int e2 = 2 * tempErr;
+                if (e2 > -dy) {
+                    tempErr -= dy;
+                }
+                if (e2 < dx) {
+                    tempErr += dx;
+                    minorSteps++;
+                }
+            }
+            
+            x += majorSteps * sx;
+            y += minorSteps * sy;
+            err = tempErr;
+        } else {
+            // Y is the major axis
+            int majorSteps = steps;
+            int minorSteps = 0;
+            
+            // Calculate how many X-steps are made
+            int tempErr = err;
+            for (int i = 0; i < steps; i++) {
+                int e2 = 2 * tempErr;
+                if (e2 > -dy) {
+                    tempErr -= dy;
+                    minorSteps++;
+                }
+                if (e2 < dx) {
+                    tempErr += dx;
+                }
+            }
+            
+            x += minorSteps * sx;
+            y += majorSteps * sy;
+            err = tempErr;
+        }
+    }
+
+    // Optimized analytical forward movement (more precise)
+    void fastForwardToClipRegion(Coord::Pixel& x, Coord::Pixel& y, int& err, Coord::Pixel x1, Coord::Pixel y1, int dx, int dy, int sx, int sy) {
+        if (clipRect.contains(x, y)) return;
+        
+        // Calculate minimum steps until possible entry
+        int stepsX = 0, stepsY = 0;
+        
+        if (sx > 0 && x < clipRect.xmin) {
+            stepsX = clipRect.xmin - x;
+        } else if (sx < 0 && x > clipRect.xmax) {
+            stepsX = x - clipRect.xmax;
+        }
+        
+        if (sy > 0 && y < clipRect.ymin) {
+            stepsY = clipRect.ymin - y;
+        } else if (sy < 0 && y > clipRect.ymax) {
+            stepsY = y - clipRect.ymax;
+        }
+        
+        // Use the smaller step (conservative approach)
+        int steps = 0;
+        if (stepsX > 0 && stepsY > 0) {
+            steps = std::min(stepsX, stepsY);
+        } else {
+            steps = std::max(stepsX, stepsY);
+        }
+        
+        // Safety check: don't go beyond endpoint
+        int maxStepsX = abs(x1 - x);
+        int maxStepsY = abs(y1 - y);
+        int maxSteps = std::max(maxStepsX, maxStepsY);
+        steps = std::min(steps, maxSteps);
+        
+        if (steps > 0) {
+            // Optimized step advancement using analytical calculation
+            if (dx >= dy) {
+                // X is major axis - calculate Y steps analytically
+                int minorSteps = 0;
+                int tempErr = err;
+                
+                // Fast calculation for Y steps over given X distance
+                for (int i = 0; i < steps; i++) {
+                    int e2 = 2 * tempErr;
+                    if (e2 > -dy) tempErr -= dy;
+                    if (e2 < dx) {
+                        tempErr += dx;
+                        minorSteps++;
+                    }
+                }
+                
+                x += steps * sx;
+                y += minorSteps * sy;
+                err = tempErr;
+            } else {
+                // Y is major axis - calculate X steps analytically  
+                int minorSteps = 0;
+                int tempErr = err;
+                
+                // Fast calculation for X steps over given Y distance
+                for (int i = 0; i < steps; i++) {
+                    int e2 = 2 * tempErr;
+                    if (e2 > -dy) {
+                        tempErr -= dy;
+                        minorSteps++;
+                    }
+                    if (e2 < dx) tempErr += dx;
+                }
+                
+                x += minorSteps * sx;
+                y += steps * sy;
+                err = tempErr;
+            }
+        }
+    }
+
+    // Checks if we have permanently left the clipping region
+    bool canReenterClipRegion(Coord::Pixel x, Coord::Pixel y, Coord::Pixel x1, Coord::Pixel y1, int sx, int sy) {
+        // Check X direction
+        if (sx > 0 && x > clipRect.xmax && x1 > clipRect.xmax) return false;
+        if (sx < 0 && x < clipRect.xmin && x1 < clipRect.xmin) return false;
+        
+        // Check Y direction  
+        if (sy > 0 && y > clipRect.ymax && y1 > clipRect.ymax) return false;
+        if (sy < 0 && y < clipRect.ymin && y1 < clipRect.ymin) return false;
+        
+        return true;
+    }
+
+public:
+    EfficientLineRenderer(const Rectangle& rect, PixelValue* buf, size_t lineLength, PixelValue value = 0xFFFFFFFF) 
+        : clipRect(rect), buffer(buf), lineLen(lineLength), pixelValue(value) {}
+
+    void drawLine(Coord::Pixel x0, Coord::Pixel y0, Coord::Pixel x1, Coord::Pixel y1, bool thickLine = false) {
+        
+        int dx = abs(x1 - x0);
+        int dy = abs(y1 - y0);
+        int sx = (x0 < x1) ? 1 : -1;
+        int sy = (y0 < y1) ? 1 : -1;
+        int err = dx - dy;
+
+        Coord::Pixel x = x0, y = y0;
+        
+        // Phase 1: Jump analytically to clipping region
+        if (!clipRect.contains(x, y)) {
+            fastForwardToClipRegion(x, y, err, x1, y1, dx, dy, sx, sy);
+        }
+        
+        // Phase 2: Normal Bresenham iteration in/around clipping region
+        bool hasLeftClipRegion = false;
+        PixelValue* bufferPtr = buffer ? buffer + (y * lineLen + x) : nullptr;
+        
+        while (true) {
+            bool inClip = (x >= clipRect.xmin && x <= clipRect.xmax && 
+                          y >= clipRect.ymin && y <= clipRect.ymax);
+            
+            if (inClip && bufferPtr) {
+                // Write main pixel directly via pointer
+                *bufferPtr = pixelValue;
+                
+                // If thick line mode is enabled, draw overlapping pixels
+                if (thickLine) {
+                    // Predict next Bresenham step without recalculating
+                    int e2 = 2 * err;
+                    bool willMoveX = (e2 > -dy);
+                    bool willMoveY = (e2 < dx);
+                    
+                    // Add overlapping pixels with bounds checking
+                    if (willMoveX && willMoveY) {
+                        // Diagonal step - add both adjacent pixels
+                        if (x + sx >= clipRect.xmin && x + sx <= clipRect.xmax)
+                            bufferPtr[sx] = pixelValue;  // Horizontal overlap
+                        if (y + sy >= clipRect.ymin && y + sy <= clipRect.ymax)
+                            bufferPtr[sy * lineLen] = pixelValue;  // Vertical overlap
+                    } else if (willMoveX) {
+                        // Pure horizontal step - add vertical overlap
+                        int verticalOffset = (sy > 0) ? lineLen : -lineLen;
+                        if (y + ((sy > 0) ? 1 : -1) >= clipRect.ymin && 
+                            y + ((sy > 0) ? 1 : -1) <= clipRect.ymax)
+                            bufferPtr[verticalOffset] = pixelValue;
+                    } else if (willMoveY) {
+                        // Pure vertical step - add horizontal overlap
+                        int horizontalOffset = (sx > 0) ? 1 : -1;
+                        if (x + horizontalOffset >= clipRect.xmin && 
+                            x + horizontalOffset <= clipRect.xmax)
+                            bufferPtr[horizontalOffset] = pixelValue;
+                    }
+                }
+                
+                hasLeftClipRegion = false;
+            } else if (hasLeftClipRegion) {
+                // Left clipping region - check if return is possible
+                if (!canReenterClipRegion(x, y, x1, y1, sx, sy)) {
+                    break;
+                }
+            } else {
+                hasLeftClipRegion = true;
+            }
+
+            // Endpoint reached?
+            if (x == x1 && y == y1) break;
+
+            // Standard Bresenham step with pointer update
+            int e2 = 2 * err;
+            
+            if (e2 > -dy) {
+                err -= dy;
+                x += sx;
+                if (bufferPtr) bufferPtr += sx;  // Update pointer horizontally
+            }
+            
+            if (e2 < dx) {
+                err += dx;
+                y += sy;
+                if (bufferPtr) bufferPtr += sy * lineLen;  // Update pointer vertically
+            }
+        }
+    }
+};
+
+class EfficientLineRenderer1 {
 private:
     Coord::Box<Coord::Pixel> clipRect;
     DrawingContext::ColorAndAlpha* buffer;
@@ -905,7 +1180,7 @@ private:
 
     // Optimized analytical forward movement (more precise)
     void fastForwardToClipRegion(Coord::Pixel& x, Coord::Pixel& y, int& err, Coord::Pixel x1, Coord::Pixel y1, int dx, int dy, int sx, int sy) {
-        if (clipRect.intersects(x, y)) return;
+        if (clipRect.contains(x, y)) return;
         
         // Calculate minimum steps until possible entry
         int stepsX = 0, stepsY = 0;
@@ -953,12 +1228,12 @@ private:
     }
 
 public:
-    EfficientLineRenderer(const Coord::Box<Coord::Pixel>& rect, DrawingContext::ColorAndAlpha* buf, size_t lineLength, DrawingContext::ColorAndAlpha value, bool ccheckOnly) 
+    EfficientLineRenderer1(const Coord::Box<Coord::Pixel>& rect, DrawingContext::ColorAndAlpha* buf, size_t lineLength, DrawingContext::ColorAndAlpha value, bool ccheckOnly) 
         : clipRect(rect), buffer(buf), lineLen(lineLength), pixelValue(value),checkOnly(ccheckOnly) {}
 
     bool drawLine(Coord::Pixel x0, Coord::Pixel y0, Coord::Pixel x1, Coord::Pixel y1, bool thick,const DrawingContext::Dash *dash ) {
     #define writePixel( x,  y) {\
-        if (buffer && clipRect.intersects(x, y)) {\
+        if (buffer && clipRect.contains(x, y)) {\
             buffer[y * lineLen + x] = pixelValue;\
         }\
     }
@@ -971,7 +1246,7 @@ public:
         Coord::Pixel x = x0, y = y0;
         
         // Phase 1: Jump analytically to clipping region
-        if (!clipRect.intersects(x, y)) {
+        if (!clipRect.contains(x, y)) {
             fastForwardToClipRegion(x, y, err, x1, y1, dx, dy, sx, sy);
         }
         DrawingContext::DashHandler dh(dash);
@@ -980,7 +1255,7 @@ public:
         bool hasLeftClipRegion = false;
         
         while (true) {
-            bool inClip = clipRect.intersects(x, y);
+            bool inClip = clipRect.contains(x, y);
             
             if (inClip) {
                 hasDrawn=true;
@@ -1059,16 +1334,15 @@ public:
 
 
 };
-#ifndef OLDBH
+#ifdef OLDBH
 void DrawingContext::drawLine(const Coord::PixelXy &p0, const Coord::PixelXy &p1, const DrawingContext::ColorAndAlpha &color, bool useAlpha, const DrawingContext::Dash *dash, bool overlap){
     EfficientLineRenderer lrender(
         Coord::PixelBox(0,255,0,255),
         buffer.get(),
         linelen,
-        color,
-        checkOnly
+        color
         );
-    hasDrawn=lrender.drawLine(p0.x,p0.y,p1.x,p1.y,overlap,dash);
+    lrender.drawLine(p0.x,p0.y,p1.x,p1.y,overlap);
 }
 #else
 void DrawingContext::drawLine(const Coord::PixelXy &p0, const Coord::PixelXy &p1, const DrawingContext::ColorAndAlpha &color, bool useAlpha, const DrawingContext::Dash *dash, bool overlap){
