@@ -639,7 +639,7 @@ WeightedChartList ChartManager::FindChartsForTile(RenderSettings::ConstPtr rende
         if (c.scale < minuScale){
             c.kind=ChartInfoWithScale::KIND::SOFT;
         }
-        if (origMaxScale < maxzScale &&  c.scale > origMaxScale){
+        if (origMaxScale < maxzScale &&  c.scale >= origMaxScale){
             c.kind=ChartInfoWithScale::KIND::OVER;
         }
     }
@@ -664,7 +664,7 @@ WeightedChartList ChartManager::FindChartsForTile(RenderSettings::ConstPtr rende
     int coverZoom=-2; //not set, -1 could be the min zoom
     //Phase(1)
     for (auto it=rt.rbegin();it != rt.rend();it++){
-        //we never consider chart sthat we only picked for featureInfo (kind OVER)
+        //we never consider charts that we only picked for featureInfo (kind OVER)
         if (it->kind != ChartInfoWithScale::KIND::OVER &&  it->scale > startScaleLower && ! it->info->IsOverlay()){
             //add to coverage (if the chart is no overlay)
             Coord::PixelBox pex=Coord::worldExtentToPixel(it->info->GetExtent(),it->tile);

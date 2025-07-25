@@ -236,18 +236,36 @@ const showCharts=()=>{
         }
     })
 }
+
+const showRaw=(idx,title)=>{
+    const feature=features[idx];
+    if (! feature) return;
+    const txt=JSON.stringify(feature,undefined,2);
+    showOverlay((parent)=>{
+        const h=addEl('div','heading',parent);
+        addEl('div', 'title', h, title);
+        addEl('div','raw',parent,txt);
+    })
+}
+
 const showObjects=(parent,features,renderedOnly)=>{
     parent.textContent='';
     features.forEach((feature)=> {
         if (feature.type != T_CHART) return;
         chartList[feature.Chart] = feature;
     });
+    let idx=-1;
     features.forEach((feature)=>{
+        idx++;
         if (feature.type != T_OBJECT) return;
         let chartInfo=chartList[feature.chart];
         if (! renderedOnly|| !chartInfo || usedForRender(chartInfo) ) {
             let frame = addEl('div', "frame", parent);
+            const featureIndex=idx;
             let hdl = addEl('div', 'heading', frame);
+            hdl.addEventListener('click',(ev)=>{
+                showRaw(featureIndex,feature.s57featureName);
+            })
             addEl('div', 'title', hdl, feature.s57featureName);
             if (feature.lat !== undefined && feature.lon !== undefined) {
                 let prow = row(frame);
@@ -258,7 +276,8 @@ const showObjects=(parent,features,renderedOnly)=>{
                 let crow = row(frame);
                 addEl('div', 'aname', crow, 'Chart');
                 let ce = addEl('div', 'avalue link', crow, feature.chart);
-                ce.addEventListener('click', () => {
+                ce.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
                     showOverlay((el) => {
                         let chartInfo = chartList[feature.chart];
                         if (chartInfo) {

@@ -685,6 +685,7 @@ class S57ObjectDescription : public ObjectDescription
     json::JSON out;
     void buildOverview(const S57BaseObject* o);
     void buildFull(const S57BaseObject* o);
+    MD5 builder;
 public:
     String expandedText;
     S57ObjectDescription(const S57BaseObject* o, const NameValueMap &addons=NameValueMap());
@@ -696,6 +697,9 @@ public:
     virtual void jsonOverview(json::JSON &js) const;
     virtual void addValue(const String &k, const String &v){
         out[k]=v;
+        builder.AddValue(k);
+        builder.AddValue(v);
+        md5=builder.GetValueCopy(true);
     }
 };
 //we ignore a couple of attributes if when checking for equality
@@ -716,7 +720,6 @@ S57ObjectDescription::S57ObjectDescription(const S57BaseObject* cobject, const N
         for (auto a : ad){
             addOns.insert(a);
         }
-        MD5 builder;
         builder.AddValue(type);
         builder.AddValue(cobject->featureTypeCode);
         builder.AddValue(cobject->geoPrimitive);
@@ -730,9 +733,7 @@ S57ObjectDescription::S57ObjectDescription(const S57BaseObject* cobject, const N
             builder.AddValue(id);
             attr.addToMd5(builder);
         }
-        //we do not add addOns to MD5 for equality checks
-        //so they will not be considered...
-        md5.fromChar(builder.GetValue());
+        md5=builder.GetValueCopy(true);
 }
 
 void S57ObjectDescription::buildJson(const S57BaseObject* cobject,bool overview){
