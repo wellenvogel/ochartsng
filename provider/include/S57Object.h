@@ -67,7 +67,7 @@ public:
         using Ptr=std::shared_ptr<RenderObject>;
         using StringTranslator=std::function<String(const String&)>;
         typedef ocalloc::Vector<const s52::Rule *> ARuleList;
-        typedef ocalloc::Map<uint32_t, ARuleList> CondRules;
+        typedef ocalloc::Map<uint32_t, ARuleList> RuleMap;
         RenderObject(ocalloc::PoolRef p,S57Object::ConstPtr o);
         void Render(RenderContext &, DrawingContext &ctx, Coord::TileBox const &tile, const s52::RenderStep &step) const;
         void RenderSingleRule(RenderContext &, DrawingContext &ctx, Coord::TileBox const &tile, const s52::Rule *rule) const;
@@ -93,7 +93,8 @@ public:
         ocalloc::PoolRef pool;
         S57Object::ConstPtr object;
         const s52::LUPrec *lup = nullptr;
-        CondRules condRules; //late resolved conditional rules
+        RuleMap condRules; //late resolved conditional rules
+        RuleMap stepRules; //build a list of rules for each step in prepareRender
         Coord::PixelBox pixelExtent; //extent relative to the point for point objects
         int xmargin=0; //if we do not use a pixel extent we add this to the translated extent
         int ymargin=0; //to add some pixels around the extent when checking for render
@@ -101,6 +102,18 @@ public:
         ocalloc::Map<uint32_t,s52::Arc> arcs;
         s52::DisCat displayCategory=s52::DisCat::UNDEFINED; //can be overwritten by special rule and will win against LUP cat
         bool hasSymbolArea=false; //dedicated handling for second render step
+        void addRuleToStep(const s52::Rule *rule){
+            int step=rule->getRenderStep();
+            auto clist=stepRules.find(step);
+            if (clist == stepRules.end()){
+                ARuleList steplist(pool);
+                steplist.push_back(rule);
+                stepRules.set(step,steplist);
+            }
+            else{
+                clist->second.push_back(rule);
+            }
+        }
     };
 
     class VertexList

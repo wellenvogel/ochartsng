@@ -75,6 +75,9 @@ namespace s52
         virtual bool shouldRenderInStep(const RenderStep &s)const{
             return s==rs;
         }
+        virtual RenderStep getRenderStep() const{
+            return rs;
+        }
         template <typename T>
         const T* cast(bool doThrow=true) const{
             if (T::TC() != type) {

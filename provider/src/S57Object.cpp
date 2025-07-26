@@ -167,6 +167,22 @@ void S57Object::RenderObject::expand(const s52::S52Data *s52data, s52::RuleCreat
         }
         
     }
+
+    //now build a map of rules by step
+    for (auto && rule: lup->ruleList){
+        if (rule->type == s52::RUL_CND_SY){
+            auto syrules=condRules.find(rule->key);
+            if (syrules != condRules.end()){
+                for (auto syrule:syrules->second){
+                    addRuleToStep(syrule);
+                }
+            }
+        }
+        else{
+            addRuleToStep(rule);
+        }
+    }
+
 }
 
 void S57Object::RenderObject::RenderSingleRule(RenderContext &renderCtx, DrawingContext &ctx,  Coord::TileBox const &tile, const s52::Rule *rule) const
@@ -401,28 +417,12 @@ void S57Object::RenderObject::RenderSingleRule(RenderContext &renderCtx, Drawing
 }
 void S57Object::RenderObject::Render(RenderContext &renderCtx, DrawingContext &ctx, Coord::TileBox const &tile,const s52::RenderStep &step) const
 {
-    if (!lup)
-        return;
-    if (! shouldRenderScale(renderCtx.s52Data->getSettings().get(),renderCtx.scale)) return;              
-    for (auto &&rit : lup->ruleList)
-    {   
-        if (! rit->shouldRenderInStep(step)) continue;     
-        if (rit->type == s52::RUL_CND_SY){
-            auto it=condRules.find(rit->key);
-            if (it == condRules.end() ) {
-                continue; //rule not expanded
-            }
-            for (auto &&erit:it->second){
-                if (! erit->shouldRenderInStep(step)) continue;
-                RenderSingleRule(renderCtx,ctx,tile,erit);
-            }
-        }
-        else
-        {
-            if (! rit->shouldRenderInStep(step)) continue;
-            RenderSingleRule(renderCtx, ctx, tile,rit);
-        }
-    }
+    if (! shouldRenderScale(renderCtx.s52Data->getSettings().get(),renderCtx.scale)) return;
+    auto &&stepList=stepRules.find(step);
+    if (stepList == stepRules.end()) return;
+    for (auto && rule: stepList->second){
+        RenderSingleRule(renderCtx,ctx,tile,rule);
+    }              
 }
 
 bool S57Object::RenderObject::Intersects(const Coord::PixelBox &pixelBox,Coord::TileBox const &tile) const{
@@ -469,7 +469,9 @@ S57Object::RenderObject::RenderObject(ocalloc::PoolRef p,S57Object::ConstPtr o)
     expandedTexts(p),
     arcs(p),
     condRules(p),
-    pool(p){
+    pool(p),
+    stepRules(p)
+    {
 };
 
 Coord::WorldXy S57Object::LineIndex::firstPoint() const{
