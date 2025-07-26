@@ -63,18 +63,6 @@ namespace s52
         RenderStep rs=RS_NONE;
         static const constexpr RuleType TC(){return RUL_NONE;}
         virtual ~Rule(){}
-        /**
-         * by default most rules are just rendering in the step
-         * provided by LUP
-         * this one is normally provided in the constructor
-         * but some of them have special steps
-         * so they can change this in their constructor
-         * or can overload this check function
-         * if they e.g. will render in multiple steps (like cond rules)
-        */
-        virtual bool shouldRenderInStep(const RenderStep &s)const{
-            return s==rs;
-        }
         virtual RenderStep getRenderStep() const{
             return rs;
         }
@@ -176,9 +164,6 @@ namespace s52
         CondRule(ocalloc::PoolRef pr,RenderStep rs):
             GenericRule(pr,rs){}
         public:
-        virtual bool shouldRenderInStep(const RenderStep &s) const override {
-            return true;
-        }
         friend class RuleCreator;
     };
     class SymbolRule : public GenericRule<RUL_SYM_PT>{

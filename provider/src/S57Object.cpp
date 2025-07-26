@@ -140,9 +140,6 @@ void S57Object::RenderObject::expandRule(const s52::S52Data *s52data,const s52::
     if (rule->type == s52::RUL_XC_CAT){
         displayCategory=s52::DisCat::DISPLAYBASE;
     }
-    if (rule->type == s52::RUL_ARE_PA){
-        hasSymbolArea=true;
-    }
 }
 
 void S57Object::RenderObject::expand(const s52::S52Data *s52data, s52::RuleCreator *creator,const s52::RuleConditions *conditions){
@@ -182,7 +179,9 @@ void S57Object::RenderObject::expand(const s52::S52Data *s52data, s52::RuleCreat
             addRuleToStep(rule);
         }
     }
-
+    //we now have all the rules in our stepRules and we do not need the condRules
+    //any more
+    condRules.clear();
 }
 
 void S57Object::RenderObject::RenderSingleRule(RenderContext &renderCtx, DrawingContext &ctx,  Coord::TileBox const &tile, const s52::Rule *rule) const
@@ -983,27 +982,7 @@ ObjectDescription::Ptr S57Object::RenderObject::getObjectDescription(
             checkDraw=true;
             //check if we render any area rule
             //otherwise we must do our own check...
-            bool hasAreaRule=false;
-            for (const auto &rule:lup->ruleList){
-                if (rule->type == s52::RUL_ARE_CO || 
-                    rule->type == s52::RUL_ARE_PA
-                )
-                hasAreaRule=true;
-                if (rule->type == s52::RUL_CND_SY){
-                    const auto icrules=condRules.find(rule->key);
-                    if (icrules != condRules.end()){
-                        for (const auto &crule:icrules->second){
-                            if (crule->type == s52::RUL_ARE_CO || 
-                                crule->type == s52::RUL_ARE_PA) {
-                                hasAreaRule=true;
-                                break;
-                            }
-                        }
-                        if (hasAreaRule) break;
-                    }
-                }
-                if (hasAreaRule) break;
-            }
+            bool hasAreaRule=hasRuleInStep(s52::RS_AREAS1) || hasRuleInStep(s52::RS_AREASY);
             //if we would not render the area, we use an outline check
             if (! hasAreaRule) checkDraw=false;
         }
@@ -1036,6 +1015,7 @@ ObjectDescription::Ptr S57Object::RenderObject::getObjectDescription(
         static const std::vector<s52::RenderStep> 
             steps({s52::RenderStep::RS_AREAS1,
                    s52::RenderStep::RS_AREAS2,
+                   s52::RenderStep::RS_AREASY,
                    s52::RenderStep::RS_LINES,
                    s52::RenderStep::RS_POINTS});
         for (auto step : steps)

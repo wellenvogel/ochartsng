@@ -918,7 +918,7 @@ class OESURenderContext: public ChartRenderContext{
                 matchingObjects[prio]=prioObjects;
             }
             matchingObjects[prio].push_back(object);
-            if (object->hasSymbolAreRule()) symbolAreObjects.push_back(object);
+            if (object->hasRuleInStep(s52::RS_AREASY)) symbolAreObjects.push_back(object);
         }
         OESURenderContext(String n):name(n){
         }
