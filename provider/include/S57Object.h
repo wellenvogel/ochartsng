@@ -84,6 +84,7 @@ public:
         s52::DisCat getDisplayCat() const;
         bool shouldRenderCat(const RenderSettings *rs) const; //check display category, muts be called after expand
         bool shouldRenderScale(const RenderSettings *rs,int scale) const;
+        bool hasSymbolAreRule() const{return hasSymbolArea;}
         //get an object description
         //if the object would really render (could return empty)
         ObjectDescription::Ptr getObjectDescription(RenderContext &ctx, DrawingContext &draw,
@@ -99,6 +100,7 @@ public:
         ocalloc::Map<uint32_t,s52::DisplayString> expandedTexts; //expanded texts for TE/TX
         ocalloc::Map<uint32_t,s52::Arc> arcs;
         s52::DisCat displayCategory=s52::DisCat::UNDEFINED; //can be overwritten by special rule and will win against LUP cat
+        bool hasSymbolArea=false; //dedicated handling for second render step
     };
 
     class VertexList

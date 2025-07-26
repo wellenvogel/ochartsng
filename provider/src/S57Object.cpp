@@ -140,6 +140,9 @@ void S57Object::RenderObject::expandRule(const s52::S52Data *s52data,const s52::
     if (rule->type == s52::RUL_XC_CAT){
         displayCategory=s52::DisCat::DISPLAYBASE;
     }
+    if (rule->type == s52::RUL_ARE_PA){
+        hasSymbolArea=true;
+    }
 }
 
 void S57Object::RenderObject::expand(const s52::S52Data *s52data, s52::RuleCreator *creator,const s52::RuleConditions *conditions){

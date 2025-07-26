@@ -907,17 +907,22 @@ class OESURenderContext: public ChartRenderContext{
     String name;
     public:
         using ObjectList=std::vector<const S57Object::RenderObject*>;
-        ObjectList matchingObjects;
-        ObjectList::iterator last;
-        ObjectList::iterator first;
-        int lastPriority=-1;
+
+        std::map<int,ObjectList> matchingObjects;
+        ObjectList symbolAreObjects;
+        
+        void add(const S57Object::RenderObject* object){
+            int prio=object->GetDisplayPriority();
+            if (auto it=matchingObjects.find(prio) == matchingObjects.end()){
+                ObjectList prioObjects;
+                matchingObjects[prio]=prioObjects;
+            }
+            matchingObjects[prio].push_back(object);
+            if (object->hasSymbolAreRule()) symbolAreObjects.push_back(object);
+        }
         OESURenderContext(String n):name(n){
-            last=matchingObjects.end();
-            first=matchingObjects.end();
         }
         void prepare(){
-            last=matchingObjects.begin();
-            first=matchingObjects.begin();
         }
         virtual ~OESURenderContext(){
             matchingObjects.clear();
@@ -987,7 +992,7 @@ Chart::RenderResult OESUChart::Render(int pass,RenderContext & renderCtx, Drawin
             {
                 continue;
             }
-            chartCtx->matchingObjects.push_back((*it).get());
+            chartCtx->add((*it).get());
             //we assume step 0 here any way
             (*it)->Render(renderCtx, ctx, tile, s52::RS_AREAS1);
         }
@@ -1000,7 +1005,7 @@ Chart::RenderResult OESUChart::Render(int pass,RenderContext & renderCtx, Drawin
     }
     if (pass == 1){
         //symbolized areas
-        for (auto &&ro:chartCtx->matchingObjects){
+        for (auto &&ro:chartCtx->symbolAreObjects){
             ro->Render(renderCtx, ctx, tile, s52::RS_AREASY);
         }
         return RenderResult::ROK;
@@ -1039,34 +1044,12 @@ Chart::RenderResult OESUChart::Render(int pass,RenderContext & renderCtx, Drawin
     if (prio >= s52::PRIO_NUM){
         throw AvException(FMT("%s: invalid priority %d",fileName,prio));
     }
-    if (chartCtx->first == chartCtx->matchingObjects.end()){
-        return RenderResult::ROK;
-    }
+    const auto it=chartCtx->matchingObjects.find(prio);
+    if (it == chartCtx->matchingObjects.end()) return RenderResult::ROK;
     s52::RenderStep renderStep=(*currentSteps)[step];
-    if (prio < (*(chartCtx->first))->GetDisplayPriority()){
-        return RenderResult::ROK;
+    for (const auto renderObject:it->second){
+        renderObject->Render(renderCtx,ctx,tile,renderStep);
     }
-    if (prio > (*(chartCtx->first))->GetDisplayPriority()){
-        //new priority
-        chartCtx->first=chartCtx->last;
-        while (chartCtx->first != chartCtx->matchingObjects.end() && (*(chartCtx->first))->GetDisplayPriority() < prio){
-            chartCtx->first++;
-        }
-        chartCtx->last=chartCtx->first;
-    }
-    if (chartCtx->first == chartCtx->matchingObjects.end()){
-        //only smaller priorities in list
-        return RenderResult::ROK;
-    }
-    if (prio == (*(chartCtx->first))->GetDisplayPriority()){
-        chartCtx->last=chartCtx->first;
-        while (chartCtx->last != chartCtx->matchingObjects.end() && (*(chartCtx->last))->GetDisplayPriority() == prio ){
-            (*(chartCtx->last))->Render(renderCtx,ctx,tile,renderStep);
-            chartCtx->last++;
-        }
-        return RenderResult::ROK;
-    }
-    //seems that we only habe higher priorities in the list
     return RenderResult::ROK;
 }
 MD5Name OESUChart::GetMD5() const {
