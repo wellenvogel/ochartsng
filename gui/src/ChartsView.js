@@ -435,7 +435,9 @@ class ChartsView extends Component {
                                 etxt = e.target.contentDocument.body.textContent;
                             } catch (e) {
                             }
-                            setError((etxt !== undefined) ? etxt.replace("\n", " ") : "unable to download");
+                            if (etxt) {
+                                setError(etxt.replace("\n", " "));
+                            }
                         }}
                 ></iframe>
             </div>
