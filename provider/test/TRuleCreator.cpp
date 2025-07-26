@@ -44,7 +44,7 @@ class T1Rule: public s52::Rule{
             t1Desc++;
         }
         protected:
-        T1Rule(ocalloc::PoolRef pr):Rule(pr,s52::RUL_ARE_CO){t1Const++;}
+        T1Rule(ocalloc::PoolRef pr,s52::RenderStep rs):Rule(pr,s52::RUL_ARE_CO,rs){t1Const++;}
         friend class s52::RuleCreator;
     };
 
@@ -54,7 +54,7 @@ TEST(RuleCreator,simple){
     std::unique_ptr<ocalloc::Pool> pool(ocalloc::makePool("test"));
     ocalloc::PoolRef pr(pool);
     s52::RuleCreator *c1=new s52::RuleCreator(pr,0);
-    const T1Rule *r1=c1->create<T1Rule>("test1");
+    const T1Rule *r1=c1->create<T1Rule>(s52::RS_AREAS1,"test1");
     EXPECT_NE(r1,nullptr);
     EXPECT_EQ(r1->parameter,"test1");
     EXPECT_EQ(t1Const,1);

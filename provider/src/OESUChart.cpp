@@ -903,11 +903,6 @@ bool OESUChart::PrepareRender(s52::S52Data::ConstPtr s52data){
     renderData=renderData;
     return true;
 }
-static std::vector<s52::RenderStep> renderSteps({
-    s52::RenderStep::RS_AREAS2,
-    s52::RenderStep::RS_LINES,
-    s52::RenderStep::RS_POINTS
-    });
 class OESURenderContext: public ChartRenderContext{
     String name;
     public:
@@ -929,9 +924,22 @@ class OESURenderContext: public ChartRenderContext{
             LOG_DEBUG("ChartRenderCtx %s destroy",name);
         }
 };
+static std::vector<s52::RenderStep> renderSteps({
+    s52::RenderStep::RS_AREAS2,
+    s52::RenderStep::RS_LINES,
+    s52::RenderStep::RS_POINTS
+    });
+static std::vector<s52::RenderStep> overlayRenderSteps({
+    s52::RenderStep::RS_TEXT
+    });
+static const int firstPassSteps=s52::PRIO_NUM * renderSteps.size()+2;
+static const int overlayPassSteps=s52::PRIO_NUM * overlayRenderSteps.size();
+
 int OESUChart::getRenderPasses() const{
-    return s52::PRIO_NUM * renderSteps.size() +2; //see comment below about passes
+    return firstPassSteps+overlayPassSteps; //see comment below about passes
 }
+
+
 Chart::RenderResult OESUChart::Render(int pass,RenderContext & renderCtx, DrawingContext &ctx, Coord::TileBox const &tile) const
 {
     /**
@@ -939,10 +947,13 @@ Chart::RenderResult OESUChart::Render(int pass,RenderContext & renderCtx, Drawin
      * (1) render areas only (AC)
      * (2) symbolized areas
      * (3) iterate over priorities
-     *     on each priority:
+     *     on each priority iterate over the steps:
      *     (2) render areas - all other rules (tables PLAIN_BOUNDARIES/SYMBOLIZED_BOUNDARIES)
      *     (3) render lines (table LINES)
-     *     (4) render points (tables PAPER_CHART/SIMPLIFIED)       
+     *     (4) render points (tables PAPER_CHART/SIMPLIFIED)
+     * (4) render "overlays" (like texts): iterate over priorities
+     *     on each:
+     *     () render texts       
      **/
     //render objects are sorted by prio
     //1st step: render all areas
@@ -987,8 +998,7 @@ Chart::RenderResult OESUChart::Render(int pass,RenderContext & renderCtx, Drawin
     if (pass < 1){
         throw AvException(FMT("%s: pass 0 with existing chartContext",fileName));
     }
-    pass--;
-    if (pass == 0){
+    if (pass == 1){
         //symbolized areas
         for (auto &&ro:chartCtx->matchingObjects){
             ro->Render(renderCtx, ctx, tile, s52::RS_AREASY);
@@ -996,10 +1006,34 @@ Chart::RenderResult OESUChart::Render(int pass,RenderContext & renderCtx, Drawin
         return RenderResult::ROK;
     }
     //now all the rest priority based
-    pass--;
-    int prio = pass / renderSteps.size();
-    int step=pass - prio * renderSteps.size();
-    if (step >= renderSteps.size()){
+    int prio=0;
+    int step=0;
+    int origPass=pass;
+    bool overlay=false;
+    std::vector<s52::RenderStep> *currentSteps=NULL;
+    if (pass < firstPassSteps){
+        currentSteps=&renderSteps;
+        pass-=2;
+        prio = pass / renderSteps.size();
+        step=pass - prio * renderSteps.size();
+    }
+    else{
+        overlay=true;
+        currentSteps=&overlayRenderSteps;
+        if (pass == firstPassSteps){
+            //first overlay step - reset the context
+            chartCtx->prepare();
+        }
+        pass-=firstPassSteps;
+        if (pass < 0) return RenderResult::ROK;
+        prio=pass/overlayRenderSteps.size();
+        step=pass - prio * overlayRenderSteps.size();
+    }
+    /*LOG_DEBUG("Render %s pass %s, prio=%d, step=%d, overlay=%d",
+        fileName,
+        origPass,prio,step,overlay);
+        */
+    if (step >= currentSteps->size()){
         throw AvException(FMT("%s: invalid renderStep %d",fileName,step));
     }
     if (prio >= s52::PRIO_NUM){
@@ -1008,7 +1042,7 @@ Chart::RenderResult OESUChart::Render(int pass,RenderContext & renderCtx, Drawin
     if (chartCtx->first == chartCtx->matchingObjects.end()){
         return RenderResult::ROK;
     }
-    s52::RenderStep renderStep=renderSteps[step];
+    s52::RenderStep renderStep=(*currentSteps)[step];
     if (prio < (*(chartCtx->first))->GetDisplayPriority()){
         return RenderResult::ROK;
     }

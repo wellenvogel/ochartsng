@@ -60,8 +60,21 @@ namespace s52
         RuleType type=RUL_NONE;
         ocalloc::String parameter;
         uint32_t key=0;
+        RenderStep rs=RS_NONE;
         static const constexpr RuleType TC(){return RUL_NONE;}
         virtual ~Rule(){}
+        /**
+         * by default most rules are just rendering in the step
+         * provided by LUP
+         * this one is normally provided in the constructor
+         * but some of them have special steps
+         * so they can change this in their constructor
+         * or can overload this check function
+         * if they e.g. will render in multiple steps (like cond rules)
+        */
+        virtual bool shouldRenderInStep(const RenderStep &s)const{
+            return s==rs;
+        }
         template <typename T>
         const T* cast(bool doThrow=true) const{
             if (T::TC() != type) {
@@ -75,7 +88,8 @@ namespace s52
         std::size_t sz=0;
         std::size_t al=0;
         bool valid=false;
-        Rule(ocalloc::PoolRef pr,RuleType t, bool v=true):type(t),valid(v),parameter(pr){}
+        Rule(ocalloc::PoolRef pr,RuleType t, RenderStep crs, bool v=true):
+            type(t),valid(v),parameter(pr),rs(crs){}
         friend class RuleCreator;
     };
 
@@ -113,9 +127,9 @@ namespace s52
                 }
             }
             template<typename T, typename ...Args>
-            const T* create(const String &param,Args&& ...args){
+            const T* create(RenderStep rs,const String &param,Args&& ...args){
                 void *mem=pool.allocate(sizeof(T),alignof(T));
-                T* rt=new (mem) T(pool,std::forward<Args>(args)...);
+                T* rt=new (mem) T(pool,rs,std::forward<Args>(args)...);
                 rt->sz=sizeof(T);
                 rt->al=alignof(T);
                 rt->parameter.assign(param.c_str());
@@ -131,30 +145,43 @@ namespace s52
         public:
         static const constexpr RuleType TC(){return id;}
         protected:
-        GenericRule(ocalloc::PoolRef pr):
-            Rule(pr,id){}
+        GenericRule(ocalloc::PoolRef pr,RenderStep rs):
+            Rule(pr,id,rs){}
         public:
         friend class RuleCreator;
     };
     class AreaRule : public GenericRule<RUL_ARE_CO>{
         public:
-        RGBColor color;
+        RGBColor color;        
         protected:
-        AreaRule(ocalloc::PoolRef pr,const RGBColor &c):GenericRule(pr),color(c){}
+        AreaRule(ocalloc::PoolRef pr,RenderStep rs,const RGBColor &c):GenericRule(pr,rs),color(c){
+            rs=RS_AREAS1;
+        }
         friend class RuleCreator;
     };
     class SymAreaRule : public GenericRule<RUL_ARE_PA>{
         public:
         SymbolPtr symbol;
         protected:
-        SymAreaRule(ocalloc::PoolRef pr,SymbolPtr s):GenericRule(pr),symbol(s){}
+        SymAreaRule(ocalloc::PoolRef pr,RenderStep rs,SymbolPtr s):GenericRule(pr,rs),symbol(s){
+            rs=RS_AREASY;
+        }
         friend class RuleCreator;
     };
-    using CondRule =GenericRule<RUL_CND_SY>;
+    class CondRule : public GenericRule<RUL_CND_SY>{
+        protected:
+        CondRule(ocalloc::PoolRef pr,RenderStep rs):
+            GenericRule(pr,rs){}
+        public:
+        virtual bool shouldRenderInStep(const RenderStep &s) const override {
+            return true;
+        }
+        friend class RuleCreator;
+    };
     class SymbolRule : public GenericRule<RUL_SYM_PT>{
         protected:
-        SymbolRule(ocalloc::PoolRef pr,const String name):
-            GenericRule(pr),finalName(name){
+        SymbolRule(ocalloc::PoolRef pr,RenderStep rs,const String name):
+            GenericRule(pr,rs),finalName(name){
             }
         public:
         String finalName;
@@ -166,8 +193,8 @@ namespace s52
         public:
         StringOptions options;
         protected:
-        StringTERule(ocalloc::PoolRef pr,const StringOptions &o):options(o),
-            GenericRule(pr){}
+        StringTERule(ocalloc::PoolRef pr,RenderStep rs,const StringOptions &o):options(o),
+            GenericRule(pr,RS_TEXT){}
         public:
         friend class RuleCreator;
     };
@@ -175,8 +202,8 @@ namespace s52
         public:
         StringOptions options;
         protected:
-        StringTXRule(ocalloc::PoolRef pr,const StringOptions &o):options(o),
-            GenericRule(pr){}
+        StringTXRule(ocalloc::PoolRef pr,RenderStep rs,const StringOptions &o):options(o),
+            GenericRule(pr,RS_TEXT){}
         public:
         friend class RuleCreator;
     };
@@ -190,8 +217,8 @@ namespace s52
         public:
         friend class RuleCreator;
         protected:
-        SymbolLineRule(ocalloc::PoolRef pr,const String  &p):
-            GenericRule(pr),symbol(p){}
+        SymbolLineRule(ocalloc::PoolRef pr,RenderStep rs,const String  &p):
+            GenericRule(pr,rs),symbol(p){}
         public:
         String symbol;
     };  

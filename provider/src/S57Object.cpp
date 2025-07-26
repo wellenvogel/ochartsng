@@ -400,40 +400,23 @@ void S57Object::RenderObject::Render(RenderContext &renderCtx, DrawingContext &c
 {
     if (!lup)
         return;
-    if (! shouldRenderScale(renderCtx.s52Data->getSettings().get(),renderCtx.scale)) return;       
-    if (step == s52::RS_AREAS1 || step == s52::RS_AREASY){
-        ;
-    }
-    else{
-        if (lup->step != step) return;
-    }        
+    if (! shouldRenderScale(renderCtx.s52Data->getSettings().get(),renderCtx.scale)) return;              
     for (auto &&rit : lup->ruleList)
-    {        
+    {   
+        if (! rit->shouldRenderInStep(step)) continue;     
         if (rit->type == s52::RUL_CND_SY){
             auto it=condRules.find(rit->key);
             if (it == condRules.end() ) {
                 continue; //rule not expanded
             }
             for (auto &&erit:it->second){
-                if (step == s52::RS_AREAS1 &&  erit->type != s52::RUL_ARE_CO){
-                    continue;
-                }
-                if (step == s52::RS_AREASY &&  erit->type != s52::RUL_ARE_PA){
-                    continue;
-                }
+                if (! erit->shouldRenderInStep(step)) continue;
                 RenderSingleRule(renderCtx,ctx,tile,erit);
             }
         }
         else
         {
-            if (step == s52::RS_AREAS1 && rit->type != s52::RUL_ARE_CO)
-            {
-                continue;
-            }
-            if (step == s52::RS_AREASY && rit->type != s52::RUL_ARE_PA)
-            {
-                continue;
-            }
+            if (! rit->shouldRenderInStep(step)) continue;
             RenderSingleRule(renderCtx, ctx, tile,rit);
         }
     }

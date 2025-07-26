@@ -176,7 +176,9 @@ namespace s52
             RS_AREASY=2,
             RS_AREAS2=3, //rules from LUP table PLAIN_BOUNDARIES/SYMBOLIZED_BOUNDARIES
             RS_LINES=4,  //rules from table LINES
-            RS_POINTS=4  //rules from table PAPER_CHART/SIMPLIFIED
+            RS_POINTS=4,  //rules from table PAPER_CHART/SIMPLIFIED
+            RS_TEXT=5,    //TX/TE
+            RS_NONE=99
         } RenderStep; 
     class LUPrec
     {

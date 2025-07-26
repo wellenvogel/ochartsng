@@ -35,6 +35,7 @@ namespace s52
     
     void RuleCreator::rulesFromString(const LUPrec *lup, const String &ruleStr, const S52Data *s52data, std::function<void (const s52::Rule *)> writer, bool tryExpansion, const RuleConditions *conditions)
     {
+        RenderStep rs=lup->step;
         StringVector topRules = StringHelper::split(ruleStr, "\037");
         for (auto pRule = topRules.begin(); pRule != topRules.end(); pRule++)
         {
@@ -63,27 +64,27 @@ namespace s52
                         }
                         else
                         {
-                            const CondRule *rule = create<CondRule>(*sRule);
+                            const CondRule *rule = create<CondRule>(rs,*sRule);
                             writer(rule);
                         }
                         continue;
                     }
                     if (nv[0] == "AC")
                     {
-                        const AreaRule *r = create<AreaRule>(nv[1], s52data->getColor(StringHelper::beforeFirst(nv[1],",",true)));
+                        const AreaRule *r = create<AreaRule>(rs,nv[1], s52data->getColor(StringHelper::beforeFirst(nv[1],",",true)));
                         writer(r);
                         continue;
                     }
                     if (nv[0] == "AP")
                     {
                         SymbolPtr symbol=s52data->getSymbol(PT_PREFIX+nv[1]);
-                        const SymAreaRule *r=create<SymAreaRule>(nv[1],symbol);
+                        const SymAreaRule *r=create<SymAreaRule>(rs,nv[1],symbol);
                         writer(r);
                         continue;
                     }
                     if (nv[0] == "SY")
                     {
-                        const SymbolRule *r = create<SymbolRule>(nv[1], s52data->checkSymbol(nv[1]));
+                        const SymbolRule *r = create<SymbolRule>(rs,nv[1], s52data->checkSymbol(nv[1]));
                         writer(r);
                         continue;
                     }
@@ -91,7 +92,7 @@ namespace s52
                     {
                         StringVector parts=StringHelper::split(nv[1],",");
                         StringOptions options=S52TextParser::parseStringOptions(s52data,parts,2);
-                        const StringTERule *r = create<StringTERule>(nv[1],options);
+                        const StringTERule *r = create<StringTERule>(rs,nv[1],options);
                         writer(r);
                         continue;
                     }
@@ -99,40 +100,40 @@ namespace s52
                     {
                         StringVector parts=StringHelper::split(nv[1],",");
                         StringOptions options=S52TextParser::parseStringOptions(s52data,parts,1);
-                        const StringTXRule *r = create<StringTXRule>(nv[1],options);
+                        const StringTXRule *r = create<StringTXRule>(rs,nv[1],options);
                         writer(r);
                         continue;
                     }
                     if (nv[0] == "MP")
                     {
                         StringVector parts=StringHelper::split(nv[1],",");
-                        const SoundingRule *r = create<SoundingRule>(nv[1]);
+                        const SoundingRule *r = create<SoundingRule>(rs,nv[1]);
                         writer(r);
                         continue;
                     }
                     if (nv[0] == PrivateRules::PR_SOUND()){
-                        const SingleSoundingRule *r=create<SingleSoundingRule>(nv[1]);
+                        const SingleSoundingRule *r=create<SingleSoundingRule>(rs,nv[1]);
                         writer(r);
                         continue;
                     }
                     if (nv[0] == PrivateRules::PR_LIGHT()){
-                        const CARule *r=create<CARule>(nv[1]);
+                        const CARule *r=create<CARule>(rs,nv[1]);
                         writer(r);
                         continue;
                     }
                     if (nv[0] == PrivateRules::PR_CAT()){
-                        const DisCatRule *r=create<DisCatRule>(nv[1]);
+                        const DisCatRule *r=create<DisCatRule>(rs,nv[1]);
                         writer(r);
                         continue;
                     }
                     if (nv[0] == "LS"){
-                        const SimpleLineRule *r=create<SimpleLineRule>(nv[1]);
+                        const SimpleLineRule *r=create<SimpleLineRule>(rs,nv[1]);
                         writer(r);
                         continue;
                     }
                     if (nv[0] == "LC"){
                         String symName=LS_PREFIX+nv[1];
-                        const SymbolLineRule *r = create<SymbolLineRule>(nv[1],s52data->checkSymbol(symName));
+                        const SymbolLineRule *r = create<SymbolLineRule>(rs,nv[1],s52data->checkSymbol(symName));
                         writer(r);
                         continue;
                     }
