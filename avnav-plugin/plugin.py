@@ -115,7 +115,7 @@ class Plugin:
   ENV_NAME="AVNAV_PROVIDER"
   ENV_WORKDIR="AVNAV_PROVIDER_WORKDIR"
   STARTPAGE="index.html"
-  C_PORT=ConfigParam("port",type='NUMBER',description='the listener port for the chart provider executable',default='8082',mandatory=True)
+  C_PORT=ConfigParam("port",type='NUMBER',description='the listener port for the chart provider executable',default='8083',mandatory=True)
   C_DEBUG=ConfigParam("debug",type='SELECT',default='1',description='debuglevel for provider',rangeOrList=['0','1','2'], mandatory=True)
   C_MEMPERCENT=ConfigParam("memPercent",type='NUMBER',default='50',description='percent of existing mem to be used',rangeOrList=[2,95])
   C_TILECACHEKB=ConfigParam("tileCacheKb",type='NUMBER',default='40960',description='kb memory to be used for the tile cache, 0 to disable',rangeOrList=[0,400000])
