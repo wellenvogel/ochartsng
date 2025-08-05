@@ -362,11 +362,15 @@ project(":gui") {
     tasks.create(name:"${tt}Android",type: GradleBuild) {
         group AVNAV_GROUP
         setDir("android")
-        setTasks([tt])
+        def tasks=[":app:"+tt]
+        if ( tt.equals('assembleRelease')){
+            tasks.push(":app:bundleStore")
+        }
+        setTasks(tasks)
+        startParameter.projectProperties=[packageVersion:project.avnavVersion]
     }
 }
 clean.dependsOn cleanAndroid
-
 
 task testGit{
     group AVNAV_GROUP
@@ -379,7 +383,7 @@ task testGit{
         }
     }
 }
-
+assembleReleaseAndroid.mustRunAfter testGit
 
 task pkgVersion{
     doLast() {
@@ -393,6 +397,7 @@ task packages{
     doLast(){
         println "created all packages"
     }
+    mustRunAfter testGit
 }
 
 def GE=org.redline_rpm.header.Flags.GREATER|org.redline_rpm.header.Flags.EQUAL
@@ -823,7 +828,7 @@ if (ks) sign=""
 task uploadReleaseAndroid(type: UploadTask){
     group "upload"
     inputFile=file("$ANDROID_BASE/release/avocharts-release$sign-${avnavVersion}.apk")
-    dependsOn assembleReleaseAndroid
+    dependsOn assembleReleaseAndroid, testGit
     baseDir="$uploadReleaseDir/${project.avnavVersion}"
 }
 task uploadBetaAndroid(type: UploadTask){

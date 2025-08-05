@@ -26,7 +26,12 @@ if (! project.hasProperty('packageVersion')){
 else{
     project.ext.avnavVersion=project.packageVersion
 }
-
+def ks = System.getenv("ANDROID_KEYSTORE")
+def ksbeta = System.getenv("ANDROID_KEYSTORE_BETA")
+def ksupload = System.getenv("ANDROID_KEYSTORE_UPLOAD")
+def kspw = System.getenv("ANDROID_KEYPASS")
+def kalias = System.getenv("ANDROID_KEYALIAS")
+def kpwd = System.getenv("ANDROID_KEYPASS")
 android {
     compileSdkVersion 34
     externalNativeBuild {
@@ -38,7 +43,7 @@ android {
     defaultConfig {
         applicationId "de.wellenvogel.ochartsprovider"
         versionName "avnavocharts-$avnavVersion"
-        versionCode Integer.parseInt(project.avnavVersion)
+        versionCode Integer.parseInt(project.avnavVersion.replaceAll("[^0-9]*",""))
         minSdkVersion 24
         targetSdkVersion 34
 
@@ -80,11 +85,6 @@ android {
     }
     signingConfigs {
 
-        def ks = System.getenv("ANDROID_KEYSTORE")
-        def ksbeta = System.getenv("ANDROID_KEYSTORE_BETA")
-        def kspw = System.getenv("ANDROID_KEYPASS")
-        def kalias = System.getenv("ANDROID_KEYALIAS")
-        def kpwd = System.getenv("ANDROID_KEYPASS")
         def hasCfg=false
         if (ks != null && kspw != null && kalias != null && kpwd != null) {
             hasCfg=true
@@ -104,6 +104,14 @@ android {
                 keyPassword kpwd
             }
         }
+        if(ksupload != null && kspw != null && kpwd != null) {
+            create("upload") {
+                storeFile file(ksupload)
+                storePassword kspw
+                keyAlias "upload"
+                keyPassword kpwd
+            }
+        }
         if (! hasCfg){
                 logger.warn("no signing config set...")
         }
@@ -114,7 +122,6 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            def ks = System.getenv("ANDROID_KEYSTORE")
             if (ks != null) {
                 logger.lifecycle("using keystore $ks for release")
                 signingConfig signingConfigs.config
@@ -147,14 +154,12 @@ android {
         }
         beta {
             initWith release
-            def jksbeta=System.getenv("ANDROID_KEYSTORE_BETA")
-            def jks=System.getenv("ANDROID_KEYSTORE")
-            if (jksbeta != null) {
-                logger.lifecycle("using keystore $jksbeta for beta")
+            if (ksbeta != null) {
+                logger.lifecycle("using keystore $ksbeta for beta")
                 signingConfig signingConfigs.beta
             }
-            else if (jks != null) {
-                logger.lifecycle("using keystore $jks for beta")
+            else if (ks != null) {
+                logger.lifecycle("using keystore $ks for beta")
                 signingConfig signingConfigs.config
             }
             else{
@@ -170,6 +175,15 @@ android {
                     arguments "-DANDROID_VARIANT=1"
                 }
             }
+        }
+        store{
+            initWith(buildTypes["release"])
+            matchingFallbacks.add("release")
+            if (ksupload != null){
+                logger.lifecycle("using $ksupload to sign build store")
+                signingConfig signingConfigs.upload
+            }
+            setProperty("archivesBaseName","avocharts-${defaultConfig.versionCode}")
         }
 
     }
@@ -290,6 +304,13 @@ task copyToAssetsPluginData(type: org.gradle.api.tasks.Copy) {
         include("icon.png")
     }
 }
+afterEvaluate {
+    tasks["bundleStore"].doFirst{
+        if (ksupload == null){
+            throw new Exception("must have env ANDROID_KEYSTORE_UPLOAD for bundleStore")
+        }
+    }
+}
 
 /*
 task copySounds(type: org.gradle.api.tasks.Copy) {
@@ -307,6 +328,9 @@ afterEvaluate {
     generateReleaseAssets.dependsOn(copyToAssetsViewerRelease)
     generateReleaseAssets.dependsOn(copyToAssetsS57Data)
     generateReleaseAssets.dependsOn(copyToAssetsPluginData)
+    generateStoreAssets.dependsOn(copyToAssetsViewerRelease)
+    generateStoreAssets.dependsOn(copyToAssetsS57Data)
+    generateStoreAssets.dependsOn(copyToAssetsPluginData)
     generateBetaAssets.dependsOn(copyToAssetsViewerRelease)
     generateBetaAssets.dependsOn(copyToAssetsS57Data)
     generateBetaAssets.dependsOn(copyToAssetsPluginData)
