@@ -159,10 +159,6 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
     }
     private boolean notificationStarted=false;
     private void startNotification(boolean startForeground, int port) {
-        if (! checkPermissions(false)) {
-            notificationStarted=false;
-            return;
-        }
         if (notificationStarted) return;
         notificationStarted=true;
         createNotificationChannel();
@@ -214,20 +210,6 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
         }
     }
 
-    private boolean checkPermissions(boolean request){
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                if (request) {
-                    if(permissionsRequested) return true;
-                    permissionsRequested=true;
-                    PermissionActivity.runPermissionRequest(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, R.string.needNotifications);
-                }
-                return false;
-
-            }
-        }
-        return true;
-    }
 
 
     public ProcessState getProcessState(boolean trigger){
@@ -470,7 +452,6 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
                 Toast.makeText(this,tprfx+"unable to copy assets for ocharts: "+t.getMessage(),Toast.LENGTH_LONG).show();
                 return false;
             }
-            checkPermissions(true);
             de.wellenvogel.ochartsprovider.Settings settings= de.wellenvogel.ochartsprovider.Settings.getSettings(this,true);
             port = settings.getPort();
             shutdownInterval = settings.getShutdownSec()*1000;

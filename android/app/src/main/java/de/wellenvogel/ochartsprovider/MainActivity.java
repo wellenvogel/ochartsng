@@ -26,26 +26,19 @@
  */
 package de.wellenvogel.ochartsprovider;
 
+import android.Manifest;
 import android.content.ComponentName;
-import android.content.ContentProvider;
-import android.content.ContentProviderClient;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
-import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.content.pm.ProviderInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
-import android.os.RemoteException;
-import android.text.Editable;
 import android.text.Html;
-import android.text.TextWatcher;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -55,25 +48,22 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.BaseAdapter;
 import android.widget.Button;
-import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.ListView;
-import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import java.io.File;
+import java.util.ArrayList;
 
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContract;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityOptionsCompat;
 import androidx.preference.PreferenceManager;
-
-import java.io.File;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -88,7 +78,7 @@ public class MainActivity extends AppCompatActivity {
     Button stopButton;
     Button launchButton;
     boolean running=false;
-
+    ArrayList<ActivityResultLauncher<Integer>> neededQueries=new ArrayList<>();
     ActivityResultLauncher<Integer> licenseQuery=registerForActivityResult(new ActivityResultContract<Integer, Object>() {
         @Override
         public Object parseResult(int i, @Nullable Intent intent) {
@@ -97,6 +87,7 @@ public class MainActivity extends AppCompatActivity {
                 return null;
             }
             PreferenceManager.getDefaultSharedPreferences(MainActivity.this).edit().putInt(Constants.PREF_LICENSE_ACCEPTED,Constants.LICENSE_VERSION).commit();
+            nextQuery();
             return null;
         }
 
@@ -110,6 +101,39 @@ public class MainActivity extends AppCompatActivity {
         public void onActivityResult(Object o) {
         }
     });
+
+    ActivityResultLauncher<Integer> permissionQuery= registerForActivityResult(new ActivityResultContract<Integer, Object>() {
+        @Override
+        public Object parseResult(int i, @Nullable Intent intent) {
+            return null;
+        }
+
+        @NonNull
+        @Override
+        public Intent createIntent(@NonNull Context context, Integer integer) {
+            Intent i=new Intent(MainActivity.this, PermissionActivity.class);
+            i.setFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT | Intent.FLAG_ACTIVITY_MULTIPLE_TASK|Intent.FLAG_ACTIVITY_NEW_TASK);
+            Bundle extra=new Bundle();
+            extra.putInt(Constants.EXTRA_TXT,R.string.needNotifications);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                extra.putStringArray(Constants.EXTRA_PERMISSIONS,new String[]{Manifest.permission.POST_NOTIFICATIONS});
+            }
+            i.putExtras(extra);
+            return i;
+        }
+    }, new ActivityResultCallback<Object>() {
+        @Override
+        public void onActivityResult(Object result) {
+            nextQuery();
+        }
+    });
+
+    private void nextQuery(){
+        if (neededQueries.size() >0){
+            neededQueries.get(0).launch(1);
+            neededQueries.remove(0);
+        }
+    }
     String launchUrl="";
     private final Runnable timer = new Runnable() {
         @Override
@@ -147,6 +171,7 @@ public class MainActivity extends AppCompatActivity {
             handler.postDelayed(timer,1000);
         }
     };
+
     public static SharedPreferences getPrefs(Context ctx){
         //return ctx.getSharedPreferences(Constants.PREFNAME, Context.MODE_PRIVATE);
         return PreferenceManager.getDefaultSharedPreferences(ctx);
@@ -228,6 +253,14 @@ public class MainActivity extends AppCompatActivity {
         Settings s=loadSettings();
         infoListAdapter.updateSettings(s);
         launchUrl="http://127.0.0.1:"+s.getPort()+Constants.STARTPAGE;
+    }
+    private boolean checkPermissions(){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                return false;
+            }
+        }
+        return true;
     }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -313,9 +346,13 @@ public class MainActivity extends AppCompatActivity {
             license=PreferenceManager.getDefaultSharedPreferences(this).getInt(Constants.PREF_LICENSE_ACCEPTED,0);
         }catch (Throwable t){}
         if (license != Constants.LICENSE_VERSION){
-            licenseQuery.launch(1);
+            neededQueries.add(licenseQuery);
+        }
+        if (! checkPermissions()){
+            neededQueries.add(permissionQuery);
         }
         running=true;
+        nextQuery();
         handler.postDelayed(timer,1000);
     }
     @Override
