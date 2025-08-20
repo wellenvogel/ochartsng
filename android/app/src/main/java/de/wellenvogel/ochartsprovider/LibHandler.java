@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 class LibHandler extends ProcessHandler {
-    LibHandler(Context ctx,String name, String logFile) {
+    LibHandler(Context ctx,String name, File logFile) {
         super(ctx, name, logFile);
     }
 

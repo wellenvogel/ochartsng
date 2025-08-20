@@ -41,11 +41,11 @@ import java.util.Map;
 class ProcessHandler {
     private Process process = null;
     String name = null;
-    String logFile = null;
+    File logFile = null;
     Context ctx;
     ProcessState state=new ProcessState();
     HashMap<String,String> environment=new HashMap<>();
-    ProcessHandler(Context ctx,String name, String logFile) {
+    ProcessHandler(Context ctx,String name, File logFile) {
         this.name = name;
         this.logFile = logFile;
         this.ctx=ctx;
@@ -117,7 +117,7 @@ class ProcessHandler {
         try {
             state=new ProcessState();
             process = pb.start();
-            OutputHandler oh = new OutputHandler(ctx, process.getInputStream(), logFile);
+            OutputHandler oh = new OutputHandler(logFile, process.getInputStream());
             Thread oth = new Thread(oh);
             oth.start();
         } catch (Exception e) {

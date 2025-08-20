@@ -465,20 +465,15 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
             else{
                 aParameter=null;
             }
+            //loading the settings already ensured the log dir being created
+            File logDir=new File (settings.getWorkDir(),Constants.LOGDIR);
+            File logFile=new File(logDir,Constants.POUT);
             Log.i(Constants.PRFX,"starting provider, port="+port+", debug="+debugLevel+", testMode="+testMode+", alt key="+settings.isAlternateKey());
             if (BuildConfig.AVNAV_EXE){
-                processHandler =new ProcessHandler(this,Constants.EXE,Constants.LOGDIR+"/"+Constants.POUT);
+                processHandler =new ProcessHandler(this,Constants.EXE,logFile);
             }
             else{
-                processHandler =new LibHandler(this,Constants.EXE,Constants.LOGDIR+"/"+Constants.POUT);
-            }
-            File logDir=new File(getFilesDir(),Constants.LOGDIR);
-            if (! logDir.isDirectory()){
-                logDir.mkdirs();
-            }
-            if (!logDir.isDirectory()){
-                Toast.makeText(this, tprfx+"cannot create logdir "+logDir.getAbsolutePath(),Toast.LENGTH_LONG).show();
-                return false;
+                processHandler =new LibHandler(this,Constants.EXE,logFile);
             }
             ArrayList<String> args=new ArrayList<>();
             if (BuildConfig.AVNAV_EXE){
@@ -488,12 +483,12 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
             args.addAll(Arrays.asList("-l", getFilesDir().getAbsolutePath(),
                     "-a",getAParameter(),
                     "-b", getSystemName(this),
-                    "-l", getFilesDir().getAbsolutePath()+"/"+Constants.LOGDIR,
+                    "-l", logDir.getAbsolutePath(),
                     "-d",Integer.toString(debugLevel),
                     "-x",Integer.toString(memPercent),
                     "-g",getFilesDir().getAbsolutePath()+"/"+ Constants.ASSET_ROOT+"/"+BuildConfig.ASSETS_GUI,
                     "-t",getFilesDir().getAbsolutePath()+"/"+ Constants.ASSET_ROOT+"/"+BuildConfig.ASSETS_S57,
-                    getFilesDir().getAbsolutePath(),
+                    settings.getWorkDir().getAbsolutePath(),
                     Integer.toString(port))
             );
             if (testMode){

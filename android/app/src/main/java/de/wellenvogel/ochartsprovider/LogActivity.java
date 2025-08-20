@@ -57,7 +57,8 @@ public class LogActivity extends AppCompatActivity {
         TextView logView=findViewById(R.id.logText);
         try {
             String logname=getIntent().getStringExtra(Constants.LOGFILE);
-            File logBase=new File(getFilesDir(),Constants.LOGDIR);
+            Settings s=Settings.getSettings(this,false);
+            File logBase=new File(s.getWorkDir(),Constants.LOGDIR);
             File logFile=new File(logBase,logname);
             BufferedReader rd=new BufferedReader(new FileReader(logFile));
             String line=null;

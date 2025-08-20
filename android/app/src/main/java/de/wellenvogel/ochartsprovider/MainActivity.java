@@ -197,10 +197,10 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public int getCount() {
             if ("debug".equals(BuildConfig.BUILD_TYPE)) {
-                return 4;
+                return 5;
             }
             else{
-                return 3;
+                return 4;
             }
         }
 
@@ -214,6 +214,8 @@ public class MainActivity extends AppCompatActivity {
                 case 2:
                     return new InfoItem("Alt Key",settings.isAlternateKey()?"On":"Off");
                 case 3:
+                    return new InfoItem("WorkDir",settings.getWorkDirString());
+                case 4:
                     return new InfoItem("Testmode",settings.isTestMode()?"On":"Off");
             }
             return null;
@@ -307,7 +309,8 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btLog).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                File logBase=new File(getFilesDir(),Constants.LOGDIR);
+                Settings s=loadSettings();
+                File logBase=new File(s.getWorkDir(),Constants.LOGDIR);
                 File logFile=new File(logBase,Constants.PLOG);
                 Uri uri= LogProvider.getDocumentUri(LogProvider.LOG_ROOT,logFile);
                 Intent li=new Intent(Intent.ACTION_SEND);
