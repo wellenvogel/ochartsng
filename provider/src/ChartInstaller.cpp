@@ -114,6 +114,7 @@ static int progress_callback(void *clientp,
     if (dltotal == 0) return handler->update(0);
     return handler->update(floor(dlnow*100.0/dltotal));
 }
+#define THROW_ZE(reason) throw ZipException(zipFile,mz_zip_get_last_error(zip_archive),reason);
 class ChartInstaller::WorkerRunner : public Thread{
         ChartInstaller *installer;
         std::atomic<bool> active={false};
@@ -141,9 +142,7 @@ class ChartInstaller::WorkerRunner : public Thread{
                             current.tempDir=installer->CreateTempDir(current.id);
                         }
                         else{
-                            if (! FileHelper::makeDirs(current.tempDir)){
-                                throw AvException(FMT("unable to create temp dir %s",current.tempDir));
-                            }
+                            FileHelper::makeDirsT(current.tempDir);
                         }
                         if (!current.chartUrl.empty() || ! current.keyFileUrl.empty()){
                             if (current.targetZipFile.empty() && ! current.chartUrl.empty()){
@@ -167,9 +166,7 @@ class ChartInstaller::WorkerRunner : public Thread{
                         if (!current.targetZipFile.empty()){
                             current.state=ST_UNPACK;
                             installer->UpdateRequest(current);
-                            if (! FileHelper::makeDirs(unpackDestination)){
-                                throw AvException(FMT("unable to create unpack dir %s",unpackDestination));
-                            }
+                            FileHelper::makeDirsT(unpackDestination);
                             LOG_INFO("unpacking zip %s",current.targetZipFile);
                             unpackZip(current.targetZipFile,unpackDestination,current.id);
                             StringVector unpacked=FileHelper::listDir(unpackDestination);
@@ -232,7 +229,11 @@ class ChartInstaller::WorkerRunner : public Thread{
                     }catch (FileException &f){
                         current.state=ST_ERROR;
                         current.error=FMT("error for chart %s:%s",FileHelper::fileName(f.getFileName()),f.what());
-                    }catch (Exception &e){
+                    }catch (AvException &a){
+                        current.state=ST_ERROR;
+                        current.error=a.msg();
+                    }
+                    catch (Exception &e){
                         current.state=ST_ERROR;
                         current.error=FMT("%s",e.what());
                     }
@@ -257,7 +258,7 @@ class ChartInstaller::WorkerRunner : public Thread{
             bool unpackZip(const String &zipFile, const String &targetDir, int currentRequest){
                 if (! FileHelper::canRead(zipFile)) throw ZipException(FMT("cannot read zip file %s",zipFile));
                 FileHelper::makeDirs(targetDir);
-                if (! FileHelper::canWrite(targetDir)) throw ZipException(FMT("cannot write to irectory %s",targetDir));
+                if (! FileHelper::canWrite(targetDir)) throw ZipException(FMT("cannot write to directory %s",targetDir));
                 mz_bool status;
                 mz_zip_archive *zip_archive=new mz_zip_archive();
                 mz_zip_zero_struct(zip_archive);
@@ -267,7 +268,7 @@ class ChartInstaller::WorkerRunner : public Thread{
                 });
                 status = mz_zip_reader_init_file(zip_archive,zipFile.c_str(),0);
                 if (! status){
-                    throw ZipException(FMT("invalid zip file %s, cannot open",zipFile));
+                    THROW_ZE("cannot open archive");
                 }
                 int numEntries=(int)mz_zip_reader_get_num_files(zip_archive);
                 for (int i = 0; i < numEntries; i++){
@@ -275,7 +276,7 @@ class ChartInstaller::WorkerRunner : public Thread{
                     installer->UpdateProgress(currentRequest,progress);
                     mz_zip_archive_file_stat file_stat;
                     if (!mz_zip_reader_file_stat(zip_archive, i, &file_stat)){
-                        throw ZipException(FMT("unable to read zip entry %d in %s",i,zipFile));
+                        THROW_ZE(FMT("unable to read entry %d",i));
                     }
                     String extractDest=FileHelper::concatPath(targetDir,file_stat.m_filename);
                     if (file_stat.m_is_directory){
@@ -288,13 +289,18 @@ class ChartInstaller::WorkerRunner : public Thread{
                         LOG_DEBUG("extracting file %s",extractDest);
                         String dirName=FileHelper::dirname(extractDest);
                         if (! FileHelper::exists(dirName,true)){
-                            FileHelper::makeDirs(dirName);
+                            FileHelper::makeDirsT(dirName);
                         }
                         if (! FileHelper::canWrite(dirName)){
                             throw FileException(dirName,"unable to create writable directory");
                         }
                         if (! mz_zip_reader_extract_to_file(zip_archive,i,extractDest.c_str(),0)){
-                            throw ZipException(FMT("unable to extract %s",extractDest));
+                            mz_zip_error zerror=mz_zip_get_last_error(zip_archive);
+                            if (zerror == MZ_ZIP_WRITE_CALLBACK_FAILED){
+                                //errno should have been set
+                                throw SystemException(FMT("zip: unable to extract %s",extractDest));
+                            }
+                            throw ZipException(zipFile,zerror, FMT("unable to extract %s",extractDest));
                         }
                     }
                 }
@@ -389,8 +395,13 @@ ChartInstaller::ChartInstaller(ChartManager::Ptr chartManager,const String &char
 }
 String ChartInstaller::CreateTempDir(int requestId){
     String rt=FileHelper::concatPath(tempDir,FMT("tmp%05d",requestId));
-    if (! FileHelper::makeDirs(rt)) throw AvException(FMT("unable to create temp dir %s",rt));
+    FileHelper::makeDirsT(rt);
     return rt;
+}
+void ChartInstaller::checkWorker() const{
+    if (worker) return;
+    if (startupError.empty()) throw AvException("not running");
+    throw AvException(FMT("installer not running: %s",startupError));
 }
 void ChartInstaller::Start(){
     if (worker) return;
@@ -424,12 +435,13 @@ ChartInstaller::~ChartInstaller(){
 ChartInstaller::Request ChartInstaller::GetRequest(int requestId)
 {
     CondSynchronized l(waiter);
-    if (! worker) throw AvException("not running");
+    checkWorker();
     auto it=requests.find(requestId);
     if (it == requests.end()) throw AvException(FMT("request %d not in the list",requestId));
     return it->second;
 }
 ChartInstaller::Request ChartInstaller::CurrentRequest(){
+    checkWorker();
     int id=-1;
     if (worker) id=worker->currentRequest();
     if (id <= 0){
@@ -500,8 +512,7 @@ void ChartInstaller::HouseKeeping(bool doThrow)
 }
 ChartInstaller::Request ChartInstaller::StartRequest(const String &chartUrl, const String &keyUrl)
 {
-    if (!worker)
-        throw AvException("not running");
+    checkWorker();
     if (worker->isActive())
         throw AvException("a request is already running");
     HouseKeeping();
@@ -523,8 +534,7 @@ ChartInstaller::Request ChartInstaller::StartRequest(const String &chartUrl, con
 
 ChartInstaller::Request ChartInstaller::StartRequestForUpload()
 {
-    if (!worker)
-        throw AvException("not running");
+    checkWorker();
     if (worker->isActive())
         throw AvException("a request is already running");
     HouseKeeping();
@@ -556,8 +566,7 @@ void ChartInstaller::FinishUpload(int requestId, const String &error){
     bool cleanup=false;
     {
         CondSynchronized l(waiter);
-        if (!worker)
-            throw AvException("not running");
+        checkWorker();
         auto it = requests.find(requestId);
         if (it == requests.end())
             throw AvException(FMT("request %s not found", requestId));
@@ -633,7 +642,8 @@ void ChartInstaller::ToJson(StatusStream &stream){
     stream["error"]=startupError;
 }
 bool ChartInstaller::CanInstall() const{
-    return (worker != NULL) && (worker->currentRequest() < 0);
+    checkWorker();
+    return worker->currentRequest() < 0;
 }
 bool ChartInstaller::InterruptRequest(int requestId){
     CondSynchronized l(waiter);

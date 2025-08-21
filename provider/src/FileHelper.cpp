@@ -129,7 +129,8 @@ bool FileHelper::unlink(const String &name){
     return ::unlink(name.c_str()) == 0;
 }
 
-bool FileHelper::makeDirs(const String &dir,bool modifyUmask, int mode){
+bool FileHelper::makeDirsE(const String &dir,int &error,bool modifyUmask, int mode){
+    error=0;
     if (dir.empty()) return false;
     FSNS::path p(dir);
     FSNS::path current;
@@ -147,7 +148,10 @@ bool FileHelper::makeDirs(const String &dir,bool modifyUmask, int mode){
             //assume not existing
             //use mkdir directly as we want to set the mode
             int res=mkdir(current.c_str(),mode);
-            if (res != 0) return false;
+            if (res != 0) {
+                error=errno;
+                return false;
+            }
             if (! exists(current.string(),true)){
                 if (modifyUmask) umask(origUmask);
                 return false;

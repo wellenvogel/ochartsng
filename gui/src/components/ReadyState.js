@@ -25,40 +25,58 @@
  SOFTWARE.
  */
 import React, { Component } from 'react';
-import StatusLine from './StatusLine.js';
-import {fetchReadyState} from "../util/Fetcher";
+import StatusLine, {stateToIcon} from './StatusLine.js';
+import {fetchJson} from "../util/Util";
+import {UPLOADURL} from "../util/Constants";
+import {fetcher} from "../util/Fetcher";
 
+
+const setStv=(old,statestr,info)=>{
+    if (old.infoString === info && old.stateString===statestr) return null;
+    return {
+        infoString: info,
+        stateString: statestr
+    }
+}
 class ReadyState extends React.Component{
     constructor(props) {
         super(props);
         this.state={
-            ready:false,
-            stateString:'UNKNOWN'
+            ready:undefined,
+            stateString:'UNKNOWN',
+            infoString:undefined
         };
-        this.readyFetcher=fetchReadyState(this,2000,
-            (isReady)=>{
-                let stateString=isReady?"READY":"BUSY";
-                if (this.props.onChange){
-                    stateString=this.props.onChange(isReady);
-                }
-                if (this.state.stateString !== stateString){
-                    this.setState({stateString:stateString})
-                }
-            },
-            (error)=>{
-                let stateString="ERROR";
-                if (this.props.onError){
-                    stateString=this.props.onError(error);
-                }
-                if (this.state.stateString !== stateString){
-                    this.setState({stateString:stateString})
-                }
-            }
-        );
+        this.fetcher=fetcher((sequence)=>{
+            return fetchJson(UPLOADURL + "canInstall")
+                .then((jsonData) => {
+                    const isReady=jsonData.data.canInstall;
+                    let stateString=isReady?"READY":"BUSY";
+                    if (this.props.onChange){
+                        stateString=this.props.onChange(isReady);
+                    }
+                    if (jsonData.data.error){
+                        stateString="ERROR";
+                    }
+                    this.setState((old)=>setStv(old,stateString,jsonData.data.error));
+                    return sequence;
+                })
+                .catch((e)=>{
+                    const estr=e+"";
+                    if (this.props.onChange){
+                        this.props.onChange(false);
+                    }
+                    this.setState((old)=>setStv(old,"ERROR",estr));
+                    return sequence;
+                })
+        },this,2000);
     }
     render(){
+        const value=this.state.infoString?"":this.state.stateString;
+        const icon=this.state.infoString?stateToIcon("ERROR"):true;
         return (
-            <StatusLine label="Status" className={this.props.className} value={this.state.stateString} icon={true}/>
+            <StatusLine label="Status" className={this.props.className} value={value} icon={icon}>
+                {this.state.infoString?this.state.infoString+"":null}
+            </StatusLine>
         );
     }
 }

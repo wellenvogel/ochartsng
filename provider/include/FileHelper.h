@@ -108,7 +108,16 @@ public:
      */
     static StringVector listDir(const String &name, const String &glob="",bool fullNames=true);
     static bool unlink(const String &name);
-    static bool makeDirs(const String &dir, bool modifyUmask=false,int mode=0755);
+    static bool makeDirsE(const String &dir,/*out*/int &error, bool modifyUmask=false,int mode=0755);
+    static bool makeDirs(const String &dir, bool modifyUmask=false,int mode=0755){
+        int error=0;
+        return makeDirsE(dir,error,modifyUmask,mode);
+    };
+    static bool makeDirsT(const String &dir, bool modifyUmask=false,int mode=0755){
+        int error=0;
+        if (makeDirsE(dir,error,modifyUmask,mode)) return true;
+        throw new SystemException(FMT("unable to create directory %s",dir),error);
+    }
     static bool canWrite(const String &name);
     static bool canRead(const String &name);
     static bool emptyDirectory(const String &name, bool removeSelf=false);

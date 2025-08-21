@@ -30,13 +30,47 @@
 #include "SimpleThread.h"
 #include "ChartManager.h"
 #include "Timer.h"
+#include "miniz.h"
 #include <atomic>
 #include <memory>
 class ChartInstaller: public ItemStatus{
     public:
         static constexpr const int MAX_REQUESTS=20;
         DECL_EXC(AvException,InterruptedException);
-        DECL_EXC(AvException,ZipException);
+        class ZipException: public AvException{
+            using AvException::AvException;
+            protected:
+                mz_zip_error zerror=MZ_ZIP_NO_ERROR;
+                String filename;
+            public:
+                virtual const String msg() const noexcept override{
+                    if (zerror == MZ_ZIP_NO_ERROR && filename.empty()) return AvException::msg();
+                    if (filename.empty()){
+                        return FMT("%s: (%d)%s",AvException::msg(),
+                            (int)zerror,
+                            mz_zip_get_error_string(zerror));
+                    }
+                    if (zerror == MZ_ZIP_NO_ERROR){
+                        return FMT("zip: %s %s",
+                        filename,
+                        AvException::msg());    
+                    }
+                    return FMT("zip: %s %s: (%d)%s",
+                        filename,
+                        AvException::msg(),
+                        (int)zerror,
+                        mz_zip_get_error_string(zerror)
+                    );
+                }
+                ZipException(const String &cfilename,const String &reason):
+                    AvException(reason),filename(cfilename){}
+                ZipException(mz_zip_error cerror,const String &reason):
+                    AvException(reason),zerror(cerror){}
+                ZipException(const String &cfilename,mz_zip_error cerror,const String &reason):
+                    AvException(reason),filename(cfilename),zerror(cerror){}
+
+        };
+        
         typedef std::shared_ptr<ChartInstaller> Ptr;
         ChartInstaller(ChartManager::Ptr chartManager, const String &chartDir,const String &tempDir);
         typedef struct {
@@ -98,6 +132,7 @@ class ChartInstaller: public ItemStatus{
         Request NextRequest();
         void UpdateRequest(const Request &v, bool checkInterrupted=true);
         void HouseKeeping(bool doThrow=true);
+        void checkWorker() const;
         bool CheckInterrupted(int requestId, bool throwInterrupted=true);
         typedef std::map<int,Request> RequestMap;
         RequestMap requests;

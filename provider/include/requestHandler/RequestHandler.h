@@ -303,7 +303,7 @@ protected:
             openOutput->write(buffer, rd);
             if (openOutput->bad())
             {
-                throw AvException(FMT("unable to write %d bytes", rd));
+                throw SystemException(FMT("unable to write %d bytes", rd));
             }
             bRead += rd;
             if (len > 0 && progress){

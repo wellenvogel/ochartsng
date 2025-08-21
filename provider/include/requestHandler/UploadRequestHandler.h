@@ -50,6 +50,38 @@ public:
         if (StringHelper::startsWith(url,"/")){
             url=url.substr(1);
         }
+        if (StringHelper::startsWith(url,"canInstall")){
+            bool ready=false;
+            json::JSON obj;
+            try{
+                ready=installer->CanInstall();
+            }catch (AvException &a){
+                obj["error"]=a.msg();
+            }
+            obj["canInstall"]=ready;
+            return new HTTPJsonResponse(obj);
+        }
+        if (StringHelper::startsWith(url,"requestStatus")){
+            String requestId=GetQueryValue(request,"requestId");
+            int id=::atoi(requestId.c_str());
+            try{
+                ChartInstaller::Request rt;
+                if (id > 0){
+                    rt=installer->GetRequest(id);
+                }
+                else{
+                    rt=installer->CurrentRequest();
+                }
+                json::JSON obj;
+                rt.ToJson(obj);
+                return new HTTPJsonResponse(obj);
+            }catch (AvException &a){
+                return new HTTPJsonErrorResponse(a.msg());
+            }
+            catch (Exception &e){
+                return new HTTPJsonErrorResponse(e.what());
+            }
+        }
         if (!installer->IsActive()){
             return new HTTPJsonErrorResponse("not ready");
         }
@@ -78,7 +110,16 @@ public:
                     throw AvException(FMT("only written %d from %d bytes",written,uploadSize));
                 }
                 installer->FinishUpload(installRequest.id);
-            }catch (Exception &e){
+            }
+            catch (AvException &a){
+                if (installRequest.id >= 0){
+                    try{
+                        installer->FinishUpload(installRequest.id,a.msg());
+                    }catch (Exception &x){}
+                }
+                return new HTTPJsonErrorResponse(a.msg());
+            }
+            catch (Exception &e){
                 if (installRequest.id >= 0){
                     try{
                         installer->FinishUpload(installRequest.id,e.what());
@@ -90,24 +131,7 @@ public:
             obj["request"]=installRequest.id;
             return new HTTPJsonResponse(obj);  
         }
-        if (StringHelper::startsWith(url,"requestStatus")){
-            String requestId=GetQueryValue(request,"requestId");
-            int id=::atoi(requestId.c_str());
-            try{
-                ChartInstaller::Request rt;
-                if (id > 0){
-                    rt=installer->GetRequest(id);
-                }
-                else{
-                    rt=installer->CurrentRequest();
-                }
-                json::JSON obj;
-                rt.ToJson(obj);
-                return new HTTPJsonResponse(obj);
-            }catch (Exception &e){
-                return new HTTPJsonErrorResponse(e.what());
-            }
-        }
+        
         if (StringHelper::startsWith(url,"cancelRequest")){
             String requestId;
             GET_QUERY(requestId,"requestId");
@@ -139,12 +163,6 @@ public:
             }catch (Exception &e){
                 return new HTTPJsonErrorResponse(e.what());
             }
-        }
-        if (StringHelper::startsWith(url,"canInstall")){
-            bool ready=installer->CanInstall();
-            json::JSON obj;
-            obj["canInstall"]=ready;
-            return new HTTPJsonResponse(obj);
         }
         if (StringHelper::startsWith(url,"deleteSet")){
             String name;

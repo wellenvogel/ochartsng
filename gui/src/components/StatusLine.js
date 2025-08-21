@@ -31,7 +31,7 @@ const yellowIcon="yellow";
 const greenIcon="green";
 const greyIcon="grey";
 const redIcon="red";
-const stateToIcon=(state)=>{
+export const stateToIcon=(state)=>{
     if (state) state=state.toUpperCase();
     if (state == "FILLING") return yellowIcon;
     if (state == "YELLOW") return yellowIcon;

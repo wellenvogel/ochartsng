@@ -26,7 +26,6 @@
  */
 import React, { Component } from 'react';
 import StatusLine from './StatusLine.js';
-import {fetchReadyState} from "../util/Fetcher";
 import {fetchJson, lifecycleTimer, nestedEquals} from "../util/Util";
 import {SHOPURL} from "../util/Constants";
 

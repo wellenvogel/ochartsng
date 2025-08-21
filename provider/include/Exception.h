@@ -87,6 +87,17 @@ class FileException: public AvException{
         return "["+fileName+"]"+AvException::msg();
     }
 };
+
+class SystemException : public AvException{
+    public:
+        SystemException(const String &reason):AvException(reason,errno){}
+        SystemException(const String &reason, int cerror):AvException(reason,cerror){}
+        virtual const String msg() const noexcept override{
+            if (error == 0) return AvException::msg();
+            char buffer[200];
+            return FMT("%s [%s(%d)]",reason,strerror_r(error,buffer,200),error);
+        }
+};
 DECL_EXC(AvException,TimeoutException);
 DECL_EXC(AvException,RecurringException);
 class AssertException : public AvException{

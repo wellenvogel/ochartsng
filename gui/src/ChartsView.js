@@ -34,7 +34,7 @@ import {InstallProgress, PROGRESS_STORE_KEY, ProgressDisplay} from "./components
 import {fetchJson, hexToBase64, nestedEquals, uploadFile} from "./util/Util";
 import {resetError} from "./components/ErrorDisplay";
 import SpinnerDialog from "./components/SpinnerDialog";
-import {fetchChartList, fetchReadyState} from "./util/Fetcher";
+import {fetchChartList} from "./util/Fetcher";
 import ReadyState from "./components/ReadyState";
 import Store from "./util/store";
 import DongleState from "./components/DongleState";

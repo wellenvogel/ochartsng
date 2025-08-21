@@ -28,7 +28,7 @@
 import {fetchJson, lifecycleTimer, nestedEquals} from "./Util";
 import {STATUSURL, UPLOADURL} from "./Constants";
 
-const fetcher=(fetchMethod,thisref,interval)=>{
+export const fetcher=(fetchMethod,thisref,interval)=>{
     let timerData=lifecycleTimer(thisref,(sequence)=>{
         fetchMethod(sequence)
             .then((sequence)=>timerData.startTimer(sequence));
@@ -81,34 +81,3 @@ export const fetchChartList=(thisref, intervall,opt_errorcallback, opt_stateName
     return fetcher(fetch,thisref,intervall);
 }
 
-export const fetchReadyState=(thisref,intervall,changeCallback,opt_errorcallback,opt_statename)=>{
-    if (! opt_statename) opt_statename="ready";
-    const fetch=(sequence)=> {
-        return fetchJson(UPLOADURL + "canInstall")
-            .then((jsonData) => {
-                try {
-                    let old = thisref.state[opt_statename];
-                    if (old === jsonData.data.canInstall) {
-                        return sequence;
-                    }
-                } catch (e) {
-                }
-                setState(thisref,opt_statename,jsonData.data.canInstall);
-                if (changeCallback) changeCallback(jsonData.data.canInstall);
-                return sequence;
-            })
-            .catch((error) => {
-                if (opt_errorcallback) {
-                    opt_errorcallback("unable to fetch ready state: " + error);
-                }
-                try{
-                    if (thisref.state[opt_statename] === false){
-                        return sequence;
-                    }
-                }catch(e){}
-                setState(thisref,opt_statename,false);
-                return sequence;
-            })
-    };
-    return fetcher(fetch,thisref,intervall);
-}
