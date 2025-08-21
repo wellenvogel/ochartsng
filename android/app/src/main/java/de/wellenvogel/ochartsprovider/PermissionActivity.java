@@ -51,7 +51,10 @@ public class PermissionActivity extends AppCompatActivity {
     String [] permissions=null;
     int title=0;
     private final ActivityResultLauncher<String> requestPermissionLauncher=registerForActivityResult(new ActivityResultContracts.RequestPermission(), result -> {
-        if (result) finish();
+        if (result) {
+            setResult(1);
+            finish();
+        }
         if (! checkPermissionDialog())finish();
     });
     private final ActivityResultLauncher<String[]> requestMultiPermissionLauncher=registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> {
@@ -59,7 +62,10 @@ public class PermissionActivity extends AppCompatActivity {
         for (boolean v:result.values()){
             if (!v) ok=false;
         }
-        if (ok) finish();
+        if (ok) {
+            setResult(1);
+            finish();
+        }
         if (! checkPermissionDialog()) finish();
     });
 
@@ -97,7 +103,11 @@ public class PermissionActivity extends AppCompatActivity {
                 break;
             }
         }
-        if (! needsRequest) finish();
+        if (! needsRequest) {
+            setResult(1);
+            finish();
+        }
+        setResult(0);
         if (permissions.length > 1){
             requestMultiPermissionLauncher.launch(permissions);
         }
@@ -106,13 +116,4 @@ public class PermissionActivity extends AppCompatActivity {
         }
     }
 
-    public static void runPermissionRequest(Context ctx,String [] permissions, int title){
-        Intent i=new Intent(ctx, PermissionActivity.class);
-        i.setFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT | Intent.FLAG_ACTIVITY_MULTIPLE_TASK|Intent.FLAG_ACTIVITY_NEW_TASK);
-        Bundle extra=new Bundle();
-        extra.putInt(Constants.EXTRA_TXT,title);
-        extra.putStringArray(Constants.EXTRA_PERMISSIONS,permissions);
-        i.putExtras(extra);
-        ctx.startActivity(i);
-    }
 }

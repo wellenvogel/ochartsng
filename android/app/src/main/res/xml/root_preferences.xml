@@ -15,6 +15,11 @@
             app:entries="@array/debugEntries"
             app:entryValues="@array/debugValues"
             app:useSimpleSummaryProvider="true"/>
+        <ListPreference
+            app:defaultValue="@string/s_workdir_default"
+            app:key="@string/s_workdir"
+            app:title="Workdir"
+            app:useSimpleSummaryProvider="true"/>
         <SeekBarPreference
             app:key="@string/s_shutdown"
             app:title="Shutdown(s)"

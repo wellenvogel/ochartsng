@@ -9,6 +9,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.SystemClock;
+import android.text.Html;
 import android.text.InputType;
 import android.util.Log;
 import android.view.Menu;
@@ -258,6 +260,47 @@ public class SettingsActivity extends AppCompatActivity {
                     testmode.setVisible(false);
                 }
             }
+            long st= SystemClock.uptimeMillis();
+            ListPreference workdir=(ListPreference)findPreference(getString(R.string.s_workdir));
+            if (workdir != null) {
+                Settings.WorkDir parser = new Settings.WorkDir(true);
+                parser.fill(getActivity());
+                List<Settings.WorkDir.Entry> entries = parser.getEntries();
+                String[] values = new String[entries.size()];
+                String[] labels = new String[entries.size()];
+                int selected = -1;
+                String current = getPreferenceManager().getSharedPreferences().getString(getString(R.string.s_workdir), "");
+                for (int idx = 0; idx < entries.size(); idx++) {
+                    Settings.WorkDir.Entry e = entries.get(idx);
+                    values[idx] = e.getConfigName();
+                    labels[idx] = e.getTitle();
+                    if (e.getConfigName().equals(current)) selected = idx;
+                }
+                workdir.setEntries(labels);
+                workdir.setEntryValues(values);
+                if (selected >= 0) workdir.setValueIndex(selected);
+                workdir.setOnPreferenceChangeListener((preference, newValue) -> {
+                    String nv=(String)newValue;
+                    ListPreference lp=(ListPreference)preference;
+                    String ov=lp.getValue();
+                    if (ov != null && ov.equals(nv)) return false;
+                    AlertDialog.Builder b=new AlertDialog.Builder(getActivity());
+                    b.setMessage(Html.fromHtml(getString(R.string.workdirMessage)));
+                    b.setTitle(R.string.altKeyTitle);
+                    b.setNegativeButton(R.string.cancel, (dialogInterface, i) ->{
+                        dialogInterface.dismiss();
+                    });
+                    b.setPositiveButton(R.string.ok, (dialogInterface, i) -> {
+                        dialogInterface.dismiss();
+                        lp.setValue(nv);
+                    });
+                    b.create().show();
+                    return false;
+                });
+            }
+            long df=SystemClock.uptimeMillis()-st;
+            Log.i("settings","fill wd took "+df+" ms");
+
         }
         @Override
         public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {

@@ -35,28 +35,25 @@ import java.io.InputStream;
 
 // Used to load the 'native-lib' library on application startup.
 class OutputHandler implements Runnable{
-    private final Context context;
     private final InputStream is;
-    private final String filename;
-    OutputHandler(Context context, InputStream is, String filename){
-        this.context = context;
+    private final File outFile;
+    OutputHandler(File outFile, InputStream is){
         this.is=is;
-        this.filename=filename;
+        this.outFile=outFile;
     }
     @Override
     public void run() {
-        Log.i(Constants.PRFX,"output handler started for "+filename);
+        Log.i(Constants.PRFX,"output handler started for "+outFile.getName());
         byte[] buffer = new byte[1024];
         try {
-            File outFile=new File(context.getFilesDir(),filename);
             FileOutputStream fos = new FileOutputStream(outFile);
             int rd=0;
             while ((rd=is.read(buffer)) > 0){
                 fos.write(buffer,0,rd);
             }
         }catch (Exception e){
-            Log.e(Constants.PRFX,"unable to log to "+filename,e);
+            Log.e(Constants.PRFX,"unable to log to "+outFile.getName(),e);
         }
-        Log.i(Constants.PRFX,"output handler finished for "+filename);
+        Log.i(Constants.PRFX,"output handler finished for "+outFile.getName());
     }
 }

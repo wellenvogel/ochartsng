@@ -56,7 +56,8 @@ public class LogProvider extends DocumentsProvider {
 
     @Override
     public boolean onCreate() {
-        baseDir=new File(getContext().getFilesDir(),LOG_ROOT);
+        Settings s=Settings.getSettings(getContext(),false);
+        baseDir=new File(s.getWorkDir(),LOG_ROOT);
         return true;
     }
 
