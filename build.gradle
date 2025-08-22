@@ -84,7 +84,7 @@ def DEPS_V13 = [
                 ['libgcc1'],
                 ['libstdc++6'],
                 ['libssl3t64'],
-                ['libcurl4'],
+                ['libcurl4t64'],
                 ['python3-mapbox-earcut'],
                 ['gdal-bin'],
                 ['libusb-0.1-4']
@@ -409,7 +409,7 @@ ospackage {
     packageName='avnav-ochartsng'
     requires('avnav','20210106',GE)
     requires('openssl')
-    requires('libarchive13')
+    requires('libarchive13').or('libarchive13t64')
     requires('python3-psutil')
     postInstall(file('install/postinstall'))
     user='root'
