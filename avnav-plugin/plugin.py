@@ -344,6 +344,14 @@ class Plugin:
         for k in list(item.keys()):
           if type(item[k]) == str or type(item[k]) == unicode:
             item[k]=item[k].replace("localhost",hostip).replace("127.0.0.1",hostip)
+        try:
+          #AvNav expects time stamps to be in seconds
+          #but our list currently has milliseconds
+          ts=item.get('time')
+          if ts is not None:
+            item['time']=ts/1000
+        except:
+          pass
       return items
     except:
       self.api.debug("unable to contact provider: %s"%traceback.format_exc())
