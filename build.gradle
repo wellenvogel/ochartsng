@@ -93,22 +93,6 @@ def DEPS_V13 = [
 def IMAGE_VERSION = "A1"        
 def VARIANTS=[
         [osline:'ubuntu',
-         osversion:'bionic', 
-         arch: 'amd64',
-         tag: IMAGE_VERSION,
-         dockerfile: 'Dockerfile.all',
-         oexdir: 'linux64',
-         dependencies: DEFAULT_DEPS
-         ],
-        [osline:'ubuntu',
-         osversion:'focal',
-         arch: 'amd64',
-         tag: IMAGE_VERSION,
-         dockerfile:'Dockerfile.all',
-         oexdir: 'linux64',
-         dependencies: DEFAULT_DEPS
-         ],
-        [osline:'ubuntu',
          osversion:'jammy',
          arch: 'amd64',
          tag: IMAGE_VERSION,
@@ -118,6 +102,14 @@ def VARIANTS=[
          ],
         [osline:'ubuntu',
          osversion:'noble',
+         arch: 'amd64',
+         tag: IMAGE_VERSION,
+         dockerfile:'Dockerfile.all',
+         oexdir: 'linux64',
+         dependencies: DEPS_V13
+         ],
+        [osline:'ubuntu',
+         osversion:'resolute',
          arch: 'amd64',
          tag: IMAGE_VERSION,
          dockerfile:'Dockerfile.all',
