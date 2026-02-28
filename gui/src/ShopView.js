@@ -239,6 +239,10 @@ class ShopView extends Component {
         this.loginDialogAction=this.loginDialogAction.bind(this);
     }
 
+    onAndroid(){
+        return !this.state.canHaveDongle;
+    }
+
     showSpinner(title){
         if (title) {
             resetError();
@@ -311,7 +315,7 @@ class ShopView extends Component {
             .then((system)=>{
                 //if we are on Android (canHaveDongle == false)
                 //we make a second try with the alternative fpr
-                if (system !== undefined || this.state.canHaveDongle) return runChartList();
+                if (system !== undefined || ! this.onAndroid()) return runChartList();
                 this.showSpinner("identify alt");
                 return ShopLogin.tryIdentify(true)
                     .then((system)=>{
@@ -327,7 +331,7 @@ class ShopView extends Component {
 
     loginDialogAction(data) {
         this.showSpinner("login");
-        ShopLogin.tryShopLogin(data)
+        ShopLogin.tryShopLogin(data, this.onAndroid())
             .then(() => {
                 return this.identifyAndChartList(true);
             })

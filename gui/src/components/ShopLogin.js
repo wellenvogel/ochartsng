@@ -209,7 +209,7 @@ const getXmlVal=(xml,name)=>{
     }
     if (xml) return xml.textContent;
 }
-
+const SHOPVERSION='r.2.1.4'
 class LoginHandler{
     constructor() {
         this.store=loginStore;
@@ -258,7 +258,7 @@ class LoginHandler{
         }
     }
     executeShoprequest(task,parameters){
-        let url=SHOPURL+"api?version=r.1.0.0&taskId="+encodeURIComponent(task);
+        let url=SHOPURL+"api?version="+SHOPVERSION+"&taskId="+encodeURIComponent(task);
         for (let k in parameters){
             url+="&"+encodeURIComponent(k)+"="+encodeURIComponent(parameters[k]);
         }
@@ -280,12 +280,19 @@ class LoginHandler{
         return new ShopError(code);
     }
 
-    tryShopLogin(dialogResult){
+    tryShopLogin(dialogResult,onAndroid){
         let user=dialogResult.user;
         let password=dialogResult.password;
         if (user === undefined || user === "") return Promise.reject("username must not be empty");
         if (password === undefined || password === "") return Promise.reject("password must not be empty");
-        return this.executeShoprequest("login",{
+        if (onAndroid){
+            //in the code of the plugin for 2.1.4 there is still the strange encoding
+            //of the android passwd before using hex...
+            //see around line 2460 of ochartShop.cpp
+        }
+        const encoder=new TextEncoder('utf-8');
+        password=encoder.encode(password).toHex();
+        return this.executeShoprequest("login2",{
             username:user,
             password:password
         })
