@@ -109,6 +109,16 @@ def VARIANTS=[
          dependencies: DEPS_V13
          ],
         [osline:'ubuntu',
+         osversion:'noble',
+         arch: 'arm64',
+         tag: IMAGE_VERSION,
+         platform: 'linux/arm64',
+         dockerbase:'arm64v8/ubuntu',
+         dockerfile:'Dockerfile.platform.v2',
+         oexdir: 'linuxarm64',
+         dependencies: DEPS_V13
+         ],
+/*        [osline:'ubuntu',
          osversion:'resolute',
          arch: 'amd64',
          tag: IMAGE_VERSION,
@@ -116,6 +126,16 @@ def VARIANTS=[
          oexdir: 'linux64',
          dependencies: DEPS_V13
          ],
+        [osline:'ubuntu',
+         osversion:'resolute',
+         arch: 'arm64',
+         tag: IMAGE_VERSION,
+         platform: 'linux/arm64',
+         dockerbase:'arm64v8/ubuntu',
+         dockerfile:'Dockerfile.platform.v2',
+         oexdir: 'linuxarm64',
+         dependencies: DEPS_V13
+         ], */
         [osline:'debian',
          osversion:'buster',
          arch: 'amd64',
