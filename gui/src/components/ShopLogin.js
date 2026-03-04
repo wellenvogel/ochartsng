@@ -209,7 +209,7 @@ const getXmlVal=(xml,name)=>{
     }
     if (xml) return xml.textContent;
 }
-const SHOPVERSION='r.2.1.5'
+const SHOPVERSION='r.2.1.7'
 class LoginHandler{
     constructor() {
         this.store=loginStore;
