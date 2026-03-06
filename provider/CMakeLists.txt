@@ -238,7 +238,7 @@ else()
     target_include_directories(${TARGET} PRIVATE curl::curl)
     target_link_libraries(${TARGET} PRIVATE z)
     message("openssl...")
-    #find_package(OpenSSL REQUIRED CONFIG) #already included by curl
+    find_package(openssl REQUIRED CONFIG) 
     target_link_libraries(${TARGET} PRIVATE openssl::crypto )
     #package openssl
     target_link_libraries(${TARGET} PRIVATE openssl::ssl )
