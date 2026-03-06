@@ -225,6 +225,29 @@ android {
         }
     }
 }
+def ivyPatterns={
+    artifact("[organisation]-[module]-[revision].[ext]")
+    ivy("[organisation]-[module]-[revision].ivy")
+}
+def ivyOpenssl="https://github.com/wellenvogel/openssl-android-aar/releases/download/3.5.5"
+def ivyCurl="https://github.com/wellenvogel/curl-android-aar/releases/download/8.18.0"
+if (project.hasProperty('localRepos')){
+    ivyOpenssl='file:///home/andreas/projects/openssl-android-aar/build/repository'
+    ivyCurl='file:///home/andreas/projects/curl-android-aar/build/repository'
+}
+
+repositories {
+    ivy{
+        name="ivy-openssl"
+        url=ivyOpenssl
+        patternLayout ivyPatterns
+    }
+    ivy{
+        name="ivy-curl"
+        url=ivyCurl
+        patternLayout ivyPatterns
+    }
+}
 
 dependencies {
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.3.1'
@@ -245,8 +268,8 @@ dependencies {
     testImplementation 'junit:junit:4.+'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
-    implementation group: 'com.android.ndk.thirdparty', name: 'curl', version: '7.85.0-beta-1'
-    implementation 'com.android.ndk.thirdparty:openssl:1.1.1g-alpha-1'
+    implementation "de.wellenvogel.android.ndk.thirdparty:curl-shared:8.18.0@aar"
+    implementation "de.wellenvogel.android.ndk.thirdparty:openssl-shared:3.5.5@aar"
     debugImplementation 'androidx.compose.ui:ui-tooling'
     debugImplementation 'androidx.compose.ui:ui-test-manifest'
 }
