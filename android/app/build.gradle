@@ -33,7 +33,8 @@ def kspw = System.getenv("ANDROID_KEYPASS")
 def kalias = System.getenv("ANDROID_KEYALIAS")
 def kpwd = System.getenv("ANDROID_KEYPASS")
 android {
-    compileSdkVersion 34
+    compileSdk 36
+    ndkVersion "29.0.14206865"
     externalNativeBuild {
         cmake {
             path "../../provider/CMakeLists.txt"
@@ -45,7 +46,7 @@ android {
         versionName "avnavocharts-$avnavVersion"
         versionCode Integer.parseInt(project.avnavVersion.replaceAll("[^0-9]*",""))
         minSdkVersion 24
-        targetSdkVersion 34
+        targetSdkVersion 35
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
@@ -225,28 +226,53 @@ android {
         }
     }
 }
+def ivyPatterns={
+    artifact("[organisation]-[module]-[revision].[ext]")
+    ivy("[organisation]-[module]-[revision].ivy")
+}
+def ivyOpenssl="https://github.com/wellenvogel/openssl-android-aar/releases/download/3.5.5"
+def ivyCurl="https://github.com/wellenvogel/curl-android-aar/releases/download/8.18.0"
+if (project.hasProperty('localRepos')){
+    ivyOpenssl='file:///home/andreas/projects/openssl-android-aar/build/repository'
+    ivyCurl='file:///home/andreas/projects/curl-android-aar/build/repository'
+}
+
+repositories {
+    ivy{
+        name="ivy-openssl"
+        url=ivyOpenssl
+        patternLayout ivyPatterns
+    }
+    ivy{
+        name="ivy-curl"
+        url=ivyCurl
+        patternLayout ivyPatterns
+    }
+}
 
 dependencies {
-    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.3.1'
-    implementation 'androidx.activity:activity-compose:1.5.1'
-    implementation platform('androidx.compose:compose-bom:2022.10.00')
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.10.0'
+    implementation 'androidx.activity:activity-compose:1.12.4'
+    implementation platform('androidx.compose:compose-bom:2026.02.01')
     implementation 'androidx.compose.ui:ui'
     implementation 'androidx.compose.ui:ui-graphics'
     implementation 'androidx.compose.ui:ui-tooling-preview'
     implementation 'androidx.compose.material3:material3'
-    implementation 'androidx.preference:preference:1.2.0'
-    androidTestImplementation platform('androidx.compose:compose-bom:2022.10.00')
+    implementation 'androidx.preference:preference:1.2.1'
+    androidTestImplementation platform('androidx.compose:compose-bom:2026.02.01')
     androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
     def core_version = "1.9.0"
     //implementation "androidx.core:core:$core_version"
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.9.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation 'com.google.android.material:material:1.13.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
     testImplementation 'junit:junit:4.+'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
-    implementation group: 'com.android.ndk.thirdparty', name: 'curl', version: '7.85.0-beta-1'
-    implementation 'com.android.ndk.thirdparty:openssl:1.1.1g-alpha-1'
+    androidTestImplementation 'androidx.test.ext:junit:1.3.0'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.7.0'
+    //implementation group: 'com.android.ndk.thirdparty', name: 'curl', version: '7.85.0-beta-1'
+    implementation "de.wellenvogel.android.ndk.thirdparty:curl-shared:8.18.0@aar"
+    //implementation 'com.android.ndk.thirdparty:openssl:1.1.1g-alpha-1'
+    implementation "de.wellenvogel.android.ndk.thirdparty:openssl-shared:3.5.5@aar"
     debugImplementation 'androidx.compose.ui:ui-tooling'
     debugImplementation 'androidx.compose.ui:ui-test-manifest'
 }
@@ -334,9 +360,9 @@ afterEvaluate {
     generateBetaAssets.dependsOn(copyToAssetsViewerRelease)
     generateBetaAssets.dependsOn(copyToAssetsS57Data)
     generateBetaAssets.dependsOn(copyToAssetsPluginData)
-    [lintVitalReportBeta,lintVitalAnalyzeBeta,lintVitalReportRelease, lintVitalAnalyzeRelease].each { task ->
+    /*[lintVitalAnalyzeBeta, lintVitalAnalyzeRelease].each { task ->
         task.dependsOn(copyToAssetsViewerRelease)
         task.dependsOn(copyToAssetsS57Data)
         task.dependsOn(copyToAssetsPluginData)
-    }
+    }*/
 }
