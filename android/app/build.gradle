@@ -360,9 +360,13 @@ afterEvaluate {
     generateBetaAssets.dependsOn(copyToAssetsViewerRelease)
     generateBetaAssets.dependsOn(copyToAssetsS57Data)
     generateBetaAssets.dependsOn(copyToAssetsPluginData)
-    /*[lintVitalAnalyzeBeta, lintVitalAnalyzeRelease].each { task ->
-        task.dependsOn(copyToAssetsViewerRelease)
-        task.dependsOn(copyToAssetsS57Data)
-        task.dependsOn(copyToAssetsPluginData)
-    }*/
+    for (def tn : ['generateBetaLintVitalReportModel','lintVitalAnalyzeBeta','generateReleaseLintVitalReportModel','lintVitalAnalyzeRelase']){
+        logger.lifecycle("prepare lazy deps for ${tn}")
+        tasks.matching{it.name == tn}.each { task ->
+            logger.lifecycle("add deps for ${task}")
+            task.dependsOn(copyToAssetsViewerRelease)
+            task.dependsOn(copyToAssetsS57Data)
+            task.dependsOn(copyToAssetsPluginData)
+        }
+    }
 }
