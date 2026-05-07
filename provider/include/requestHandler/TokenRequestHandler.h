@@ -62,7 +62,7 @@ public:
             resp->code=204;
             resp->responseHeaders["Access-Control-Allow-Origin"]=corsOrigin(request);
             resp->responseHeaders["Access-Control-Max-Age"]="86400";
-            resp->responseHeaders["Access-Control-Allow-Methods","GET, OPTIONS"];
+            resp->responseHeaders["Access-Control-Allow-Methods"]="GET, OPTIONS";
             NameValueMap::iterator it=request->header.find("access-control-request-headers");
             if (it != request->header.end()){
                 resp->responseHeaders["Access-Control-Allow-Headers"]=it->second;
