@@ -1062,6 +1062,31 @@ namespace s52
         }
 
         rt.append(spost); // add any final modifiers
+        int rawStatus;
+        if (attributes->getInt(S57AttrIds::STATUS,rawStatus,true)){
+            String stString;
+            //see S01 https://github.com/iho-ohi/S-101_Portrayal-Catalogue/blob/8a59f0bd299b268fb731b51617ef89565d30cce3/PortrayalCatalog/Rules/LITDSN02.lua#L57
+            switch(rawStatus){
+                case 2:
+                    stString="(occas)";
+                    break;
+                case 7: 
+                    stString="(temp)";
+                    break;
+                case 8:
+                    stString="(priv)";
+                    break;
+                case 11:
+                    stString="(exting)";
+                    break;
+                case 17:
+                    stString="(U)";
+                    break;
+            }
+            if (! stString.empty()){
+                rt.append(stString);
+            }
+        }
         return rt;
     }
     static String LIGHTS06(const LUPrec *lup, const String &rule, const S52Data *s52data, const RuleConditions *conditions){
