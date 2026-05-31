@@ -331,14 +331,19 @@ class ShopView extends Component {
 
     loginDialogAction(data) {
         this.showSpinner("login");
-        ShopLogin.tryShopLogin(data, this.onAndroid())
-            .then(() => {
-                return this.identifyAndChartList(true);
-            })
-            .catch((error) => {
-                this.showSpinner();
-                setError(error)
-            });
+        try {
+            ShopLogin.tryShopLogin(data, this.onAndroid())
+                .then(() => {
+                    return this.identifyAndChartList(true);
+                })
+                .catch((error) => {
+                    this.showSpinner();
+                    setError(error)
+                });
+        }catch (e){
+            this.showSpinner();
+            setError(e);
+        }
     }
 
     /**

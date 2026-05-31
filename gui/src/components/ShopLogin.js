@@ -210,6 +210,10 @@ const getXmlVal=(xml,name)=>{
     if (xml) return xml.textContent;
 }
 const SHOPVERSION='r.2.1.7'
+const uint8ToHex=(arr)=>{
+    return Array.from(arr)
+        .map(b => b.toString(16).padStart(2,"0")).join('');
+}
 class LoginHandler{
     constructor() {
         this.store=loginStore;
@@ -286,7 +290,8 @@ class LoginHandler{
         if (user === undefined || user === "") return Promise.reject("username must not be empty");
         if (password === undefined || password === "") return Promise.reject("password must not be empty");
         const encoder=new TextEncoder('utf-8');
-        password=encoder.encode(password).toHex();
+        password=encoder.encode(password);
+        password=uint8ToHex(password);
         return this.executeShoprequest("login2",{
             username:user,
             password:password
