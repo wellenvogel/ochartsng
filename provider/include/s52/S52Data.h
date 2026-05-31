@@ -72,12 +72,16 @@ namespace s52
                 return false;
             }
             int getInt(uint16_t id) const;
-            bool getInt(uint16_t id, int &v) const{
-                if (hasAttr(id,T_INT)){
-                    v=getInt(id);
+            bool getInt(uint16_t id, int &v,bool convert=false) const{
+                auto it = find(id);
+                if (it == end()) return false;
+                if (it->second.type == T_INT){
+                    v=it->second.iv;
                     return true;
                 }
-                return false;
+                if (it->second.type != T_STRING) return false;
+                v=atoi(it->second.sv.c_str());
+                return true;
             }
             String getString(uint16_t id, bool convert=false) const;
             bool getString(uint16_t id, String &v) const{
