@@ -555,8 +555,11 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
             JSONArray userApps=new JSONArray();
             JSONObject userApp=new JSONObject();
             userApp.put("url","http://127.0.0.1:" + port + Constants.STARTPAGE);
-            userApp.put("name","ocharts");
+            userApp.put("name","ui");
             userApp.put("icon",iconUrl);
+            userApp.put("shortText","OC-NG");
+            userApp.put("longText","Ocharts NG");
+            userApp.put("page","chartspage");
             userApps.put(userApp);
             o.put("userApps",userApps);
             info.putExtra("plugin.json", o.toString());

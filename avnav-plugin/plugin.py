@@ -480,7 +480,17 @@ class Plugin:
         raise Exception("unable to start provider %s"%e)
     self.api.log("started with port %d"%port)
     self.api.registerChartProvider(self.listCharts)
-    self.api.registerUserApp("http://$HOST:%d/static/%s"%(port,self.STARTPAGE),"gui/icon.png")
+    registered=False
+    appUrl="http://$HOST:%d/static/%s"%(port,self.STARTPAGE)
+    icon="gui/icon.png"
+    if (self.api.getAvNavVersion() >= 20260606):
+      try:
+        self.api.registerUserApp(appUrl,icon,shortText='OC-NG',longText='Ocharts NG',page='chartspage',name='ui')
+        registered=True
+      except:
+        pass
+    if not registered:
+      self.api.registerUserApp(appUrl,icon)
     reported=False
     errorReported=False
     self.api.setStatus("STARTED", "provider started with pid %d, connecting at %s" %(self.providerPid,self.baseUrl))
