@@ -13,6 +13,7 @@ public class Constants {
     static final String LOGDIR="log"; //below filesDir
     static final String PRFX="Ocharts";
     static final String STARTPAGE="/static/index.html";
+    static final String PLUGINCSS="/static/plugin.css";
     static final String PREF_UNIQUE_ID = "uniqueId" ;
     static final String PREF_LICENSE_ACCEPTED="licenseAccepted";
     static final int LICENSE_VERSION=2;

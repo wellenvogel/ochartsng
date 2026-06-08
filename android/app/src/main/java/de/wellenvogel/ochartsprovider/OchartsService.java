@@ -528,6 +528,9 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
         if (fetcher != null) fetcher.stop();
         stopSelf();
     }
+    private String buildLocalUrl(String path){
+        return "http://127.0.0.1:" + port+path;
+    }
     private void broadcastInfo(){
         ProcessState pstate=getProcessState(false);
         lastBroadcast=SystemClock.uptimeMillis();
@@ -537,7 +540,7 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
             return;
         }
         try {
-            String iconUrl="http://127.0.0.1:" + port+"/static/icon.png";
+            String iconUrl=buildLocalUrl("/static/icon.png");
             Intent info = new Intent(Constants.BC_SEND);
             info.putExtra("name", "ocharts");
             info.putExtra("package", BuildConfig.APPLICATION_ID);
@@ -554,7 +557,7 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
             }
             JSONArray userApps=new JSONArray();
             JSONObject userApp=new JSONObject();
-            userApp.put("url","http://127.0.0.1:" + port + Constants.STARTPAGE);
+            userApp.put("url", buildLocalUrl(Constants.STARTPAGE));
             userApp.put("name","ui");
             userApp.put("icon",iconUrl);
             userApp.put("shortText","OC-NG");
@@ -563,6 +566,8 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
             userApps.put(userApp);
             o.put("userApps",userApps);
             info.putExtra("plugin.json", o.toString());
+            info.putExtra("plugin.css",buildLocalUrl(Constants.PLUGINCSS));
+            info.putExtra("plugin.css-time",(long)BuildConfig.VERSION_CODE);
             sendBroadcast(info);
             Log.i(Constants.PRFX,"broadcast");
         }catch (Throwable t){
