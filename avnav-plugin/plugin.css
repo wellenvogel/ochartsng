@@ -42,3 +42,10 @@ and as system plugin
 .button.system-ochartsng-ui .icon {
     background-image: var(--plugin-ochartsng-icon);
 }
+/*
+the plugin is named "ext-ocharts" on Android
+so we also have to set the icon for this case
+ */
+.button.ext-ocharts-ui .icon {
+    background-image: var(--plugin-ochartsng-icon);
+}
