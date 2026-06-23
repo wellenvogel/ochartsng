@@ -566,8 +566,14 @@ public class OchartsService extends Service implements ChartListFetcher.ResultHa
             userApps.put(userApp);
             o.put("userApps",userApps);
             info.putExtra("plugin.json", o.toString());
-            info.putExtra("plugin.css",buildLocalUrl(Constants.PLUGINCSS));
-            info.putExtra("plugin.css-time",(long)BuildConfig.VERSION_CODE);
+            //pluginfiles
+            JSONArray pluginFiles=new JSONArray();
+            JSONObject css=new JSONObject();
+            css.put("filename","plugin.css");
+            css.put("url",buildLocalUrl(Constants.PLUGINCSS));
+            css.put("timestamp",(long)BuildConfig.VERSION_CODE);
+            pluginFiles.put(css);
+            info.putExtra("pluginfiles",pluginFiles.toString());
             sendBroadcast(info);
             Log.i(Constants.PRFX,"broadcast");
         }catch (Throwable t){

@@ -23,28 +23,22 @@
  ###############################################################################
  * css for the ocharts parts
  */
-
-.S57Object {
-    margin-left: 1em;
-    margin-right: 1em;
-    border-bottom: 1px solid grey;
-    margin-top: 0.5em;
-    margin-bottom: 0.5em;
-    padding-bottom: 0.5em;
+:root{
+    --plugin-ochartsng-icon: url('gui/icon.png')
 }
-.S57Object .name {
-    font-weight: bold;
-    margin-bottom: 0.7em;
+.icon-default{
+    --plugin-ochartsng-icon: url('gui/iconbw.svg')
 }
-.S57Object div {
-    margin-bottom: 0.2em;
+.nightMode{
+    --plugin-ochartsng-icon: url('gui/iconbw.svg')
 }
-
-.S57Object .labelText:before {
-    content: "(";
-    padding-left: 0.2em;
+/*
+set the icon url for the plugin running as user plugin
+and as system plugin
+*/
+.button.user-ochartsng-ui .icon {
+    background-image: var(--plugin-ochartsng-icon);
 }
-.S57Object .labelText:after {
-    content: "):";
-    padding-right: 0.2em;
+.button.system-ochartsng-ui .icon {
+    background-image: var(--plugin-ochartsng-icon);
 }
