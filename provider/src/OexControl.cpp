@@ -62,7 +62,7 @@ static const int STOPTIME=10;
 static const int QUERY_DONGLE_MS=5000; //minimal intervall to query the dongle state
 static const int MAX_LOG=10; //log lines from oexcontrol to store
 
-typedef std::function<void(const String &prefix,const char *)> WriteFunction;
+typedef std::function<void(const String &prefix,const char *, bool hasEol)> WriteFunction;
 typedef std::function<bool(void)> StopFunction;
 
 static void logWrite(const String &prefix, const char *text){
@@ -94,7 +94,7 @@ static void pipeReader(int pipeFd, const String &prefix, WriteFunction writer, S
                 if (bp > 0)
                 {
                     buffer[bp] = 0;
-                    writer(prefix,buffer);
+                    writer(prefix,buffer,false);
                 }
                 LOG_DEBUG("pipe reading from %s stopped",prefix);
                 break;
@@ -105,7 +105,7 @@ static void pipeReader(int pipeFd, const String &prefix, WriteFunction writer, S
                     if (bp > 0)
                     {
                         buffer[bp] = 0;
-                        writer(prefix,buffer);
+                        writer(prefix,buffer,false);
                     }
                     LOG_DEBUG("pipe reading from %s stopped",prefix);
                     break;
@@ -121,7 +121,7 @@ static void pipeReader(int pipeFd, const String &prefix, WriteFunction writer, S
                     *eol = 0;
                     if (eol > buffer)
                     {
-                        writer(prefix, buffer);
+                        writer(prefix, buffer,true);
                     }
                     if (eol < (buffer + bp - 1))
                     {
@@ -137,7 +137,7 @@ static void pipeReader(int pipeFd, const String &prefix, WriteFunction writer, S
                 }
                 if (bp >= (BSIZE - 1))
                 {
-                    writer(prefix, buffer);
+                    writer(prefix, buffer,false);
                     bp = 0;
                 }
             }
@@ -450,7 +450,8 @@ void OexControl::Supervisor::run()
                     Thread reader([this, res]()
                                   { 
                                     int lc=0;
-                                    pipeReader(res.readFd, FMT("OEXSERVER:%d",res.pid), [this,&lc](const String &prefix, const char *text){
+                                    pipeReader(res.readFd, FMT("OEXSERVER:%d",res.pid), 
+                                        [this,&lc](const String &prefix, const char *text,bool eol){
                                         logWrite(prefix,text);
                                         if (lc < MAX_LOG){
                                             this->control->addLog(FMT("%s: %s",prefix,text));
@@ -745,9 +746,11 @@ static String execOexCommand(const OexConfig &config,const String &progDir,const
     String result;
     const size_t MAXRES=204800;
     Timer::SteadyTimePoint start=Timer::steadyNow();
-    pipeReader(res.readFd, FMT("OEXCMD:%d", res.pid), [&result](const String &prfx, const char *text){
+    pipeReader(res.readFd, FMT("OEXCMD:%d", res.pid), 
+                [&result](const String &prfx, const char *text,bool eol){
                       if (result.size() >= MAXRES) return;
                       result.append(text);
+                      if (eol) result.append("\n");
                   },
                   [start,timeoutMillis](){
                       return Timer::steadyPassedMillis(start,timeoutMillis);

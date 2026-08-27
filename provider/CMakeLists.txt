@@ -7,7 +7,7 @@ if (NOT AVNAV_VERSION)
     set(AVNAV_VERSION "development")
 endif()
 if (NOT OCHARTS_VERSION)
-    set(OCHARTS_VERSION "1.0.29.0")
+    set(OCHARTS_VERSION "v2.1.11")
 endif()   
 set(OCHARTS_VERSION_BUILD ${OCHARTS_VERSION})
 # set the project name
