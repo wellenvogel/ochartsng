@@ -24,7 +24,7 @@ for f in AvnavOchartsProvider libpreload.so oexserverd
 do
   clink $f $bb/$f
 done
-for f in plugin.py provider.sh converter.py
+for f in plugin.py provider.sh converter.py plugin.css
 do
   clink $f avnav-plugin/$f
 done
