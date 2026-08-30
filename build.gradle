@@ -93,22 +93,6 @@ def DEPS_V13 = [
 def IMAGE_VERSION = "A1"        
 def VARIANTS=[
         [osline:'ubuntu',
-         osversion:'bionic', 
-         arch: 'amd64',
-         tag: IMAGE_VERSION,
-         dockerfile: 'Dockerfile.all',
-         oexdir: 'linux64',
-         dependencies: DEFAULT_DEPS
-         ],
-        [osline:'ubuntu',
-         osversion:'focal',
-         arch: 'amd64',
-         tag: IMAGE_VERSION,
-         dockerfile:'Dockerfile.all',
-         oexdir: 'linux64',
-         dependencies: DEFAULT_DEPS
-         ],
-        [osline:'ubuntu',
          osversion:'jammy',
          arch: 'amd64',
          tag: IMAGE_VERSION,
@@ -124,6 +108,34 @@ def VARIANTS=[
          oexdir: 'linux64',
          dependencies: DEPS_V13
          ],
+        [osline:'ubuntu',
+         osversion:'noble',
+         arch: 'arm64',
+         tag: IMAGE_VERSION,
+         platform: 'linux/arm64',
+         dockerbase:'arm64v8/ubuntu',
+         dockerfile:'Dockerfile.platform.v2',
+         oexdir: 'linuxarm64',
+         dependencies: DEPS_V13
+         ],
+/*        [osline:'ubuntu',
+         osversion:'resolute',
+         arch: 'amd64',
+         tag: IMAGE_VERSION,
+         dockerfile:'Dockerfile.all',
+         oexdir: 'linux64',
+         dependencies: DEPS_V13
+         ],
+        [osline:'ubuntu',
+         osversion:'resolute',
+         arch: 'arm64',
+         tag: IMAGE_VERSION,
+         platform: 'linux/arm64',
+         dockerbase:'arm64v8/ubuntu',
+         dockerfile:'Dockerfile.platform.v2',
+         oexdir: 'linuxarm64',
+         dependencies: DEPS_V13
+         ], */
         [osline:'debian',
          osversion:'buster',
          arch: 'amd64',
