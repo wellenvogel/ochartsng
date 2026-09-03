@@ -69,8 +69,8 @@ static void logWrite(const String &prefix, const char *text){
     LOG_INFO("%s: %s",prefix,text);
 }
 
-static void pipeReader(int pipeFd, const String &prefix, WriteFunction writer, StopFunction stopFunction=StopFunction()){
-    LOG_INFO("pipe reader started for %s", prefix);
+static void pipeReader(int pipeFd, const String &prefix, WriteFunction writer, StopFunction stopFunction=StopFunction(),bool logInfo=true){
+    LOG_SEL(logInfo,"pipe reader started for %s", prefix);
     struct pollfd fds[1];
     fds[0].fd = pipeFd;
     fds[0].events = POLLIN;
@@ -143,7 +143,7 @@ static void pipeReader(int pipeFd, const String &prefix, WriteFunction writer, S
             }
         }
     }
-    LOG_INFO("Pipe reader stopped for %s",prefix);
+    LOG_SEL(logInfo,"Pipe reader stopped for %s",prefix);
     close(pipeFd);
 }
 
@@ -222,8 +222,8 @@ class StartResult{
  * run the oexserverd
  * only use LD_PRELOAD if args are empty
  */
-StartResult runOexServerd(const OexConfig &config,const String &progDir,const StringVector &args, bool usePreload){    
-    LOG_INFO("starting oexserverd with param %s",StringHelper::concat(args).c_str());
+StartResult runOexServerd(const OexConfig &config,const String &progDir,const StringVector &args, bool usePreload, bool logInfo=true){    
+    LOG_SEL(logInfo,"starting oexserverd with param %s",StringHelper::concat(args).c_str());
     StartResult rt;
     String exe=FileHelper::concatPath(progDir,oexconfig.exe);
     if (!FileHelper::exists(exe)){
@@ -411,6 +411,7 @@ void OexControl::writeLog(){
         std::cout << le << std::endl;
     }
 }
+#define DONGLE_CHECK_INTERVAL 10000L
 void OexControl::Supervisor::run()
 {
     static const std::map<OexState,int> waitTimes={
@@ -422,6 +423,8 @@ void OexControl::Supervisor::run()
     LOG_DEBUG("oexserverd supervisor started");
     int pid = -1;
     Timer::SteadyTimePoint lastCheck=Timer::steadyNow();
+    Timer::SteadyTimePoint lastDongleCheck=Timer::steadyNow();
+    String startupDongleName="";
     while (!this->shouldStop())
     {
         OexState state = control->GetState();
@@ -438,6 +441,13 @@ void OexControl::Supervisor::run()
             {
                 LOG_INFO("oexserverd start requested");
                 control->resetLog();
+                try{
+                    lastDongleCheck=Timer::steadyNow();
+                    startupDongleName="";
+                    startupDongleName=control->GetDongleNameInternal(10000L,true);
+                    LOG_INFO("oexserverd dongle name=%s",startupDongleName);
+                }catch (Exception &e){
+                }
                 StartResult res = runOexServerd(oexconfig, control->progDir, control->additionalParameters,true);
                 if (res.hasError)
                 {
@@ -496,6 +506,21 @@ void OexControl::Supervisor::run()
         if (pid > 0) {
             if (control->GetState() == RUNNING){
             bool available = false;
+            if (Timer::steadyPassedMillis(lastDongleCheck,DONGLE_CHECK_INTERVAL)){
+                try{
+                    lastDongleCheck=Timer::steadyNow();
+                    String newDongleName=control->GetDongleNameInternal(10000L,true);
+                    if (newDongleName != startupDongleName){
+                        LOG_INFO("oexserverd new dongle name=%s",newDongleName);
+                        control->StopServer(pid);
+                        pid=-1;
+                        control->pid=pid;
+                        control->SetState(OexControl::UNKNOWN);
+                        continue;
+                    }
+                }catch (Exception &e){
+                }
+            }
             if (Timer::steadyPassedMillis(lastCheck, 2000)) {
                 available = control->PingOex(1000);
                 lastCheck=Timer::steadyNow();
@@ -737,9 +762,9 @@ long OexControl::getNextTempIdx(){
     return tempDirIdx;
 }
 
-static String execOexCommand(const OexConfig &config,const String &progDir,const StringVector &args, long timeoutMillis){
-    LOG_INFO("starting FPR command %s",StringHelper::concat(args));
-    StartResult res = runOexServerd(config, progDir, args,false);
+static String execOexCommand(const OexConfig &config,const String &progDir,const StringVector &args, long timeoutMillis, bool logInfo=true){
+    LOG_SEL(logInfo,"starting FPR command %s",StringHelper::concat(args));
+    StartResult res = runOexServerd(config, progDir, args,false,logInfo);
     if (res.hasError){
         throw OexControl::OexException(FMT("unable to run oex command %s: %s",StringHelper::concat(args), res.error));
     }
@@ -754,7 +779,8 @@ static String execOexCommand(const OexConfig &config,const String &progDir,const
                   },
                   [start,timeoutMillis](){
                       return Timer::steadyPassedMillis(start,timeoutMillis);
-                  }
+                  },
+                  logInfo
                   );
     bool finished=false;
     while (! Timer::steadyPassedMillis(start,timeoutMillis)){
@@ -903,21 +929,14 @@ OexControl::FPR OexControl::GetFpr(long timeoutMillis,bool forDongle,bool altern
     return rt;
 }
 
-bool OexControl::DonglePresent(long timeoutMillis){
+bool OexControl::DonglePresentInternal(long timeoutMillis,bool raise, bool logInfo){
     if (oexconfig.fprStdout){
         //ANDROID
         return false;
     }
-    {
-        Synchronized l(mutex);
-        if (!Timer::steadyPassedMillis(lastDongleState,QUERY_DONGLE_MS)){
-            return donglePresent;
-        }
-        lastDongleState=Timer::steadyNow(); //prevent parallel execution
-    }
     Timer::SteadyTimePoint start=Timer::steadyNow();
     StringVector args({"-s"});
-    String result=execOexCommand(oexconfig,progDir,args,timeoutMillis);
+    String result=execOexCommand(oexconfig,progDir,args,timeoutMillis,logInfo);
     StringVector lines=StringHelper::split(result,"\n");
     bool found=false;
     bool newState=false;
@@ -935,19 +954,35 @@ bool OexControl::DonglePresent(long timeoutMillis){
             break;
         }
     }
+    if (! found && raise){
+        throw new OexException(String("unable to determine dongle present state: ")+StringHelper::concat(lines," "));
+    }
+    return newState;
+}
+bool OexControl::DonglePresent(long timeoutMillis){
+    if (oexconfig.fprStdout){
+        //ANDROID
+        return false;
+    }
+    {
+        Synchronized l(mutex);
+        if (!Timer::steadyPassedMillis(lastDongleState,QUERY_DONGLE_MS)){
+            return donglePresent;
+        }
+        lastDongleState=Timer::steadyNow(); //prevent parallel execution
+    }
+    Timer::SteadyTimePoint start=Timer::steadyNow();
+    bool present=DonglePresentInternal(timeoutMillis,true,true);
     String newName="";
-    if (found){
+    if (present){
         newName=GetDongleNameInternal(Timer::remainMillis(start,timeoutMillis));
     }
     {
         Synchronized l(mutex);
-        donglePresent=newState;
+        donglePresent=present;
         dongleName=newName;
-        if (! found){
-            throw OexException(StringHelper::concat(lines," "));
-        }
     }
-    return newState;
+    return present;
 }
 String OexControl::GetDongleName(long timeoutMillis){
     if (! DonglePresent(timeoutMillis)) {
@@ -956,10 +991,13 @@ String OexControl::GetDongleName(long timeoutMillis){
     Synchronized l(mutex);
     return dongleName;
 }
-String OexControl::GetDongleNameInternal(long timeoutMillis){
+String OexControl::GetDongleNameInternal(long timeoutMillis,bool checkPresence, bool logInfo){
+    if (checkPresence){
+        if (! DonglePresentInternal(timeoutMillis,false,logInfo)) return String();
+    }
     Timer::SteadyTimePoint start=Timer::steadyNow();
     StringVector args({"-t"});
-    String result=execOexCommand(oexconfig,progDir,args,timeoutMillis);
+    String result=execOexCommand(oexconfig,progDir,args,timeoutMillis,logInfo);
     StringVector lines=StringHelper::split(result,"\n");
     String rt;
     for (auto it=lines.begin();it!=lines.end();it++){

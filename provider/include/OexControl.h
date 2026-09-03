@@ -105,7 +105,8 @@ class OexControl : public ItemStatus{
         } OexMessage;
         bool PingOex(long waitTime=DEFAULT_WAITTIME);
         TESTVIRT InputStream::Ptr DoSendOexCommand(OexCommands cmd,const String &fileName, const String &key, long waitTime=DEFAULT_WAITTIME, bool ignoreState=false);
-        TESTVIRT String GetDongleNameInternal(long timeoutMillis=10000);
+        TESTVIRT String GetDongleNameInternal(long timeoutMillis=10000,bool checkPresence=false, bool logInfo=true);
+        TESTVIRT bool DonglePresentInternal(long timeoutMillis=10000,bool raise=false,bool logInfo=true); 
         OexControl(String progDir,String tempDir,StringVector additionalParameters);
         void StopServer(pid_t pid);
         bool SetState(OexState state,String error=String());

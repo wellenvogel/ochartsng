@@ -43,6 +43,7 @@
 #define LOG_INFOC(...) {StringHelper::StreamFormat(std::cout,__VA_ARGS__);std::cout << std::endl;if(Logger::instance()->HasLevel(LOG_LEVEL_INFO)) Logger::instance()->Log(LOG_LEVEL_INFO,"INFO",__VA_ARGS__);}
 #define LOG_DEBUG(...) if(Logger::instance()->HasLevel(LOG_LEVEL_DEBUG)) Logger::instance()->Log(LOG_LEVEL_DEBUG,"DEBUG",__VA_ARGS__)
 #define LOG_DEBUGS(callback) Logger::instance()->Log(LOG_LEVEL_DEBUG,"DEBUG",callback);
+#define LOG_SEL(info,...) if(Logger::instance()->HasLevel(info?LOG_LEVEL_INFO:LOG_LEVEL_DEBUG)) Logger::instance()->Log(info?LOG_LEVEL_INFO:LOG_LEVEL_DEBUG,info?"INFO":"DEBUG",__VA_ARGS__);
 #define LOG_ERROR(...) if(Logger::instance()->HasLevel(LOG_LEVEL_ERROR)) Logger::instance()->Log(LOG_LEVEL_ERROR,"ERROR",__VA_ARGS__)
 #define LOG_ERRORC(...) {StringHelper::StreamFormat(std::cout,__VA_ARGS__);std::cout << std::endl;if(Logger::instance()->HasLevel(LOG_LEVEL_ERROR)) Logger::instance()->Log(LOG_LEVEL_ERROR,"ERROR", __VA_ARGS__);}
 class MStreamBuf;
