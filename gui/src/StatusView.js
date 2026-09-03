@@ -33,6 +33,7 @@ import ChartSetStatus from './components/ChartSetStatus.js';
 import {resetError, setError} from "./components/ErrorDisplay";
 import {fetchJson} from "./util/Util";
 import Version from '../version.js'
+import DongleState from "./components/DongleState";
 
 
 
@@ -90,6 +91,7 @@ const OexStatus=(props)=>{
         <StatusItem title="LicenseServer">
             <StatusLine label="Version" value={props.version}/>
             <StatusLine label="Status" value={props.state} icon={true}/>
+            <DongleState/>
         </StatusItem>
     );
 };
