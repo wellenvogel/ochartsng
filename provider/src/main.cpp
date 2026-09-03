@@ -304,6 +304,8 @@ int mainFunction(int argc, char **argv,bool *stopFlag=NULL)
                     chartManager->ReadChartsInitial(toRead,true);
                     chartManager->ReadChartsInitial(additionalChartDirs,false);
                     chartManager->RemoveUnverified();
+                    //clean up caches again 
+                    chartManager->setSequencePrefix(std::to_string(newSequence));
                     dongleSequence=newSequence;
                 }
                 Timer::microSleep(100000);
