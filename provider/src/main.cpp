@@ -289,6 +289,7 @@ int mainFunction(int argc, char **argv,bool *stopFlag=NULL)
         }
         //TODO: chartInfoCache
         long dongleSequence=OexControl::Instance()->DongleSequence();
+        chartManager->setSequencePrefix(std::to_string(dongleSequence));
         chartManager->ReadChartsInitial(toRead,true);
         chartManager->ReadChartsInitial(additionalChartDirs,false);
         chartManager->RemoveUnverified();
@@ -299,6 +300,7 @@ int mainFunction(int argc, char **argv,bool *stopFlag=NULL)
                 long newSequence=OexControl::Instance()->DongleSequence();
                 if (newSequence != dongleSequence){
                     LOG_INFO("dongle changed, reloading charts");
+                    chartManager->setSequencePrefix(std::to_string(newSequence));
                     chartManager->ReadChartsInitial(toRead,true);
                     chartManager->ReadChartsInitial(additionalChartDirs,false);
                     chartManager->RemoveUnverified();

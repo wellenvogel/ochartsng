@@ -994,8 +994,13 @@ String ChartManager::GetChartSetSequence(const String &chartSetKey){
     auto it=chartSets.find(chartSetKey);
     if (it == chartSets.end()) return "";
     s52::S52Data::ConstPtr s52data=GetS52Data();
-    if (!s52data) return it->second->GetSetToken();
-    return s52data->getMD5().ToString()+"-"+it->second->GetSetToken();
+    if (!s52data) return sequencePrefix+"-"+it->second->GetSetToken();
+    return sequencePrefix+"-"+s52data->getMD5().ToString()+"-"+it->second->GetSetToken();
+}
+void ChartManager::setSequencePrefix(const String &np){
+    Synchronized l(lock);
+    sequencePrefix=np;
+    chartCache->CloseAllCharts();
 }
 
 int ChartManager::RemoveUnverified()

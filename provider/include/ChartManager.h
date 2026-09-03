@@ -144,6 +144,7 @@ public:
     Chart::ChartType    GetChartType(const String &fileName) const;
     void                registerSetChagend(SetChangeFunction f);
     void                registerSettingsChanged(SettingsChangeFunction f);
+    void                setSequencePrefix(const String &np);
 private:
     class HouseKeeper : public Thread{
         ChartCache::Ptr cache;
@@ -192,6 +193,7 @@ private:
     FontFileHolder::Ptr fontFile;
     SetChangeFunction   setChanged;
     SettingsChangeFunction settingsChanged;
+    String              sequencePrefix;
 };
 
 #endif /* CHARTMANAGER_H */
