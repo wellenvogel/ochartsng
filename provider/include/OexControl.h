@@ -77,12 +77,13 @@ class OexControl : public ItemStatus{
         TESTVIRT int OpenConnection(long timeoutMillis, bool ignoreState=false);
         TESTVIRT InputStream::Ptr SendOexCommand(OexCommands cmd,const String &fileName, const String &key, long waitTime=DEFAULT_WAITTIME);
         TESTVIRT FPR GetFpr(long timeoutMillis,bool forDongle=false, bool alternative=false);
-        TESTVIRT bool DonglePresent(long timeoutMillis=10000); 
-        TESTVIRT String GetDongleName(long timeoutMillis=10000);
+        TESTVIRT bool DonglePresent(long timeoutMillis=10000, bool force=false); 
+        TESTVIRT String GetDongleName(long timeoutMillis=10000, bool force=false);
         TESTVIRT void Kill();
         TESTVIRT StringVector GetAdditionalParameters(){return additionalParameters;}
         TESTVIRT String GetOchartsVersion() const;
         TESTVIRT bool CanHaveDongle() const;
+        TESTVIRT long DongleSequence();
         String GetLastError();
         //write saved log lines from oex to stdout
         void writeLog();
@@ -107,6 +108,8 @@ class OexControl : public ItemStatus{
         TESTVIRT InputStream::Ptr DoSendOexCommand(OexCommands cmd,const String &fileName, const String &key, long waitTime=DEFAULT_WAITTIME, bool ignoreState=false);
         TESTVIRT String GetDongleNameInternal(long timeoutMillis=10000,bool checkPresence=false, bool logInfo=true);
         TESTVIRT bool DonglePresentInternal(long timeoutMillis=10000,bool raise=false,bool logInfo=true); 
+        TESTVIRT long DongleNameSequenceInternal();
+        TESTVIRT void SetExternalDongleNameSequence(long seq);
         OexControl(String progDir,String tempDir,StringVector additionalParameters);
         void StopServer(pid_t pid);
         bool SetState(OexState state,String error=String());
@@ -123,12 +126,16 @@ class OexControl : public ItemStatus{
         String tempDir;
         StringVector oexLog;
         std::mutex mutex;
+        std::mutex presentMutex;
+        std::mutex nameMutex;
         StringVector additionalParameters;
         String lastError;
         long tempDirIdx=0;
         std::atomic<int> pid={-1};
         Timer::SteadyTimePoint lastDongleState;
         bool donglePresent=false;
+        long dongleNameSequence=0;
+        long externalDongleNameSequence=0; //the dongel name sequence when the decoder started
         String dongleName="";
 };
 #endif

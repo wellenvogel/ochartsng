@@ -288,9 +288,26 @@ int mainFunction(int argc, char **argv,bool *stopFlag=NULL)
             toRead.push_back(*it);
         }
         //TODO: chartInfoCache
+        long dongleSequence=OexControl::Instance()->DongleSequence();
         chartManager->ReadChartsInitial(toRead,true);
         chartManager->ReadChartsInitial(additionalChartDirs,false);
         chartManager->RemoveUnverified();
+        bool runReloader=true;
+        Thread reloader([&chartManager,&toRead,&additionalChartDirs,&dongleSequence,&runReloader](){
+            LOG_INFO("chart reloader started");
+            while (runReloader){
+                long newSequence=OexControl::Instance()->DongleSequence();
+                if (newSequence != dongleSequence){
+                    LOG_INFO("dongle changed, reloading charts");
+                    chartManager->ReadChartsInitial(toRead,true);
+                    chartManager->ReadChartsInitial(additionalChartDirs,false);
+                    chartManager->RemoveUnverified();
+                    dongleSequence=newSequence;
+                }
+                Timer::microSleep(100000);
+            }
+        });
+        reloader.start();
         int systemKb=0;
         int ourKb=0;
         SystemHelper::GetMemInfo(&systemKb,&ourKb);
@@ -318,6 +335,7 @@ int mainFunction(int argc, char **argv,bool *stopFlag=NULL)
             getchar();
         }
         settings->setAllowChanges(false);
+        reloader.stop();
     }
     else{
         LOG_ERRORC("unable to start oexserverd: %s",OexControl::Instance()->GetLastError());

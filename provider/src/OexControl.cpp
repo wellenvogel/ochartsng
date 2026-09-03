@@ -424,7 +424,7 @@ void OexControl::Supervisor::run()
     int pid = -1;
     Timer::SteadyTimePoint lastCheck=Timer::steadyNow();
     Timer::SteadyTimePoint lastDongleCheck=Timer::steadyNow();
-    String startupDongleName="";
+    long dongleNameSequence=0;
     while (!this->shouldStop())
     {
         OexState state = control->GetState();
@@ -443,9 +443,9 @@ void OexControl::Supervisor::run()
                 control->resetLog();
                 try{
                     lastDongleCheck=Timer::steadyNow();
-                    startupDongleName="";
-                    startupDongleName=control->GetDongleNameInternal(10000L,true,false);
-                    LOG_INFO("oexserverd dongle name=%s",startupDongleName);
+                    control->GetDongleName(10000L,true);
+                    dongleNameSequence=control->DongleNameSequenceInternal();
+                    LOG_INFO("oexserverd dongle name seq=%ld",dongleNameSequence);
                 }catch (Exception &e){
                 }
                 StartResult res = runOexServerd(oexconfig, control->progDir, control->additionalParameters,true);
@@ -489,6 +489,7 @@ void OexControl::Supervisor::run()
                     else{
                         control->SetState(RUNNING);
                         LOG_INFO("oexserverd %d successfully started and connected",pid);
+                        control->SetExternalDongleNameSequence(dongleNameSequence);
                     }
                 }
             }
@@ -509,9 +510,10 @@ void OexControl::Supervisor::run()
             if (Timer::steadyPassedMillis(lastDongleCheck,DONGLE_CHECK_INTERVAL)){
                 try{
                     lastDongleCheck=Timer::steadyNow();
-                    String newDongleName=control->GetDongleNameInternal(10000L,true,false);
-                    if (newDongleName != startupDongleName){
-                        LOG_INFO("oexserverd new dongle name=%s",newDongleName);
+                    control->GetDongleName(10000L,true);
+                    long newSequence=control->DongleNameSequenceInternal();
+                    if (newSequence != dongleNameSequence){
+                        LOG_INFO("oexserverd dongle sequence changed=%ld",newSequence);
                         control->StopServer(pid);
                         pid=-1;
                         control->pid=pid;
@@ -938,77 +940,98 @@ bool OexControl::DonglePresentInternal(long timeoutMillis,bool raise, bool logIn
         //ANDROID
         return false;
     }
-    Timer::SteadyTimePoint start=Timer::steadyNow();
-    StringVector args({"-s"});
-    String result=execOexCommand(oexconfig,progDir,args,timeoutMillis,logInfo);
-    StringVector lines=StringHelper::split(result,"\n");
-    bool found=false;
-    bool newState=false;
-    for (auto it=lines.begin();it!=lines.end();it++){
-        if (*it == "0") {
-            LOG_INFO("oex dongle present false");
-            found=true;
-            newState=false;
-            break;
+    {
+        Synchronized l(presentMutex);
+        Timer::SteadyTimePoint start=Timer::steadyNow();
+        StringVector args({"-s"});
+        String result=execOexCommand(oexconfig,progDir,args,timeoutMillis,logInfo);
+        StringVector lines=StringHelper::split(result,"\n");
+        bool found=false;
+        bool newState=false;
+        for (auto it=lines.begin();it!=lines.end();it++){
+            if (*it == "0") {
+                LOG_SEL(logInfo,"oex dongle present false");
+                found=true;
+                newState=false;
+                break;
+            }
+            if (*it == "1") {
+                LOG_SEL(logInfo,"oex dongle present true");
+                found=true;
+                newState=true;
+                break;
+            }
         }
-        if (*it == "1") {
-            LOG_INFO("oex dongle present true");
-            found=true;
-            newState=true;
-            break;
+        if (! found && raise){
+            throw new OexException(String("unable to determine dongle present state: ")+StringHelper::concat(lines," "));
         }
+        return newState;
     }
-    if (! found && raise){
-        throw new OexException(String("unable to determine dongle present state: ")+StringHelper::concat(lines," "));
-    }
-    return newState;
 }
-bool OexControl::DonglePresent(long timeoutMillis){
+bool OexControl::DonglePresent(long timeoutMillis, bool force){
     if (oexconfig.fprStdout){
         //ANDROID
         return false;
     }
     {
         Synchronized l(mutex);
-        if (!Timer::steadyPassedMillis(lastDongleState,QUERY_DONGLE_MS)){
+        if (!Timer::steadyPassedMillis(lastDongleState,QUERY_DONGLE_MS) && ! force){
             return donglePresent;
         }
         lastDongleState=Timer::steadyNow(); //prevent parallel execution
     }
     Timer::SteadyTimePoint start=Timer::steadyNow();
-    bool present=DonglePresentInternal(timeoutMillis,true,true);
+    bool present=DonglePresentInternal(timeoutMillis,true,!force);
     String newName="";
     if (present){
-        newName=GetDongleNameInternal(Timer::remainMillis(start,timeoutMillis));
+        newName=GetDongleNameInternal(Timer::remainMillis(start,timeoutMillis), false, !force);
     }
     {
         Synchronized l(mutex);
         donglePresent=present;
+        if (newName != dongleName){
+            dongleNameSequence++;
+        }
         dongleName=newName;
     }
     return present;
 }
-String OexControl::GetDongleName(long timeoutMillis){
-    if (! DonglePresent(timeoutMillis)) {
-       throw OexException("no dongle detected"); 
+String OexControl::GetDongleName(long timeoutMillis, bool force){
+    if (! DonglePresent(timeoutMillis,force)) {
+       return String("");
     }
     Synchronized l(mutex);
     return dongleName;
+}
+long OexControl::DongleSequence(){
+    Synchronized l(mutex);
+    return externalDongleNameSequence;
+}
+long OexControl::DongleNameSequenceInternal(){
+    Synchronized l(mutex);
+    return dongleNameSequence;
+}
+void OexControl::SetExternalDongleNameSequence(long seq){
+    Synchronized l(mutex);
+    externalDongleNameSequence=seq;
 }
 String OexControl::GetDongleNameInternal(long timeoutMillis,bool checkPresence, bool logInfo){
     if (checkPresence){
         if (! DonglePresentInternal(timeoutMillis,false,logInfo)) return String();
     }
-    Timer::SteadyTimePoint start=Timer::steadyNow();
-    StringVector args({"-t"});
-    String result=execOexCommand(oexconfig,progDir,args,timeoutMillis,logInfo);
-    StringVector lines=StringHelper::split(result,"\n");
-    String rt;
-    for (auto it=lines.begin();it!=lines.end();it++){
-        long sn=::atol(it->c_str());
-        rt=FMT("sgl%08X",sn);
+    {
+        Synchronized l(nameMutex);
+        Timer::SteadyTimePoint start=Timer::steadyNow();
+        StringVector args({"-t"});
+        String result=execOexCommand(oexconfig,progDir,args,timeoutMillis,logInfo);
+        StringVector lines=StringHelper::split(result,"\n");
+        String rt;
+        for (auto it=lines.begin();it!=lines.end();it++){
+            long sn=::atol(it->c_str());
+            rt=FMT("sgl%08X",sn);
+        }
+        return rt;
     }
-    return rt;
 }
 
 String OexControl::GetOchartsVersion() const{
