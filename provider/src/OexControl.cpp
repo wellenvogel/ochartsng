@@ -444,7 +444,7 @@ void OexControl::Supervisor::run()
                 try{
                     lastDongleCheck=Timer::steadyNow();
                     startupDongleName="";
-                    startupDongleName=control->GetDongleNameInternal(10000L,true);
+                    startupDongleName=control->GetDongleNameInternal(10000L,true,false);
                     LOG_INFO("oexserverd dongle name=%s",startupDongleName);
                 }catch (Exception &e){
                 }
@@ -509,7 +509,7 @@ void OexControl::Supervisor::run()
             if (Timer::steadyPassedMillis(lastDongleCheck,DONGLE_CHECK_INTERVAL)){
                 try{
                     lastDongleCheck=Timer::steadyNow();
-                    String newDongleName=control->GetDongleNameInternal(10000L,true);
+                    String newDongleName=control->GetDongleNameInternal(10000L,true,false);
                     if (newDongleName != startupDongleName){
                         LOG_INFO("oexserverd new dongle name=%s",newDongleName);
                         control->StopServer(pid);
@@ -887,10 +887,11 @@ OexControl::FPR OexControl::GetFpr(long timeoutMillis,bool forDongle,bool altern
         //get the fpr name...
         StringVector lines=StringHelper::split(result,"\n");
         String fprName;
+        String error;
         for (auto it=lines.begin();it!=lines.end();it++){
             
             if (it->find("ERROR") != String::npos || it->find("error") != String::npos){
-                throw OexException(*it);
+                error=*it;
             }
             if (it->find("FPR") != String::npos || it->find("fpr") != String::npos){
                 size_t delim=it->find(':');
@@ -902,6 +903,9 @@ OexControl::FPR OexControl::GetFpr(long timeoutMillis,bool forDongle,bool altern
             }
         }
         if (fprName.empty()){
+            if (!error.empty()){
+                throw OexException(error);
+            }
             throw OexException("no filename in oex output");
         }
         rt.name=FileHelper::fileName(fprName);
